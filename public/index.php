@@ -22,6 +22,7 @@ use App\Controllers\Account\AuthController as AccountAuthController;
 use App\Controllers\Account\DashboardController as AccountDashboardController;
 use App\Controllers\Account\ProfileController;
 use App\Controllers\Account\PeopleController;
+use App\Controllers\Account\RegisterController;
 
 $router = new Router();
 
@@ -50,6 +51,8 @@ $router->get('/admin/organisations', [OrganisationController::class, 'index']);
 $router->get('/admin/organisations/create', [OrganisationController::class, 'create']);
 $router->post('/admin/organisations', [OrganisationController::class, 'store']);
 $router->get('/admin/organisations/{id}/edit', [OrganisationController::class, 'edit']);
+$router->post('/admin/organisations/{id}/invite', [OrganisationController::class, 'generateInvite']);
+$router->post('/admin/organisations/{id}/invite/email', [OrganisationController::class, 'emailInvite']);
 $router->post('/admin/organisations/{id}', [OrganisationController::class, 'update']);
 
 // --- Super admin: users ---
@@ -74,6 +77,12 @@ $router->post('/admin/settings', [SettingsController::class, 'update']);
 // --- Super admin: updates ---
 $router->get('/admin/updates', [UpdateController::class, 'index']);
 $router->post('/admin/updates/run', [UpdateController::class, 'run']);
+
+// --- Public registration ---
+$router->get('/account/register', [RegisterController::class, 'showStudent']);
+$router->post('/account/register', [RegisterController::class, 'storeStudent']);
+$router->get('/register/organisation-admin/{token}', [RegisterController::class, 'showOrganisationAdmin']);
+$router->post('/register/organisation-admin/{token}', [RegisterController::class, 'storeOrganisationAdmin']);
 
 // --- User account (role-based dashboards) ---
 $router->get('/account/login', [AccountAuthController::class, 'showLogin']);

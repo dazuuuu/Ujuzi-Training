@@ -52,6 +52,21 @@ class MailerService
         }
     }
 
+    public static function sendOrganisationAdminInvite(string $toEmail, string $registerUrl, string $organisationName, string $expiresAt): void
+    {
+        $mail = self::configured();
+        try {
+            $mail->addAddress($toEmail);
+            $mail->isHTML(true);
+            $mail->Subject = 'Register as organisation admin for ' . $organisationName;
+            $mail->Body = self::inviteHtml($registerUrl, $organisationName, $expiresAt);
+            $mail->AltBody = 'Register as organisation admin for ' . $organisationName . ': ' . $registerUrl . ' This link expires at ' . $expiresAt . ' and can only be used once.';
+            $mail->send();
+        } catch (PHPMailerException $e) {
+            throw new MailerException('Could not send email: ' . $mail->ErrorInfo);
+        }
+    }
+
     public static function sendOrderConfirmation(string $toEmail, array $order, array $items): void
     {
         $mail = self::configured();
@@ -86,6 +101,30 @@ class MailerService
                 <span style="font-size:28px;letter-spacing:8px;font-weight:bold;color:#006b3f;">' . htmlspecialchars($code) . '</span>
               </div>
               <p style="font-size:12px;color:#888;margin:0;">This code expires in 10 minutes. If you didn\'t request this, you can safely ignore this email.</p>
+            </div>
+          </div>
+        </div>';
+    }
+
+    private static function inviteHtml(string $registerUrl, string $organisationName, string $expiresAt): string
+    {
+        $app = htmlspecialchars(Env::get('APP_NAME', 'Ujuzi Training'));
+        $safeUrl = htmlspecialchars($registerUrl);
+        return '
+        <div style="font-family: Arial, sans-serif; background:#f3f7f2; padding:32px;">
+          <div style="max-width:460px;margin:0 auto;background:#ffffff;border:1px solid #c5d4cb;border-radius:12px;overflow:hidden;">
+            <div style="background:#111111;padding:20px 24px;border-bottom:6px solid #bb0000;">
+              <span style="color:#ffffff;font-weight:bold;letter-spacing:2px;font-size:14px;">' . $app . '</span>
+            </div>
+            <div style="padding:28px 24px;">
+              <h1 style="font-size:18px;color:#111111;margin:0 0 8px;">Organisation admin registration</h1>
+              <p style="font-size:13px;color:#2f3f37;line-height:1.5;margin:0 0 16px;">You have been invited to register as organisation admin for <strong>' . htmlspecialchars($organisationName) . '</strong>.</p>
+              <p style="font-size:13px;color:#2f3f37;line-height:1.5;margin:0 0 20px;">This link expires in 5 minutes and can only be used once. After you register with your email and password, sign in to complete the profile forms assigned to organisation admins.</p>
+              <p style="text-align:center;margin:0 0 20px;">
+                <a href="' . $safeUrl . '" style="display:inline-block;background:#006b3f;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 18px;border-radius:8px;">Create your account</a>
+              </p>
+              <p style="font-size:12px;color:#2f3f37;word-break:break-all;margin:0 0 12px;">' . $safeUrl . '</p>
+              <p style="font-size:12px;color:#888;margin:0;">Expires at ' . htmlspecialchars($expiresAt) . '. If you did not expect this, you can ignore this email.</p>
             </div>
           </div>
         </div>';

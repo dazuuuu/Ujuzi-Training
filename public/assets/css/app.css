@@ -93,6 +93,14 @@ body {
   width: 100%;
 }
 
+button:disabled,
+.btn-primary:disabled,
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .choice-row {
   display: flex;
   gap: 0.5rem;

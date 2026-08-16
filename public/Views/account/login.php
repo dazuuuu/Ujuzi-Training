@@ -8,7 +8,7 @@ require __DIR__ . '/layout-header.php';
     <span class="text-xs font-bold text-black uppercase tracking-widest block mb-1">Learner &amp; staff login</span>
     <h1 class="font-serif-heading text-3xl font-bold text-[#0a0a0a]">Sign in to your dashboard</h1>
     <p class="text-sm text-neutral-500 mt-2">
-      Use the email or phone number an admin registered for you. After login you land on the dashboard for your role.
+      Use the email and password you registered with. On first login you will complete the form assigned to your role.
     </p>
   </div>
 
@@ -27,10 +27,14 @@ require __DIR__ . '/layout-header.php';
       <input type="hidden" name="method" value="email" />
       <div>
         <label class="text-[11px] font-bold text-neutral-600 uppercase">Email Address</label>
-        <input type="email" name="email" required value="<?= e($old['email'] ?? '') ?>" placeholder="you@example.com" class="w-full mt-1 bg-white border border-neutral-300 rounded-lg p-2.5 text-sm focus:outline-none focus:border-black" />
+        <input type="email" name="email" required value="<?= e($old['email'] ?? '') ?>" placeholder="you@example.com" autocomplete="email" class="w-full mt-1 bg-white border border-neutral-300 rounded-lg p-2.5 text-sm focus:outline-none focus:border-black" />
       </div>
-      <button type="submit" class="btn-primary btn-block">Send Login Code</button>
-      <p class="text-[11px] text-neutral-400 text-center">We'll email you a 6-digit code that expires in 10 minutes.</p>
+      <div>
+        <label class="text-[11px] font-bold text-neutral-600 uppercase">Password</label>
+        <input type="password" name="password" autocomplete="current-password" class="w-full mt-1 bg-white border border-neutral-300 rounded-lg p-2.5 text-sm focus:outline-none focus:border-black" />
+        <p class="field-hint">Leave blank only if an admin created your account and you still use an email login code.</p>
+      </div>
+      <button type="submit" class="btn-primary btn-block">Sign in</button>
     </form>
 
     <form method="post" action="<?= url('/account/login') ?>" id="phone-form" class="space-y-4 hidden">
@@ -47,7 +51,8 @@ require __DIR__ . '/layout-header.php';
 
   <div class="mt-6 bg-neutral-50 border border-neutral-200 rounded-xl p-5 text-xs text-neutral-600 space-y-2">
     <p class="font-bold text-neutral-800 uppercase tracking-wider text-[11px]">Need an account?</p>
-    <p>Users are created by Super Admin or by Organisation Admins / Attachment Trainers. Once created, your dashboard and profile are ready — sign in here to fill your assigned forms.</p>
+    <p>Students can <a href="<?= url('/account/register') ?>" class="font-bold" style="color:var(--ke-green)">register here</a> with email and password.</p>
+    <p>Organisation admins register only through a Super Admin invite URL (valid for 5 minutes, one registration).</p>
     <p>Platform owner? <a href="<?= url('/admin/login') ?>" class="font-bold" style="color:var(--ke-red)">Super Admin login</a>.</p>
   </div>
 </div>

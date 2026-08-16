@@ -2,6 +2,7 @@
 
 namespace App\Controllers\Account;
 
+use App\Core\AccountRedirect;
 use App\Core\Request;
 use App\Core\UserSession;
 use App\Core\View;
@@ -19,7 +20,7 @@ class AuthController
     public function showLogin(): void
     {
         if (UserSession::current()) {
-            redirect('/account/dashboard');
+            redirect(AccountRedirect::home(UserSession::current()));
         }
         View::render('account.login', ['error' => '', 'method' => 'email', 'old' => []]);
     }
@@ -27,7 +28,7 @@ class AuthController
     public function login(): void
     {
         if (UserSession::current()) {
-            redirect('/account/dashboard');
+            redirect(AccountRedirect::home(UserSession::current()));
         }
 
         $method = Request::post('method', 'email');
@@ -39,16 +40,27 @@ class AuthController
             $phone = User::normalizePhone((string) Request::post('phone', ''));
             $user = $phone ? User::findByIdentifier('phone', $phone) : null;
             if ($user && !empty($user['is_active'])) {
-                UserSession::login((int) $user['id']);
-                redirect('/account/dashboard');
+                $this->completeLogin($user);
             }
             $error = $user && empty($user['is_active'])
                 ? 'This account is inactive. Contact your organisation admin.'
                 : 'We could not find a user for that phone number. An admin must create your account first.';
         } else {
             $email = strtolower(trim((string) Request::post('email', '')));
+            $password = (string) Request::post('password', '');
             $user = $email ? User::findByIdentifier('email', $email) : null;
-            if ($user && !empty($user['is_active'])) {
+
+            if ($user && empty($user['is_active'])) {
+                $error = 'This account is inactive. Contact your organisation admin.';
+            } elseif ($user && !empty($user['has_password'])) {
+                $verified = User::verifyPassword($email, $password);
+                if ($verified) {
+                    $this->completeLogin($verified);
+                }
+                $error = 'That email or password is incorrect.';
+            } elseif ($user && $password !== '') {
+                $error = 'This account does not use a password yet. Leave the password blank and we will email a login code, or ask an admin to recreate the account.';
+            } elseif ($user) {
                 try {
                     OtpService::issueAndSendForUser((int) $user['id'], $user['email'], 'login');
                     $_SESSION['pending_user_id'] = (int) $user['id'];
@@ -58,10 +70,8 @@ class AuthController
                 } catch (\Throwable $e) {
                     $error = 'Something went wrong. Please try again shortly.';
                 }
-            } elseif ($user && empty($user['is_active'])) {
-                $error = 'This account is inactive. Contact your organisation admin.';
             } else {
-                $error = 'We could not find a user for that email. An admin must create your account first.';
+                $error = 'We could not find a user for that email. Students can register from the homepage. Organisation admins need a Super Admin invite link.';
             }
         }
 
@@ -75,7 +85,7 @@ class AuthController
     public function showVerify(): void
     {
         if (UserSession::current()) {
-            redirect('/account/dashboard');
+            redirect(AccountRedirect::home(UserSession::current()));
         }
         $pending = $this->pendingUser();
         if (!$pending) {
@@ -87,7 +97,7 @@ class AuthController
     public function verify(): void
     {
         if (UserSession::current()) {
-            redirect('/account/dashboard');
+            redirect(AccountRedirect::home(UserSession::current()));
         }
         $pending = $this->pendingUser();
         if (!$pending) {
@@ -112,9 +122,8 @@ class AuthController
             $code = trim((string) Request::post('code', ''));
             if (OtpService::verifyUser((int) $pending['id'], $code, 'login')) {
                 User::markEmailVerified((int) $pending['id']);
-                UserSession::login((int) $pending['id']);
                 unset($_SESSION['pending_user_id']);
-                redirect('/account/dashboard');
+                $this->completeLogin($pending);
             }
             $error = 'That code is incorrect or has expired. Please try again or request a new one.';
         }
@@ -126,6 +135,17 @@ class AuthController
     {
         UserSession::logout();
         redirect('/account/login');
+    }
+
+    private function completeLogin(array $user): void
+    {
+        User::touchLastLogin((int) $user['id']);
+        UserSession::login((int) $user['id']);
+        $fresh = UserSession::current() ?: $user;
+        if (AccountRedirect::needsProfile($fresh)) {
+            flashSuccess('Complete the registration form assigned to your role to finish signing in.');
+        }
+        redirect(AccountRedirect::home($fresh));
     }
 
     private function pendingUser(): ?array

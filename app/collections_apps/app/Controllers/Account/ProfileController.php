@@ -2,6 +2,7 @@
 
 namespace App\Controllers\Account;
 
+use App\Core\AccountRedirect;
 use App\Core\Request;
 use App\Models\Form;
 use App\Models\FormField;
@@ -55,6 +56,11 @@ class ProfileController extends BaseAccountController
         }
 
         FormResponse::save((int) $this->user['id'], $formId, $collected['answers']);
+        $fresh = array_merge($this->user);
+        if (!AccountRedirect::needsProfile($fresh)) {
+            flashSuccess('Your details were saved. Welcome to your dashboard.');
+            redirect('/account/dashboard');
+        }
         flashSuccess('Your details were saved. You can come back and edit this form any time.');
         redirect('/account/profile');
     }

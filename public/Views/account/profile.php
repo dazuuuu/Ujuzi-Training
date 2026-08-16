@@ -7,7 +7,7 @@ require __DIR__ . '/layout-header.php';
   <div>
     <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">Personal information</p>
     <h1 class="mt-2 font-serif-heading text-3xl font-bold">My profile</h1>
-    <p class="mt-2 text-sm font-medium" style="color:var(--ke-muted)">Fill the forms assigned to <?= e($currentUser['role_name']) ?>. You can re-edit your answers any time.</p>
+    <p class="mt-2 text-sm font-medium" style="color:var(--ke-muted)">This is the registration form assigned to <?= e($currentUser['role_name']) ?>. Fill it in to finish signing in. You can re-edit your answers later.</p>
   </div>
 
   <div class="rounded-xl border bg-white p-6 shadow-sm" style="border-color:var(--ke-line)">

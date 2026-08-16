@@ -28,6 +28,7 @@
         </span>
       </a>
       <nav class="flex items-center gap-3 text-xs font-black uppercase tracking-widest">
+        <a href="<?= url('/account/register') ?>" class="btn-secondary">Student register</a>
         <a href="<?= url('/account/login') ?>" class="btn-primary">Sign in</a>
         <a href="<?= url('/admin/login') ?>" class="btn-danger">Super Admin</a>
       </nav>
@@ -42,7 +43,8 @@
           <h1 class="mt-4 text-4xl font-black leading-tight sm:text-5xl">Training, people, and profiles — organised by role.</h1>
           <p class="mt-5 max-w-xl text-sm font-medium leading-6" style="color:#e8f5ee">Super Admin builds roles and forms. Organisation admins and attachment trainers get admin-like tools. Trainers and students work under their organisation and complete assigned profile forms.</p>
           <div class="mt-8 flex flex-wrap gap-3">
-            <a href="<?= url('/account/login') ?>" class="btn-primary">User login</a>
+            <a href="<?= url('/account/register') ?>" class="btn-primary">Student register</a>
+            <a href="<?= url('/account/login') ?>" class="btn-secondary">Sign in</a>
             <?php if (!empty($needsSetup)): ?>
               <a href="<?= url('/setup') ?>" class="btn-danger">Run first-time setup</a>
             <?php else: ?>
@@ -54,7 +56,8 @@
           <p class="text-[11px] font-black uppercase tracking-widest" style="color:#b8e0cc">Who signs in where</p>
           <ul class="mt-4 space-y-3 text-sm font-semibold">
             <li class="rounded-lg p-4" style="border:1px solid rgba(187,0,0,.45);background:rgba(187,0,0,.18)"><span class="block text-xs uppercase tracking-widest" style="color:#ffd0d0">Platform owner</span>Super Admin login</li>
-            <li class="rounded-lg p-4" style="border:1px solid rgba(184,224,204,.35);background:rgba(0,107,63,.22)"><span class="block text-xs uppercase tracking-widest" style="color:#b8e0cc">Everyone else</span>User login — dashboard follows their role</li>
+            <li class="rounded-lg p-4" style="border:1px solid rgba(184,224,204,.35);background:rgba(0,107,63,.22)"><span class="block text-xs uppercase tracking-widest" style="color:#b8e0cc">Students</span>Register or sign in with email and password</li>
+            <li class="rounded-lg p-4" style="border:1px solid rgba(184,224,204,.35);background:rgba(0,107,63,.22)"><span class="block text-xs uppercase tracking-widest" style="color:#b8e0cc">Organisation admins</span>Use a Super Admin invite link, then sign in</li>
           </ul>
         </div>
       </div>

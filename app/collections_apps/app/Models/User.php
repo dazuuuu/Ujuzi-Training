@@ -101,17 +101,27 @@ class User
     public static function create(array $fields): int
     {
         $pdo = Database::connection();
+        $email = trim((string) ($fields['email'] ?? ''));
+        $phone = trim((string) ($fields['phone'] ?? ''));
+        $passwordHash = null;
+        if (!empty($fields['password'])) {
+            $passwordHash = password_hash((string) $fields['password'], PASSWORD_DEFAULT);
+        } elseif (!empty($fields['password_hash'])) {
+            $passwordHash = (string) $fields['password_hash'];
+        }
         $pdo->prepare(
-            'INSERT INTO users (role_id, organisation_id, email, phone, first_name, last_name, is_active, dashboard_created_at, profile_created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())'
+            'INSERT INTO users (role_id, organisation_id, email, password_hash, phone, first_name, last_name, is_active, dashboard_created_at, profile_created_at, email_verified_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)'
         )->execute([
             (int) $fields['role_id'],
             !empty($fields['organisation_id']) ? (int) $fields['organisation_id'] : null,
-            $fields['email'] !== '' ? $fields['email'] : null,
-            $fields['phone'] !== '' ? $fields['phone'] : null,
+            $email !== '' ? $email : null,
+            $passwordHash,
+            $phone !== '' ? $phone : null,
             $fields['first_name'] ?? null,
             $fields['last_name'] ?? null,
             isset($fields['is_active']) && !$fields['is_active'] ? 0 : 1,
+            !empty($fields['email_verified_at']) ? date('Y-m-d H:i:s') : null,
         ]);
         $id = (int) $pdo->lastInsertId();
         FormResponse::provisionForUser($id, (int) $fields['role_id']);
@@ -142,6 +152,39 @@ class User
             ->execute([$id]);
     }
 
+    public static function touchLastLogin(int $id): void
+    {
+        Database::connection()
+            ->prepare('UPDATE users SET last_login_at = NOW() WHERE id = ?')
+            ->execute([$id]);
+    }
+
+    public static function verifyPassword(string $email, string $password): ?array
+    {
+        $user = self::findByIdentifier('email', strtolower(trim($email)));
+        if (!$user || empty($user['has_password'])) {
+            return null;
+        }
+        $stmt = Database::connection()->prepare('SELECT password_hash FROM users WHERE id = ?');
+        $stmt->execute([(int) $user['id']]);
+        $hash = (string) $stmt->fetchColumn();
+        if ($hash === '' || !password_verify($password, $hash)) {
+            return null;
+        }
+        return $user;
+    }
+
+    public static function passwordError(string $password, string $confirm = ''): ?string
+    {
+        if (strlen($password) < 8) {
+            return 'Password must be at least 8 characters.';
+        }
+        if ($confirm !== '' && $password !== $confirm) {
+            return 'Password confirmation does not match.';
+        }
+        return null;
+    }
+
     public static function normalizePhone(string $phone): string
     {
         return preg_replace('/[^0-9+]/', '', $phone);
@@ -157,6 +200,8 @@ class User
         $row['has_admin_features'] = !empty($row['has_admin_features']);
         $row['is_under_organisation'] = !empty($row['is_under_organisation']);
         $row['can_manage_users'] = !empty($row['can_manage_users']);
+        $row['has_password'] = !empty($row['password_hash']);
+        unset($row['password_hash']);
         return $row;
     }
 }

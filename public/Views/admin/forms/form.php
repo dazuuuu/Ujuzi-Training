@@ -377,6 +377,7 @@ function fieldChoices(array $field): array
     list.appendChild(node);
     bindRow(node);
     reindex();
+    node.scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
   reindex();
 })();

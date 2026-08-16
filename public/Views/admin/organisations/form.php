@@ -33,4 +33,14 @@ $action = $organisation ? url('/admin/organisations/' . (int) $organisation['id'
   </div>
 </form>
 
+<?php
+if ($organisation) {
+    $invite = $invite ?? null;
+    $freshInvite = $freshInvite ?? null;
+    echo '<div class="max-w-3xl mt-6">';
+    require __DIR__ . '/invite-panel.php';
+    echo '</div>';
+}
+?>
+
 <?php require __DIR__ . '/../layout-footer.php'; ?>
