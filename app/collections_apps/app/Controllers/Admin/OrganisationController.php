@@ -74,11 +74,23 @@ class OrganisationController extends BaseAdminController
         $this->persist((int) $id);
     }
 
+    public function share(): void
+    {
+        View::render('admin.organisations.share', [
+            'pageTitle' => 'Share registration',
+            'activeNav' => 'share',
+            'organisations' => Organisation::all(),
+            'invites' => OrganisationAdminInvite::latestByOrganisation(),
+            'freshInvite' => $this->freshInviteFromSession(),
+        ]);
+    }
+
     public function generateInvite(string $id): void
     {
+        $returnTo = $this->inviteReturnPath((int) $id);
         if (!csrfVerify(Request::post('csrf_token'))) {
             flashError('Your session expired. Please try again.');
-            redirect('/admin/organisations/' . (int) $id . '/edit');
+            redirect($returnTo);
         }
 
         $organisation = Organisation::find((int) $id);
@@ -87,21 +99,44 @@ class OrganisationController extends BaseAdminController
             redirect('/admin/organisations');
         }
         if (empty($organisation['is_active'])) {
-            flashError('Activate this organisation before generating a registration link.');
-            redirect('/admin/organisations/' . (int) $id . '/edit');
+            flashError('Activate this organisation before generating a registration form link.');
+            redirect($returnTo);
         }
 
         $invite = OrganisationAdminInvite::mint((int) $id, (int) $this->admin['id']);
         $_SESSION['fresh_org_admin_invite'] = $invite;
-        flashSuccess('A 5-minute organisation-admin registration link is ready. Copy or email it now — it cannot be shown again after you leave this page, and it only accepts one registration.');
-        redirect('/admin/organisations/' . (int) $id . '/edit#invite');
+
+        $email = strtolower(trim((string) Request::post('invite_email', '')));
+        if ($email !== '') {
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                flashError('The registration form link was generated, but that email address is not valid. Copy the URL below or try sending again.');
+                redirect($returnTo);
+            }
+            try {
+                MailerService::sendOrganisationAdminInvite(
+                    $email,
+                    $invite['url'],
+                    $organisation['name'],
+                    $invite['expires_at']
+                );
+                OrganisationAdminInvite::markEmailed((int) $invite['id'], $email);
+                flashSuccess('Registration form emailed to ' . $email . ' via SMTP. The link expires in 5 minutes and accepts only one registration.');
+            } catch (MailerException $e) {
+                flashError('The registration form link was generated, but SMTP could not send the email. Copy the URL below and share it directly.');
+            }
+            redirect($returnTo);
+        }
+
+        flashSuccess('Registration form link is ready. Copy it or email it to the client now. It expires in 5 minutes and accepts only one registration.');
+        redirect($returnTo);
     }
 
     public function emailInvite(string $id): void
     {
+        $returnTo = $this->inviteReturnPath((int) $id);
         if (!csrfVerify(Request::post('csrf_token'))) {
             flashError('Your session expired. Please try again.');
-            redirect('/admin/organisations/' . (int) $id . '/edit');
+            redirect($returnTo);
         }
 
         $organisation = Organisation::find((int) $id);
@@ -112,14 +147,14 @@ class OrganisationController extends BaseAdminController
 
         $fresh = $this->freshInviteFromSession();
         if (!$fresh || (int) $fresh['organisation_id'] !== (int) $id) {
-            flashError('Generate a new registration link first, then email it. Expired or already-used links cannot be resent.');
-            redirect('/admin/organisations/' . (int) $id . '/edit#invite');
+            flashError('Generate a new registration form link first, then email it. Expired or already-used links cannot be resent.');
+            redirect($returnTo);
         }
 
         $email = strtolower(trim((string) Request::post('invite_email', '')));
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            flashError('Enter a valid email address to send the registration link.');
-            redirect('/admin/organisations/' . (int) $id . '/edit#invite');
+            flashError('Enter a valid client email address to send the registration form.');
+            redirect($returnTo);
         }
 
         try {
@@ -130,11 +165,11 @@ class OrganisationController extends BaseAdminController
                 $fresh['expires_at']
             );
             OrganisationAdminInvite::markEmailed((int) $fresh['id'], $email);
-            flashSuccess('Registration link emailed to ' . $email . '. It expires in 5 minutes and works for one registration only.');
+            flashSuccess('Registration form emailed to ' . $email . ' via SMTP. It expires in 5 minutes and works for one registration only.');
         } catch (MailerException $e) {
-            flashError('The link was generated but the email could not be sent. Copy the URL and share it directly.');
+            flashError('SMTP could not send the email. Copy the registration form URL and share it directly.');
         }
-        redirect('/admin/organisations/' . (int) $id . '/edit#invite');
+        redirect($returnTo);
     }
 
     private function persist(?int $id): void
@@ -181,6 +216,16 @@ class OrganisationController extends BaseAdminController
             flashSuccess('Organisation created.');
         }
         redirect('/admin/organisations');
+    }
+
+    private function inviteReturnPath(int $organisationId): string
+    {
+        $to = (string) Request::post('return_to', 'share');
+        return match ($to) {
+            'index' => '/admin/organisations#share',
+            'edit' => '/admin/organisations/' . $organisationId . '/edit#invite',
+            default => '/admin/share-registration#org-' . $organisationId,
+        };
     }
 
     private function freshInviteFromSession(): ?array

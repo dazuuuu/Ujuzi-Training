@@ -54,6 +54,7 @@ $router->get('/admin/organisations/{id}/edit', [OrganisationController::class, '
 $router->post('/admin/organisations/{id}/invite', [OrganisationController::class, 'generateInvite']);
 $router->post('/admin/organisations/{id}/invite/email', [OrganisationController::class, 'emailInvite']);
 $router->post('/admin/organisations/{id}', [OrganisationController::class, 'update']);
+$router->get('/admin/share-registration', [OrganisationController::class, 'share']);
 
 // --- Super admin: users ---
 $router->get('/admin/users', [UserController::class, 'index']);

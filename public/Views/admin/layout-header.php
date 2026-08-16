@@ -2,7 +2,7 @@
 /**
  * Shared super-admin shell (sidebar + topbar). Include after setting:
  *   $pageTitle  — shown in <title> and the topbar
- *   $activeNav  — one of: dashboard, roles, organisations, users, forms, settings
+ *   $activeNav  — one of: dashboard, roles, organisations, share, users, forms, settings
  * Requires App\Core\AdminSession::require() to have already run.
  */
 
@@ -13,6 +13,7 @@ $navItems = [
     ['id' => 'dashboard', 'href' => url('/admin'), 'label' => 'Dashboard'],
     ['id' => 'roles', 'href' => url('/admin/roles'), 'label' => 'Roles'],
     ['id' => 'organisations', 'href' => url('/admin/organisations'), 'label' => 'Organisations'],
+    ['id' => 'share', 'href' => url('/admin/share-registration'), 'label' => 'Share registration'],
     ['id' => 'users', 'href' => url('/admin/users'), 'label' => 'Users'],
     ['id' => 'forms', 'href' => url('/admin/forms'), 'label' => 'Forms'],
     ['id' => 'settings', 'href' => url('/admin/settings'), 'label' => 'Settings'],

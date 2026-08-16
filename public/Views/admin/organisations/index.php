@@ -49,36 +49,17 @@ $invites = $invites ?? [];
   </div>
 
   <?php if ($organisations): ?>
-    <section class="space-y-4">
+    <section class="space-y-4" id="share">
       <div>
-        <h3 class="font-serif-heading text-xl font-bold">Organisation admin invites</h3>
-        <p class="mt-1 text-sm font-medium" style="color:var(--ke-muted)">Each link lasts 5 minutes and registers exactly one organisation admin. Open an organisation to copy or email the live URL.</p>
+        <h3 class="font-serif-heading text-xl font-bold">Share organisation registration form</h3>
+        <p class="mt-1 text-sm font-medium" style="color:var(--ke-muted)">Generate a one-use URL, copy it, or email it to a client. You can also open <a href="<?= url('/admin/share-registration') ?>" class="font-bold" style="color:var(--ke-green)">Share registration</a> in the Super Admin menu.</p>
       </div>
-      <div class="grid gap-4 lg:grid-cols-2">
-        <?php foreach ($organisations as $org):
-          $invite = $invites[(int) $org['id']] ?? null;
-        ?>
-          <article class="rounded-xl border bg-white p-5 shadow-sm space-y-3" style="border-color:var(--ke-line)">
-            <div class="flex items-start justify-between gap-3">
-              <div>
-                <p class="font-black"><?= e($org['name']) ?></p>
-                <p class="text-xs font-semibold" style="color:var(--ke-muted)">
-                  <?php if ($invite): ?>
-                    <?= e(\App\Models\OrganisationAdminInvite::statusMessage($invite)) ?>
-                  <?php else: ?>
-                    No link generated yet.
-                  <?php endif; ?>
-                </p>
-              </div>
-              <a href="<?= url('/admin/organisations/' . (int) $org['id'] . '/edit#invite') ?>" class="btn-secondary" style="padding:0.35rem 0.65rem;">Open</a>
-            </div>
-            <form method="post" action="<?= url('/admin/organisations/' . (int) $org['id'] . '/invite') ?>">
-              <?= csrfField() ?>
-              <button type="submit" class="btn-primary" <?= empty($org['is_active']) ? 'disabled' : '' ?>>Generate 5-minute URL</button>
-            </form>
-          </article>
-        <?php endforeach; ?>
-      </div>
+      <?php foreach ($organisations as $org):
+        $organisation = $org;
+        $invite = $invites[(int) $org['id']] ?? null;
+        $returnTo = 'index';
+        require __DIR__ . '/invite-panel.php';
+      endforeach; ?>
     </section>
   <?php endif; ?>
 </div>

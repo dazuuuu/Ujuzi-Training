@@ -37,6 +37,7 @@ $action = $organisation ? url('/admin/organisations/' . (int) $organisation['id'
 if ($organisation) {
     $invite = $invite ?? null;
     $freshInvite = $freshInvite ?? null;
+    $returnTo = 'edit';
     echo '<div class="max-w-3xl mt-6">';
     require __DIR__ . '/invite-panel.php';
     echo '</div>';

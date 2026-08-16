@@ -36,11 +36,12 @@ $maxRole = max(1, ...array_map(fn($row) => (int) $row['total'], $roleCounts ?: [
     <div>
       <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">Dashboard / LMS</p>
       <h2 class="mt-2 text-3xl font-black tracking-tight" style="color:var(--ke-black)">Welcome back, Super Admin</h2>
-      <p class="mt-1 text-sm font-medium" style="color:var(--ke-muted)">Create roles, assign forms, and provision user dashboards from here.</p>
+      <p class="mt-1 text-sm font-medium" style="color:var(--ke-muted)">Create roles, assign forms, and share a one-use organisation registration form with a client.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <span class="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-bold text-neutral-800"><?= e($today) ?></span>
-      <a href="<?= url('/admin/forms/create') ?>" class="btn-primary">Create form</a>
+      <a href="<?= url('/admin/share-registration') ?>" class="btn-primary">Share registration form</a>
+      <a href="<?= url('/admin/forms/create') ?>" class="btn-secondary">Create form</a>
     </div>
   </section>
 
