@@ -6,7 +6,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Login | Pentagon Collections</title>
+  <title>Super Admin Login | <?= e(appName()) ?></title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -19,8 +19,8 @@
       <div class="inline-flex items-center justify-center w-12 h-12 bg-black text-white rounded-xl border border-neutral-300 mb-3">
         <?= storeLogoHtml('w-full h-full object-contain rounded-xl', 'w-6 h-6 text-white') ?>
       </div>
-      <h1 class="font-serif-heading text-2xl font-bold tracking-widest uppercase">Pentagon Admin</h1>
-      <p class="text-xs text-neutral-500 mt-1">Sign in to manage products, categories &amp; orders</p>
+      <h1 class="font-serif-heading text-2xl font-bold tracking-widest uppercase"><?= e(appName()) ?></h1>
+      <p class="text-xs text-neutral-500 mt-1">Super Admin — roles, forms, organisations, and users</p>
     </div>
 
     <form method="post" action="<?= url('/admin/login') ?>" class="bg-black border border-neutral-700 rounded-xl p-6 space-y-4 shadow-2xl">
@@ -40,7 +40,9 @@
     </form>
 
     <p class="text-center text-[11px] text-neutral-500 mt-6">
-      <a href="<?= url('/') ?>" class="hover:text-white">&larr; Back to storefront</a>
+      <a href="<?= url('/account/login') ?>" class="hover:text-white">User login</a>
+      <span class="mx-2">·</span>
+      <a href="<?= url('/') ?>" class="hover:text-white">&larr; Back to LMS</a>
     </p>
   </div>
 </body>

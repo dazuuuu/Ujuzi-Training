@@ -1,0 +1,88 @@
+<?php
+/** Requires $currentUser, $forms, $completedForms, $totalForms, $canManageUsers, $recentManaged in scope. */
+require __DIR__ . '/layout-header.php';
+?>
+
+<div class="space-y-8">
+  <div>
+    <p class="text-xs font-black uppercase tracking-widest text-neutral-600"><?= e($currentUser['role_name']) ?></p>
+    <h1 class="mt-2 font-serif-heading text-3xl font-bold text-[#0a0a0a]">Hello, <?= e($currentUser['first_name'] ?: userDisplayName($currentUser)) ?></h1>
+    <p class="mt-2 text-sm font-medium text-neutral-600">
+      <?= e($currentUser['organisation_name'] ?? 'No organisation') ?>
+      <?php if (!empty($currentUser['has_admin_features'])): ?>
+        · Admin-like tools are available for your organisation
+      <?php else: ?>
+        · Your account is managed by your organisation
+      <?php endif; ?>
+    </p>
+  </div>
+
+  <section class="grid gap-4 sm:grid-cols-3">
+    <a href="<?= url('/account/profile') ?>" class="rounded-xl border border-neutral-300 bg-white p-5 hover:border-black">
+      <p class="text-[11px] font-black uppercase tracking-widest text-neutral-600">Profile forms</p>
+      <p class="mt-3 text-2xl font-black"><?= (int) $completedForms ?>/<?= (int) $totalForms ?></p>
+      <p class="mt-1 text-xs font-bold text-neutral-600">Completed</p>
+    </a>
+    <div class="rounded-xl border border-neutral-300 bg-white p-5">
+      <p class="text-[11px] font-black uppercase tracking-widest text-neutral-600">Role</p>
+      <p class="mt-3 text-lg font-black"><?= e($currentUser['role_name']) ?></p>
+      <p class="mt-1 text-xs font-bold text-neutral-600"><?= !empty($currentUser['is_under_organisation']) ? 'Under organisation power' : 'Organisation owner role' ?></p>
+    </div>
+    <?php if ($canManageUsers): ?>
+      <a href="<?= url('/account/people') ?>" class="rounded-xl border border-neutral-300 bg-white p-5 hover:border-black">
+        <p class="text-[11px] font-black uppercase tracking-widest text-neutral-600">People</p>
+        <p class="mt-3 text-2xl font-black"><?= count($managedUsers ?? []) ?></p>
+        <p class="mt-1 text-xs font-bold text-neutral-600">You can manage</p>
+      </a>
+    <?php else: ?>
+      <div class="rounded-xl border border-neutral-300 bg-white p-5">
+        <p class="text-[11px] font-black uppercase tracking-widest text-neutral-600">Workspace</p>
+        <p class="mt-3 text-lg font-black">Ready</p>
+        <p class="mt-1 text-xs font-bold text-neutral-600">Dashboard and profile provisioned</p>
+      </div>
+    <?php endif; ?>
+  </section>
+
+  <section class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+    <div class="flex items-center justify-between gap-3">
+      <h2 class="font-serif-heading text-lg font-bold">Assigned profile forms</h2>
+      <a href="<?= url('/account/profile') ?>" class="text-xs font-black uppercase tracking-widest text-black hover:underline">Open profile</a>
+    </div>
+    <div class="mt-4 divide-y divide-neutral-100">
+      <?php if (!$forms): ?>
+        <p class="py-4 text-sm font-bold text-neutral-600">No forms assigned to your role yet.</p>
+      <?php endif; ?>
+      <?php foreach ($forms as $form): ?>
+        <div class="py-3">
+          <p class="text-sm font-black text-black"><?= e($form['title']) ?></p>
+          <p class="text-xs font-semibold text-neutral-600"><?= e($form['description'] ?: 'Fill this on your profile page.') ?></p>
+        </div>
+      <?php endforeach; ?>
+    </div>
+  </section>
+
+  <?php if ($canManageUsers): ?>
+    <section class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+      <div class="flex items-center justify-between gap-3">
+        <h2 class="font-serif-heading text-lg font-bold">People in your organisation</h2>
+        <a href="<?= url('/account/people/create') ?>" class="text-xs font-black uppercase tracking-widest text-black hover:underline">Add person</a>
+      </div>
+      <div class="mt-4 divide-y divide-neutral-100">
+        <?php if (empty($recentManaged)): ?>
+          <p class="py-4 text-sm font-bold text-neutral-600">No people in your scope yet.</p>
+        <?php endif; ?>
+        <?php foreach ($recentManaged as $person): ?>
+          <div class="flex items-center justify-between py-3">
+            <div>
+              <p class="text-sm font-black"><?= e(userDisplayName($person)) ?></p>
+              <p class="text-xs font-semibold text-neutral-600"><?= e($person['role_name']) ?></p>
+            </div>
+            <a href="<?= url('/account/people/' . (int) $person['id']) ?>" class="text-xs font-black uppercase tracking-widest hover:underline">View</a>
+          </div>
+        <?php endforeach; ?>
+      </div>
+    </section>
+  <?php endif; ?>
+</div>
+
+<?php require __DIR__ . '/layout-footer.php'; ?>

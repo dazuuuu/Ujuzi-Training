@@ -2,10 +2,10 @@
 
 namespace App\Controllers\Account;
 
-use App\Core\CustomerSession;
 use App\Core\Request;
+use App\Core\UserSession;
 use App\Core\View;
-use App\Models\Customer;
+use App\Models\User;
 use App\Services\MailerException;
 use App\Services\OtpService;
 
@@ -13,21 +13,21 @@ class AuthController
 {
     public function __construct()
     {
-        CustomerSession::start();
+        UserSession::start();
     }
 
     public function showLogin(): void
     {
-        if (CustomerSession::current()) {
-            redirect('/account/orders');
+        if (UserSession::current()) {
+            redirect('/account/dashboard');
         }
         View::render('account.login', ['error' => '', 'method' => 'email', 'old' => []]);
     }
 
     public function login(): void
     {
-        if (CustomerSession::current()) {
-            redirect('/account/orders');
+        if (UserSession::current()) {
+            redirect('/account/dashboard');
         }
 
         $method = Request::post('method', 'email');
@@ -36,28 +36,32 @@ class AuthController
         if (!csrfVerify(Request::post('csrf_token'))) {
             $error = 'Your session expired. Please try again.';
         } elseif ($method === 'phone') {
-            $phone = Customer::normalizePhone((string) Request::post('phone', ''));
-            $customer = $phone ? Customer::findByIdentifier('phone', $phone) : null;
-            if ($customer) {
-                CustomerSession::login((int) $customer['id']);
-                redirect('/account/orders');
+            $phone = User::normalizePhone((string) Request::post('phone', ''));
+            $user = $phone ? User::findByIdentifier('phone', $phone) : null;
+            if ($user && !empty($user['is_active'])) {
+                UserSession::login((int) $user['id']);
+                redirect('/account/dashboard');
             }
-            $error = "We couldn't find an account for that phone number. Accounts are created automatically the first time you check out — place an order first, then come back here to track it.";
+            $error = $user && empty($user['is_active'])
+                ? 'This account is inactive. Contact your organisation admin.'
+                : 'We could not find a user for that phone number. An admin must create your account first.';
         } else {
-            $email = trim((string) Request::post('email', ''));
-            $customer = $email ? Customer::findByIdentifier('email', $email) : null;
-            if ($customer) {
+            $email = strtolower(trim((string) Request::post('email', '')));
+            $user = $email ? User::findByIdentifier('email', $email) : null;
+            if ($user && !empty($user['is_active'])) {
                 try {
-                    OtpService::issueAndSend((int) $customer['id'], $customer['email'], 'login');
-                    $_SESSION['pending_customer_id'] = (int) $customer['id'];
+                    OtpService::issueAndSendForUser((int) $user['id'], $user['email'], 'login');
+                    $_SESSION['pending_user_id'] = (int) $user['id'];
                     redirect('/account/verify');
                 } catch (MailerException $e) {
-                    $error = 'We could not send your login code right now. Please try again shortly, or contact concierge@pentagoncollections.com.';
+                    $error = 'We could not send your login code right now. Please try again shortly.';
                 } catch (\Throwable $e) {
                     $error = 'Something went wrong. Please try again shortly.';
                 }
+            } elseif ($user && empty($user['is_active'])) {
+                $error = 'This account is inactive. Contact your organisation admin.';
             } else {
-                $error = "We couldn't find an account for that email address. Accounts are created automatically the first time you check out — place an order first, then come back here to track it.";
+                $error = 'We could not find a user for that email. An admin must create your account first.';
             }
         }
 
@@ -70,10 +74,10 @@ class AuthController
 
     public function showVerify(): void
     {
-        if (CustomerSession::current()) {
-            redirect('/account/orders');
+        if (UserSession::current()) {
+            redirect('/account/dashboard');
         }
-        $pending = $this->pendingCustomer();
+        $pending = $this->pendingUser();
         if (!$pending) {
             redirect('/account/login');
         }
@@ -82,10 +86,10 @@ class AuthController
 
     public function verify(): void
     {
-        if (CustomerSession::current()) {
-            redirect('/account/orders');
+        if (UserSession::current()) {
+            redirect('/account/dashboard');
         }
-        $pending = $this->pendingCustomer();
+        $pending = $this->pendingUser();
         if (!$pending) {
             redirect('/account/login');
         }
@@ -97,7 +101,7 @@ class AuthController
             $error = 'Your session expired. Please try again.';
         } elseif (Request::post('action') === 'resend') {
             try {
-                OtpService::issueAndSend((int) $pending['id'], $pending['email'], 'login');
+                OtpService::issueAndSendForUser((int) $pending['id'], $pending['email'], 'login');
                 $notice = 'A new code has been sent to ' . $pending['email'] . '.';
             } catch (MailerException $e) {
                 $error = 'We could not resend the code right now. Please try again shortly.';
@@ -106,11 +110,11 @@ class AuthController
             }
         } else {
             $code = trim((string) Request::post('code', ''));
-            if (OtpService::verify((int) $pending['id'], $code, 'login')) {
-                Customer::markEmailVerified((int) $pending['id']);
-                CustomerSession::login((int) $pending['id']);
-                unset($_SESSION['pending_customer_id']);
-                redirect('/account/orders');
+            if (OtpService::verifyUser((int) $pending['id'], $code, 'login')) {
+                User::markEmailVerified((int) $pending['id']);
+                UserSession::login((int) $pending['id']);
+                unset($_SESSION['pending_user_id']);
+                redirect('/account/dashboard');
             }
             $error = 'That code is incorrect or has expired. Please try again or request a new one.';
         }
@@ -120,20 +124,20 @@ class AuthController
 
     public function logout(): void
     {
-        CustomerSession::logout();
+        UserSession::logout();
         redirect('/account/login');
     }
 
-    private function pendingCustomer(): ?array
+    private function pendingUser(): ?array
     {
-        if (empty($_SESSION['pending_customer_id'])) {
+        if (empty($_SESSION['pending_user_id'])) {
             return null;
         }
-        $customer = Customer::find((int) $_SESSION['pending_customer_id']);
-        if (!$customer) {
-            unset($_SESSION['pending_customer_id']);
+        $user = User::find((int) $_SESSION['pending_user_id']);
+        if (!$user) {
+            unset($_SESSION['pending_user_id']);
             return null;
         }
-        return $customer;
+        return $user;
     }
 }

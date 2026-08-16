@@ -6,7 +6,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Setup | Pentagon Collections</title>
+  <title>Setup | <?= e(appName()) ?></title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -20,18 +20,18 @@
         <?= pentagonLogoSvg('w-8 h-8 text-black') ?>
       </div>
       <p class="text-xs font-black uppercase tracking-widest text-neutral-300">First Run Setup</p>
-      <h1 class="mt-3 font-serif-heading text-4xl font-black leading-tight">Prepare your shop dashboard.</h1>
+      <h1 class="mt-3 font-serif-heading text-4xl font-black leading-tight">Prepare your LMS.</h1>
       <div class="mt-8 space-y-3 text-sm font-semibold text-neutral-200">
         <div class="rounded-lg border border-white/15 p-4">
           <p class="font-black text-white">1. Database migrations</p>
           <p class="mt-1 text-neutral-300"><?= (int) $ranMigrations ?> pending migration(s) ran on this request.</p>
         </div>
         <div class="rounded-lg border border-white/15 p-4">
-          <p class="font-black text-white">2. Admin account</p>
-          <p class="mt-1 text-neutral-300">Create the first admin who will manage products, offers, orders, and settings.</p>
+          <p class="font-black text-white">2. Super Admin account</p>
+          <p class="mt-1 text-neutral-300">The platform owner manages roles, organisations, users, and profile forms.</p>
         </div>
         <div class="rounded-lg border border-white/15 p-4">
-          <p class="font-black text-white">3. Store logo</p>
+          <p class="font-black text-white">3. Platform logo</p>
           <p class="mt-1 text-neutral-300">Optional now. You can always update it later in Admin Settings.</p>
         </div>
       </div>
@@ -39,9 +39,9 @@
 
     <section class="rounded-2xl border border-neutral-300 bg-white p-6 shadow-sm sm:p-8">
       <div class="mb-6">
-        <p class="text-xs font-black uppercase tracking-widest text-neutral-600">Create Admin</p>
-        <h2 class="mt-2 text-2xl font-black text-black">Finish Website Setup</h2>
-        <p class="mt-1 text-sm font-medium text-neutral-700">After this, you will be signed in and taken to the admin dashboard.</p>
+        <p class="text-xs font-black uppercase tracking-widest text-neutral-600">Create Super Admin</p>
+        <h2 class="mt-2 text-2xl font-black text-black">Finish LMS Setup</h2>
+        <p class="mt-1 text-sm font-medium text-neutral-700">After this, you will be signed in and taken to the Super Admin dashboard.</p>
       </div>
 
       <?php foreach ($errors as $error): ?>
@@ -51,11 +51,11 @@
       <form method="post" action="<?= url('/setup') ?>" enctype="multipart/form-data" class="space-y-5">
         <?= csrfField() ?>
         <div>
-          <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Store Owner Name <span class="font-semibold normal-case text-neutral-500">(optional)</span></label>
+          <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Platform / owner name <span class="font-semibold normal-case text-neutral-500">(optional)</span></label>
           <input type="text" name="name" value="<?= e($old['name'] ?? '') ?>" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold text-black focus:border-black focus:outline-none" />
         </div>
         <div>
-          <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Admin Email</label>
+          <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Super Admin Email</label>
           <input type="email" name="email" required value="<?= e($old['email'] ?? '') ?>" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold text-black focus:border-black focus:outline-none" />
         </div>
         <div class="grid gap-4 sm:grid-cols-2">
@@ -71,7 +71,7 @@
         <div>
           <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Upload Logo <span class="font-semibold normal-case text-neutral-500">(optional)</span></label>
           <input type="file" name="store_logo" accept="image/*" class="mt-2 block w-full rounded-lg border border-neutral-400 bg-white p-3 text-sm font-semibold text-black" />
-          <p class="mt-2 text-xs font-medium text-neutral-600">This logo appears in the storefront navbar, admin login, and order tracking page.</p>
+          <p class="mt-2 text-xs font-medium text-neutral-600">This logo appears on the LMS, Super Admin login, and user dashboards.</p>
         </div>
         <button type="submit" class="w-full rounded-lg bg-black px-6 py-4 text-xs font-black uppercase tracking-widest text-white hover:bg-neutral-900">Run Setup &amp; Enter Admin</button>
       </form>

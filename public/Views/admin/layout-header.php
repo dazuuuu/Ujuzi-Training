@@ -1,8 +1,8 @@
 <?php
 /**
- * Shared admin shell (sidebar + topbar). Include after setting:
+ * Shared super-admin shell (sidebar + topbar). Include after setting:
  *   $pageTitle  — shown in <title> and the topbar
- *   $activeNav  — one of: dashboard, products, product-form, categories, offers, orders, seo, settings
+ *   $activeNav  — one of: dashboard, roles, organisations, users, forms, settings
  * Requires App\Core\AdminSession::require() to have already run.
  */
 
@@ -11,12 +11,10 @@ use App\Services\MigrationService;
 
 $navItems = [
     ['id' => 'dashboard', 'href' => url('/admin'), 'label' => 'Dashboard'],
-    ['id' => 'products', 'href' => url('/admin/products'), 'label' => 'Products'],
-    ['id' => 'product-form', 'href' => url('/admin/products/create'), 'label' => 'Add Product'],
-    ['id' => 'offers', 'href' => url('/admin/offers'), 'label' => 'Offers'],
-    ['id' => 'categories', 'href' => url('/admin/categories'), 'label' => 'Categories'],
-    ['id' => 'orders', 'href' => url('/admin/orders'), 'label' => 'Orders'],
-    ['id' => 'seo', 'href' => url('/admin/seo'), 'label' => 'SEO'],
+    ['id' => 'roles', 'href' => url('/admin/roles'), 'label' => 'Roles'],
+    ['id' => 'organisations', 'href' => url('/admin/organisations'), 'label' => 'Organisations'],
+    ['id' => 'users', 'href' => url('/admin/users'), 'label' => 'Users'],
+    ['id' => 'forms', 'href' => url('/admin/forms'), 'label' => 'Forms'],
     ['id' => 'settings', 'href' => url('/admin/settings'), 'label' => 'Settings'],
 ];
 $admin = AdminSession::current();
@@ -32,7 +30,7 @@ try {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title><?= e($pageTitle ?? 'Admin') ?> | Pentagon Admin</title>
+  <title><?= e($pageTitle ?? 'Admin') ?> | <?= e(appName()) ?> Super Admin</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -49,8 +47,8 @@ try {
           <?= storeLogoHtml('w-full h-full object-contain rounded-lg', 'w-4 h-4 text-white') ?>
         </div>
         <div class="flex flex-col leading-none">
-          <span class="font-serif-heading text-sm font-extrabold tracking-[0.15em] uppercase text-black">PENTAGON</span>
-          <span class="text-[8px] tracking-[0.25em] text-neutral-700 uppercase mt-0.5 font-bold">Admin Panel</span>
+          <span class="font-serif-heading text-sm font-extrabold tracking-[0.15em] uppercase text-black"><?= e(appName()) ?></span>
+          <span class="text-[8px] tracking-[0.25em] text-neutral-700 uppercase mt-0.5 font-bold">Super Admin</span>
         </div>
       </div>
 
@@ -64,10 +62,10 @@ try {
     </div>
 
     <div class="p-4 border-t border-black text-xs">
-      <p class="text-neutral-700 font-semibold">Signed in as</p>
+      <p class="text-neutral-700 font-semibold">Signed in as Super Admin</p>
       <p class="font-bold text-black mb-2 truncate"><?= e($admin['email'] ?? '') ?></p>
       <div class="flex flex-col gap-1.5">
-        <a href="<?= url('/') ?>" target="_blank" class="text-neutral-800 hover:text-black font-semibold">View storefront &rarr;</a>
+        <a href="<?= url('/') ?>" target="_blank" class="text-neutral-800 hover:text-black font-semibold">View LMS &rarr;</a>
         <a href="<?= url('/admin/logout') ?>" class="text-rose-700 hover:text-rose-900 font-bold">Sign out</a>
       </div>
     </div>

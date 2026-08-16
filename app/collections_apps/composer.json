@@ -1,6 +1,6 @@
 {
-    "name": "pentagon-collections/app",
-    "description": "Pentagon Collections storefront, admin panel and customer account system.",
+    "name": "ujuzi-training/app",
+    "description": "Ujuzi Training LMS: role-based dashboards, profile forms, and Super Admin tools.",
     "type": "project",
     "require": {
         "php": ">=8.0",

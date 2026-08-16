@@ -47,7 +47,12 @@ class SettingsController extends BaseAdminController
             }
         }
 
-        flashSuccess('Store settings updated.');
+        $platformName = trim((string) Request::post('platform_name', ''));
+        if ($platformName !== '') {
+            StoreSetting::set('platform_name', $platformName);
+        }
+
+        flashSuccess('Platform settings updated.');
         redirect('/admin/settings');
     }
 }

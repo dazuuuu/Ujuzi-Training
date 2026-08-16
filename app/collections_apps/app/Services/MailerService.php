@@ -32,7 +32,7 @@ class MailerService
         $encryption = Env::get('MAIL_ENCRYPTION', 'tls');
         $mail->SMTPSecure = $encryption === 'ssl' ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port = (int) Env::get('MAIL_PORT', 587);
-        $mail->setFrom(Env::get('MAIL_FROM_ADDRESS', 'no-reply@pentagoncollections.com'), Env::get('MAIL_FROM_NAME', 'Pentagon Collections'));
+        $mail->setFrom(Env::get('MAIL_FROM_ADDRESS', 'no-reply@example.com'), Env::get('MAIL_FROM_NAME', Env::get('APP_NAME', 'Ujuzi Training')));
         return $mail;
     }
 
@@ -43,7 +43,7 @@ class MailerService
             $mail->addAddress($toEmail);
             $isReset = $purpose === 'password_reset';
             $mail->isHTML(true);
-            $mail->Subject = $isReset ? 'Your Pentagon Collections password reset code' : 'Your Pentagon Collections login code';
+            $mail->Subject = $isReset ? 'Your password reset code' : 'Your ' . Env::get('APP_NAME', 'Ujuzi Training') . ' login code';
             $mail->Body = self::otpHtml($code, $isReset);
             $mail->AltBody = ($isReset ? 'Your password reset code is: ' : 'Your login code is: ') . $code . ' (expires in 10 minutes).';
             $mail->send();
@@ -72,12 +72,12 @@ class MailerService
         $heading = $isReset ? 'Reset your password' : 'Your one-time login code';
         $blurb = $isReset
             ? 'Use the code below to verify it\'s you and set a new password.'
-            : 'Use the code below to sign in and track your Pentagon Collections orders.';
+            : 'Use the code below to sign in to your dashboard.';
         return '
         <div style="font-family: Arial, sans-serif; background:#faf9f6; padding:32px;">
           <div style="max-width:420px;margin:0 auto;background:#ffffff;border:1px solid #e5e5e5;border-radius:12px;overflow:hidden;">
             <div style="background:#0a0a0a;padding:20px 24px;">
-              <span style="color:#fcd34d;font-weight:bold;letter-spacing:2px;font-size:14px;">PENTAGON COLLECTIONS</span>
+              <span style="color:#fcd34d;font-weight:bold;letter-spacing:2px;font-size:14px;">' . htmlspecialchars(Env::get('APP_NAME', 'Ujuzi Training')) . '</span>
             </div>
             <div style="padding:28px 24px;">
               <h1 style="font-size:18px;color:#0a0a0a;margin:0 0 8px;">' . htmlspecialchars($heading) . '</h1>
@@ -104,7 +104,7 @@ class MailerService
         <div style="font-family: Arial, sans-serif; background:#faf9f6; padding:32px;">
           <div style="max-width:460px;margin:0 auto;background:#ffffff;border:1px solid #e5e5e5;border-radius:12px;overflow:hidden;">
             <div style="background:#0a0a0a;padding:20px 24px;">
-              <span style="color:#fcd34d;font-weight:bold;letter-spacing:2px;font-size:14px;">PENTAGON COLLECTIONS</span>
+              <span style="color:#fcd34d;font-weight:bold;letter-spacing:2px;font-size:14px;">' . htmlspecialchars(Env::get('APP_NAME', 'Ujuzi Training')) . '</span>
             </div>
             <div style="padding:28px 24px;">
               <h1 style="font-size:18px;color:#0a0a0a;margin:0 0 8px;">Thank you for your order</h1>

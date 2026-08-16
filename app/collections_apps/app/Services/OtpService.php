@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\OtpCode;
+use App\Models\UserOtpCode;
 
 /**
  * Business-logic layer over OtpCode (pure data access) + MailerService
@@ -20,5 +21,17 @@ class OtpService
     public static function verify(int $customerId, string $code, string $purpose = 'login'): bool
     {
         return OtpCode::verify($customerId, $code, $purpose);
+    }
+
+    /** @throws MailerException */
+    public static function issueAndSendForUser(int $userId, string $email, string $purpose = 'login'): void
+    {
+        $code = UserOtpCode::generate($userId, $purpose);
+        MailerService::sendOtp($email, $code, $purpose);
+    }
+
+    public static function verifyUser(int $userId, string $code, string $purpose = 'login'): bool
+    {
+        return UserOtpCode::verify($userId, $code, $purpose);
     }
 }

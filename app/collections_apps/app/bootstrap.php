@@ -2,6 +2,7 @@
 /**
  * Application bootstrap — required once by public/index.php (the only PHP
  * file Apache ever executes; see public/.htaccess) before the router runs.
+ * This bundle now powers the Ujuzi Training LMS rather than a storefront.
  */
 
 require dirname(__DIR__) . '/vendor/autoload.php';

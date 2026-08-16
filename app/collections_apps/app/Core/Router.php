@@ -57,6 +57,6 @@ class Router
         }
 
         http_response_code(404);
-        View::render('storefront.404');
+        View::render('lms.404');
     }
 }

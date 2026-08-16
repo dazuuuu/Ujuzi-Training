@@ -59,9 +59,58 @@ function storeLogoHtml(string $imageClass, string $fallbackSvgClass = 'w-4 h-4 t
 {
     $logo = storeLogoPath();
     if ($logo) {
-        return '<img src="' . e(imageUrl($logo)) . '" alt="Store logo" class="' . e($imageClass) . '" />';
+        return '<img src="' . e(imageUrl($logo)) . '" alt="' . e(appName()) . ' logo" class="' . e($imageClass) . '" />';
     }
     return pentagonLogoSvg($fallbackSvgClass);
+}
+
+function appName(): string
+{
+    try {
+        $stored = StoreSetting::get('platform_name');
+        if ($stored) {
+            return $stored;
+        }
+    } catch (Throwable $e) {
+        // Settings table may not exist yet during first-run setup.
+    }
+    return (string) App\Core\Env::get('APP_NAME', 'Ujuzi Training');
+}
+
+function roleLabel(string $slug): string
+{
+    return match ($slug) {
+        'organisation_admin' => 'Organisation Admin',
+        'trainer' => 'Trainer / Tutor / Teacher',
+        'attachment_trainer' => 'Attachment Trainer',
+        'student' => 'Student',
+        default => ucwords(str_replace('_', ' ', $slug)),
+    };
+}
+
+function fieldTypeLabel(string $type): string
+{
+    return match ($type) {
+        'text' => 'Short text',
+        'paragraph' => 'Paragraph',
+        'dropdown' => 'Dropdown',
+        'number' => 'Number',
+        'date' => 'Date',
+        'datetime' => 'Date & time',
+        default => ucfirst($type),
+    };
+}
+
+function userDisplayName(?array $user): string
+{
+    if (!$user) {
+        return 'User';
+    }
+    $name = trim(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? ''));
+    if ($name !== '') {
+        return $name;
+    }
+    return $user['email'] ?? $user['phone'] ?? 'User';
 }
 
 function e($str): string

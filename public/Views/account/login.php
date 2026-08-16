@@ -1,14 +1,14 @@
 <?php
-/** Requires $error, $method, $old (array with email/phone) in scope. */
+/** Requires $error, $method, $old in scope. */
 require __DIR__ . '/layout-header.php';
 ?>
 
 <div class="max-w-md mx-auto">
   <div class="text-center mb-8">
-    <span class="text-xs font-bold text-black uppercase tracking-widest block mb-1">My Account</span>
-    <h1 class="font-serif-heading text-3xl font-bold text-[#0a0a0a]">Track Your Order</h1>
+    <span class="text-xs font-bold text-black uppercase tracking-widest block mb-1">Learner &amp; staff login</span>
+    <h1 class="font-serif-heading text-3xl font-bold text-[#0a0a0a]">Sign in to your dashboard</h1>
     <p class="text-sm text-neutral-500 mt-2">
-      Sign in with the email or phone number you used at checkout — no password needed.
+      Use the email or phone number an admin registered for you. After login you land on the dashboard for your role.
     </p>
   </div>
 
@@ -41,14 +41,14 @@ require __DIR__ . '/layout-header.php';
         <input type="tel" name="phone" required value="<?= e($old['phone'] ?? '') ?>" placeholder="254712345678" class="w-full mt-1 bg-white border border-neutral-300 rounded-lg p-2.5 text-sm font-mono focus:outline-none focus:border-black" />
       </div>
       <button type="submit" class="w-full bg-[#0a0a0a] hover:bg-black text-white text-xs font-bold py-3 rounded-lg uppercase tracking-widest transition-colors cursor-pointer border border-neutral-300">Continue</button>
-      <p class="text-[11px] text-neutral-400 text-center">Use the exact phone number you gave at checkout.</p>
+      <p class="text-[11px] text-neutral-400 text-center">Use the exact phone number your admin saved.</p>
     </form>
   </div>
 
-  <div class="mt-6 bg-neutral-50 border border-neutral-700 rounded-xl p-5 text-xs text-neutral-600 space-y-2">
-    <p class="font-bold text-neutral-800 uppercase tracking-wider text-[11px]">First time here?</p>
-    <p>You don't need to sign up. The moment you place an order, we automatically create a tracking account using the email or phone number from your checkout details.</p>
-    <p>Come back to this page any time and sign in with that same email or phone number to see your order status.</p>
+  <div class="mt-6 bg-neutral-50 border border-neutral-200 rounded-xl p-5 text-xs text-neutral-600 space-y-2">
+    <p class="font-bold text-neutral-800 uppercase tracking-wider text-[11px]">Need an account?</p>
+    <p>Users are created by Super Admin or by Organisation Admins / Attachment Trainers. Once created, your dashboard and profile are ready — sign in here to fill your assigned forms.</p>
+    <p>Platform owner? <a href="<?= url('/admin/login') ?>" class="font-bold text-black hover:underline">Super Admin login</a>.</p>
   </div>
 </div>
 
