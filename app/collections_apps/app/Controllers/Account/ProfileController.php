@@ -6,6 +6,7 @@ use App\Core\Request;
 use App\Models\Form;
 use App\Models\FormField;
 use App\Models\FormResponse;
+use App\Services\FormAnswerService;
 
 class ProfileController extends BaseAccountController
 {
@@ -45,30 +46,15 @@ class ProfileController extends BaseAccountController
         if (!is_array($posted)) {
             $posted = [];
         }
+        $existing = FormResponse::findForUserForm((int) $this->user['id'], $formId);
+        $collected = FormAnswerService::collect($fields, $posted, $existing['answers'] ?? []);
 
-        $answers = [];
-        $errors = [];
-        foreach ($fields as $field) {
-            $key = $field['field_key'];
-            $value = isset($posted[$key]) ? trim((string) $posted[$key]) : '';
-            if ($field['is_required'] && $value === '') {
-                $errors[] = $field['label'] . ' is required.';
-            }
-            if ($field['field_type'] === 'number' && $value !== '' && !is_numeric($value)) {
-                $errors[] = $field['label'] . ' must be a number.';
-            }
-            if ($field['field_type'] === 'dropdown' && $value !== '' && !in_array($value, $field['options'], true)) {
-                $errors[] = $field['label'] . ' has an invalid option.';
-            }
-            $answers[$key] = $value;
-        }
-
-        if ($errors) {
-            flashError(implode(' ', $errors));
+        if ($collected['errors']) {
+            flashError(implode(' ', $collected['errors']));
             redirect('/account/profile');
         }
 
-        FormResponse::save((int) $this->user['id'], $formId, $answers);
+        FormResponse::save((int) $this->user['id'], $formId, $collected['answers']);
         flashSuccess('Your details were saved. You can come back and edit this form any time.');
         redirect('/account/profile');
     }

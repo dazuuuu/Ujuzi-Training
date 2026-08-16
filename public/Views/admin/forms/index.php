@@ -8,7 +8,7 @@ require __DIR__ . '/../layout-header.php';
     <div>
       <p class="text-xs font-black uppercase tracking-widest text-neutral-600">Profile builder</p>
       <h2 class="mt-2 text-2xl font-black text-black">Forms</h2>
-      <p class="mt-1 max-w-2xl text-sm font-medium text-neutral-700">Build registration-style forms, assign them to roles, and they appear on each matching user’s profile for filling and re-editing.</p>
+      <p class="mt-1 max-w-2xl text-sm font-medium text-neutral-700">Build WordPress-style profile forms with text, choices, files, dates, and more. Assign them to roles and they appear on each matching user’s profile for filling and re-editing.</p>
     </div>
     <a href="<?= url('/admin/forms/create') ?>" class="btn-primary">Create form</a>
   </section>

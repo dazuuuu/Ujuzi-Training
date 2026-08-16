@@ -90,15 +90,12 @@ function roleLabel(string $slug): string
 
 function fieldTypeLabel(string $type): string
 {
-    return match ($type) {
-        'text' => 'Short text',
-        'paragraph' => 'Paragraph',
-        'dropdown' => 'Dropdown',
-        'number' => 'Number',
-        'date' => 'Date',
-        'datetime' => 'Date & time',
-        default => ucfirst($type),
-    };
+    return \App\Models\FormFieldTypes::label($type);
+}
+
+function formatFormAnswer(array $field, $value): string
+{
+    return \App\Models\FormField::formatAnswer($field, $value);
 }
 
 function userDisplayName(?array $user): string

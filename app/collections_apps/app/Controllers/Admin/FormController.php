@@ -6,6 +6,7 @@ use App\Core\Request;
 use App\Core\View;
 use App\Models\Form;
 use App\Models\FormField;
+use App\Models\FormFieldTypes;
 use App\Models\Role;
 
 class FormController extends BaseAdminController
@@ -120,13 +121,31 @@ class FormController extends BaseAdminController
         if (!$form['role_ids']) {
             $errors[] = 'Assign this form to at least one role (students, organisation admins, trainers, or attachment trainers).';
         }
-        $validFields = array_filter($form['fields'], fn(array $field): bool => trim($field['label']) !== '');
+        $validFields = array_values(array_filter($form['fields'], function (array $field): bool {
+            if (FormFieldTypes::isLayout($field['field_type'])) {
+                return true;
+            }
+            return trim($field['label']) !== '';
+        }));
+        $inputCount = 0;
+        foreach ($validFields as $field) {
+            if (!FormFieldTypes::isLayout($field['field_type'])) {
+                $inputCount++;
+            }
+        }
         if (!$validFields) {
             $errors[] = 'Add at least one field.';
+        } elseif ($inputCount === 0) {
+            $errors[] = 'Add at least one input field (headings and instructions do not count).';
         }
         foreach ($validFields as $field) {
-            if ($field['field_type'] === 'dropdown' && empty($field['options'])) {
-                $errors[] = 'Dropdown fields need at least one option.';
+            if (FormFieldTypes::needsChoices($field['field_type']) && empty($field['choices']) && empty($field['options'])) {
+                $errors[] = FormFieldTypes::label($field['field_type']) . ' fields need at least one choice value.';
+            }
+            $minSelect = (int) ($field['min_select'] ?? 0);
+            $maxSelect = (int) ($field['max_select'] ?? 0);
+            if ($maxSelect > 0 && $minSelect > $maxSelect) {
+                $errors[] = FormFieldTypes::label($field['field_type']) . ' minimum selections cannot be greater than the maximum.';
             }
         }
 
@@ -170,15 +189,30 @@ class FormController extends BaseAdminController
             if (!is_array($field)) {
                 continue;
             }
-            $options = $field['options'] ?? '';
-            if (is_array($options)) {
-                $options = implode("\n", $options);
+            $choices = $field['choices'] ?? $field['options'] ?? [];
+            if (is_string($choices)) {
+                $choices = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $choices) ?: [])));
+            } elseif (!is_array($choices)) {
+                $choices = [];
+            } else {
+                $choices = array_values(array_filter(array_map('trim', $choices), fn($item) => $item !== ''));
             }
             $normalized[] = [
                 'label' => trim((string) ($field['label'] ?? '')),
+                'field_key' => trim((string) ($field['field_key'] ?? '')),
                 'field_type' => (string) ($field['field_type'] ?? 'text'),
                 'is_required' => !empty($field['is_required']),
-                'options' => (string) $options,
+                'placeholder' => trim((string) ($field['placeholder'] ?? '')),
+                'help_text' => trim((string) ($field['help_text'] ?? '')),
+                'choices' => $choices,
+                'options' => $choices,
+                'range_min' => trim((string) ($field['range_min'] ?? '')),
+                'range_max' => trim((string) ($field['range_max'] ?? '')),
+                'allow_other' => !empty($field['allow_other']),
+                'columns' => max(1, min(3, (int) ($field['columns'] ?? 1))),
+                'min_select' => max(0, (int) ($field['min_select'] ?? 0)),
+                'max_select' => max(0, (int) ($field['max_select'] ?? 0)),
+                'select_all' => !empty($field['select_all']),
             ];
         }
         return $normalized;
@@ -193,9 +227,18 @@ class FormController extends BaseAdminController
             'role_ids' => [],
             'fields' => [[
                 'label' => '',
+                'field_key' => '',
                 'field_type' => 'text',
                 'is_required' => false,
+                'placeholder' => '',
+                'help_text' => '',
                 'options' => [],
+                'choices' => ['', ''],
+                'allow_other' => false,
+                'columns' => 1,
+                'min_select' => 0,
+                'max_select' => 0,
+                'select_all' => false,
             ]],
         ];
     }

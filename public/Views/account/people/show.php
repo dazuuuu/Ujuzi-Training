@@ -24,9 +24,20 @@ require __DIR__ . '/../layout-header.php';
       </div>
       <dl class="mt-4 space-y-3">
         <?php foreach ($form['fields'] as $field): ?>
+          <?php if (\App\Models\FormFieldTypes::isLayout($field['field_type'])) continue; ?>
           <div>
             <dt class="text-[11px] font-bold uppercase text-neutral-600"><?= e($field['label']) ?></dt>
-            <dd class="mt-1 text-sm font-semibold text-black"><?= e((string) ($answers[$field['field_key']] ?? '—')) ?></dd>
+            <dd class="mt-1 text-sm font-semibold text-black">
+              <?php
+                $display = formatFormAnswer($field, $answers[$field['field_key']] ?? '');
+                $raw = $answers[$field['field_key']] ?? '';
+                if (\App\Models\FormFieldTypes::isFile($field['field_type']) && $raw):
+              ?>
+                <a href="<?= e(imageUrl((string) $raw)) ?>" target="_blank" style="color:var(--ke-green)"><?= e($display) ?></a>
+              <?php else: ?>
+                <?= e($display) ?>
+              <?php endif; ?>
+            </dd>
           </div>
         <?php endforeach; ?>
       </dl>
