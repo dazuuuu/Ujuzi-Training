@@ -64,7 +64,7 @@ class OrganisationAdminInvite
                 'id' => $id,
                 'organisation_id' => $organisationId,
                 'token' => $plain,
-                'url' => url('/register/organisation-admin/' . $plain),
+                'url' => absoluteUrl('/register/organisation-admin/' . $plain),
                 'expires_at' => $expires,
             ];
         } catch (\Throwable $e) {

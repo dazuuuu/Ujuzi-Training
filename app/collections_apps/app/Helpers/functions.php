@@ -11,6 +11,11 @@ function url(string $path = '/'): string
     return Url::to($path);
 }
 
+function absoluteUrl(string $path = '/'): string
+{
+    return Url::absolute($path);
+}
+
 function asset(string $path): string
 {
     return Url::asset($path);

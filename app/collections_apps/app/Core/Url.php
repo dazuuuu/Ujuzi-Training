@@ -34,6 +34,20 @@ class Url
         return self::$basePath . '/' . ltrim($path, '/');
     }
 
+    /**
+     * Full URL including the current scheme, domain, and port
+     * (e.g. http://localhost:8000/register/organisation-admin/...).
+     */
+    public static function absolute(string $path = '/'): string
+    {
+        $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (string) ($_SERVER['SERVER_PORT'] ?? '') === '443'
+            || strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+        $scheme = $https ? 'https' : 'http';
+        $host = (string) ($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? 'localhost');
+        return $scheme . '://' . $host . self::to($path);
+    }
+
     /** Absolute app URL for a static file under public/, e.g. Url::asset('assets/css/app.css') */
     public static function asset(string $path): string
     {
