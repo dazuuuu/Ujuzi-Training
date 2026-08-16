@@ -82,38 +82,19 @@ switch ($type) {
         break;
 
     case 'address':
-        $addr = is_array($value) ? $value : [];
-        echo '<div class="address-grid">';
-        echo '<div class="sm-span-2"><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Street</label><input type="text" name="' . e($name) . '[street]" value="' . e((string) ($addr['street'] ?? '')) . '" ' . ($required ? 'required' : '') . ' class="' . $class . '" /></div>';
-        echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">City / town</label><input type="text" name="' . e($name) . '[city]" value="' . e((string) ($addr['city'] ?? '')) . '" ' . ($required ? 'required' : '') . ' class="' . $class . '" /></div>';
-        echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">County</label><select name="' . e($name) . '[county]" class="' . $class . '"><option value="">Choose</option>';
-        foreach (FormFieldTypes::counties() as $county) {
-            $selected = (string) ($addr['county'] ?? '') === $county ? 'selected' : '';
-            echo '<option value="' . e($county) . '" ' . $selected . '>' . e($county) . '</option>';
-        }
-        echo '</select></div>';
-        echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Postal code</label><input type="text" name="' . e($name) . '[postal]" value="' . e((string) ($addr['postal'] ?? '')) . '" class="' . $class . '" /></div>';
-        echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Country</label><select name="' . e($name) . '[country]" class="' . $class . '"><option value="">Choose</option>';
-        foreach (FormFieldTypes::countries() as $country) {
-            $selected = (string) ($addr['country'] ?? '') === $country ? 'selected' : '';
-            echo '<option value="' . e($country) . '" ' . $selected . '>' . e($country) . '</option>';
-        }
-        echo '</select></div></div>';
-        break;
-
     case 'dropdown':
     case 'country':
     case 'county':
         $opts = $options;
         if ($type === 'country') {
             $opts = $options ?: FormFieldTypes::countries();
-        } elseif ($type === 'county') {
+        } elseif ($type === 'county' || $type === 'address') {
             $opts = FormFieldTypes::counties();
         }
-        $current = (string) $value;
-        $usingOther = $allowOther && $isOtherSelected($current, $opts);
+        $current = is_array($value) ? (string) ($value['county'] ?? '') : (string) $value;
+        $usingOther = $allowOther && $type === 'dropdown' && $isOtherSelected($current, $opts);
         echo '<div class="js-choice-field">';
-        echo '<select name="' . e($name) . '" ' . ($required ? 'required' : '') . ' class="' . $class . ' js-has-other"><option value="">Choose</option>';
+        echo '<select name="' . e($name) . '" ' . ($required ? 'required' : '') . ' class="' . $class . ' js-has-other"><option value="">' . ($type === 'county' || $type === 'address' ? 'Choose county' : 'Choose') . '</option>';
         foreach ($opts as $option) {
             $selected = !$usingOther && $current === (string) $option ? 'selected' : '';
             echo '<option value="' . e($option) . '" ' . $selected . '>' . e($option) . '</option>';

@@ -33,9 +33,8 @@ class FormFieldTypes
                 'datetime' => 'Date & time',
             ],
             'Location' => [
-                'country' => 'Country',
                 'county' => 'Kenya county',
-                'address' => 'Address',
+                'address' => 'Address (Kenya county)',
             ],
             'Files' => [
                 'file' => 'File upload',
@@ -104,7 +103,7 @@ class FormFieldTypes
 
     public static function isComposite(string $type): bool
     {
-        return in_array($type, ['name', 'address'], true);
+        return in_array($type, ['name'], true);
     }
 
     public static function allowsOther(string $type): bool

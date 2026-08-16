@@ -99,14 +99,8 @@ class FormField
             if (isset($value['first']) || isset($value['last'])) {
                 return trim(($value['first'] ?? '') . ' ' . ($value['last'] ?? '')) ?: '—';
             }
-            if (isset($value['street']) || isset($value['city']) || isset($value['county'])) {
-                return implode(', ', array_filter([
-                    $value['street'] ?? '',
-                    $value['city'] ?? '',
-                    $value['county'] ?? '',
-                    $value['postal'] ?? '',
-                    $value['country'] ?? '',
-                ], fn($part) => trim((string) $part) !== '')) ?: '—';
+            if (isset($value['county']) || isset($value['street']) || isset($value['city'])) {
+                return trim((string) ($value['county'] ?? '')) ?: '—';
             }
             return implode(', ', array_map('strval', $value));
         }

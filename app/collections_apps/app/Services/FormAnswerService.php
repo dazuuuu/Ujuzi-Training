@@ -55,22 +55,6 @@ class FormAnswerService
                 continue;
             }
 
-            if ($type === 'address') {
-                $raw = is_array($posted[$key] ?? null) ? $posted[$key] : [];
-                $value = [
-                    'street' => trim((string) ($raw['street'] ?? '')),
-                    'city' => trim((string) ($raw['city'] ?? '')),
-                    'county' => trim((string) ($raw['county'] ?? '')),
-                    'postal' => trim((string) ($raw['postal'] ?? '')),
-                    'country' => trim((string) ($raw['country'] ?? '')),
-                ];
-                if ($field['is_required'] && ($value['street'] === '' || $value['city'] === '')) {
-                    $errors[] = $field['label'] . ' needs a street and city.';
-                }
-                $answers[$key] = $value;
-                continue;
-            }
-
             if ($type === 'list') {
                 $raw = $posted[$key] ?? [];
                 if (!is_array($raw)) {
@@ -186,7 +170,7 @@ class FormAnswerService
             'number', 'range', 'rating' => self::numberBoundsError($label, $value, $min, $max),
             'dropdown', 'radio', 'yesno' => self::choiceError($label, $value, $options, !empty($field['allow_other'])),
             'country' => in_array($value, $options ?: FormFieldTypes::countries(), true) ? null : $label . ' has an invalid country.',
-            'county' => in_array($value, FormFieldTypes::counties(), true) ? null : $label . ' has an invalid county.',
+            'county', 'address' => in_array($value, FormFieldTypes::counties(), true) ? null : $label . ' has an invalid county.',
             default => null,
         };
     }
