@@ -52,6 +52,59 @@ $platformName = $settings['platform_name'] ?? appName();
       </div>
     </div>
   </form>
+
+  <form method="post" action="<?= url('/admin/settings') ?>" class="rounded-xl border bg-white p-6 shadow-sm space-y-6" style="border:2px solid var(--ke-green)">
+    <?= csrfField() ?>
+    <input type="hidden" name="save_smtp" value="1" />
+    <div class="flex flex-col gap-4 border-b border-neutral-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">Email / SMTP</p>
+        <h2 class="mt-2 text-2xl font-black text-black">Mail credentials</h2>
+        <p class="mt-1 text-sm font-medium text-neutral-700">Used to email organisation registration forms and login codes. Put your SMTP host, username, and password here.</p>
+        <p class="mt-2 text-xs font-bold <?= !empty($smtpConfigured) ? '' : '' ?>" style="color: <?= !empty($smtpConfigured) ? 'var(--ke-green)' : 'var(--ke-red)' ?>">
+          <?= !empty($smtpConfigured) ? 'SMTP looks configured.' : 'SMTP is not configured yet — emails will fail until you save credentials below.' ?>
+        </p>
+      </div>
+      <button type="submit" class="btn-primary">Save SMTP</button>
+    </div>
+
+    <?php $smtp = $smtp ?? []; ?>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div class="sm:col-span-2">
+        <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">SMTP host</label>
+        <input type="text" name="mail_host" value="<?= e($smtp['host'] ?? '') ?>" placeholder="smtp.gmail.com" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold" />
+      </div>
+      <div>
+        <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Port</label>
+        <input type="number" name="mail_port" value="<?= e($smtp['port'] ?? '587') ?>" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold" />
+      </div>
+      <div>
+        <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Encryption</label>
+        <select name="mail_encryption" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold">
+          <option value="tls" <?= ($smtp['encryption'] ?? 'tls') === 'tls' ? 'selected' : '' ?>>TLS (port 587)</option>
+          <option value="ssl" <?= ($smtp['encryption'] ?? '') === 'ssl' ? 'selected' : '' ?>>SSL (port 465)</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">SMTP username</label>
+        <input type="text" name="mail_username" value="<?= e($smtp['username'] ?? '') ?>" placeholder="you@gmail.com" autocomplete="off" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold" />
+      </div>
+      <div>
+        <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">SMTP password</label>
+        <input type="password" name="mail_password" value="" placeholder="<?= !empty($smtpHasPassword) ? 'Saved — leave blank to keep' : 'App password or mailbox password' ?>" autocomplete="new-password" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold" />
+      </div>
+      <div>
+        <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">From email</label>
+        <input type="email" name="mail_from_address" value="<?= e($smtp['from_address'] ?? '') ?>" placeholder="no-reply@yourdomain.com" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold" />
+      </div>
+      <div>
+        <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">From name</label>
+        <input type="text" name="mail_from_name" value="<?= e($smtp['from_name'] ?? '') ?>" placeholder="<?= e(appName()) ?>" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold" />
+      </div>
+    </div>
+    <p class="text-xs font-medium text-neutral-600">Gmail example: host <span class="font-mono">smtp.gmail.com</span>, port <span class="font-mono">587</span>, encryption TLS, username your full Gmail, password a Google App Password.</p>
+    <button type="submit" class="btn-primary">Save SMTP</button>
+  </form>
 </div>
 
 <?php require __DIR__ . '/../layout-footer.php'; ?>

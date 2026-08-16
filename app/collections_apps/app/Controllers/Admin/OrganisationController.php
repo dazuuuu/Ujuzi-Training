@@ -122,7 +122,7 @@ class OrganisationController extends BaseAdminController
                 OrganisationAdminInvite::markEmailed((int) $invite['id'], $email);
                 flashSuccess('Registration form emailed to ' . $email . ' via SMTP. The link expires in 5 minutes and accepts only one registration.');
             } catch (MailerException $e) {
-                flashError('The registration form link was generated, but SMTP could not send the email. Copy the URL below and share it directly.');
+                flashError($e->getMessage() . ' Open Super Admin → Settings and save your SMTP credentials.');
             }
             redirect($returnTo);
         }
@@ -167,7 +167,7 @@ class OrganisationController extends BaseAdminController
             OrganisationAdminInvite::markEmailed((int) $fresh['id'], $email);
             flashSuccess('Registration form emailed to ' . $email . ' via SMTP. It expires in 5 minutes and works for one registration only.');
         } catch (MailerException $e) {
-            flashError('SMTP could not send the email. Copy the registration form URL and share it directly.');
+            flashError($e->getMessage() . ' Open Super Admin → Settings and save your SMTP credentials.');
         }
         redirect($returnTo);
     }

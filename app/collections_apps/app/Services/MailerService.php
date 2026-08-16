@@ -3,36 +3,75 @@
 namespace App\Services;
 
 use App\Core\Env;
+use App\Models\StoreSetting;
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception as PHPMailerException;
 
 class MailerException extends \Exception {}
 
 /**
- * SMTP mailer (PHPMailer) for OTP login codes, password-reset codes, and
- * order confirmations. Reads credentials from .env — see .env.example.
+ * SMTP mailer (PHPMailer). Prefers Super Admin → Settings, then .env.
  */
 class MailerService
 {
+    public static function config(): array
+    {
+        return [
+            'host' => self::value('mail_host', 'MAIL_HOST', ''),
+            'port' => self::value('mail_port', 'MAIL_PORT', '587'),
+            'encryption' => self::value('mail_encryption', 'MAIL_ENCRYPTION', 'tls'),
+            'username' => self::value('mail_username', 'MAIL_USERNAME', ''),
+            'password' => self::value('mail_password', 'MAIL_PASSWORD', ''),
+            'from_address' => self::value('mail_from_address', 'MAIL_FROM_ADDRESS', 'no-reply@example.com'),
+            'from_name' => self::value('mail_from_name', 'MAIL_FROM_NAME', Env::get('APP_NAME', 'Ujuzi Training')),
+        ];
+    }
+
+    public static function isConfigured(): bool
+    {
+        $config = self::config();
+        return $config['host'] !== ''
+            && $config['username'] !== ''
+            && $config['password'] !== ''
+            && $config['host'] !== 'smtp.example.com';
+    }
+
+    private static function value(string $settingKey, string $envKey, $default = null): string
+    {
+        try {
+            $stored = StoreSetting::get($settingKey);
+            if ($stored !== null && $stored !== '') {
+                return (string) $stored;
+            }
+        } catch (\Throwable $e) {
+            // Settings table may not exist yet during setup.
+        }
+        return (string) Env::get($envKey, $default);
+    }
+
     /**
      * A misconfigured/unreachable SMTP host must fail fast rather than hang
-     * the request for PHPMailer's 300s default — matters most right after
-     * .env is first set up with placeholder credentials.
+     * the request for PHPMailer's 300s default.
      */
     private static function configured(): PHPMailer
     {
+        $config = self::config();
+        if ($config['host'] === '' || $config['host'] === 'smtp.example.com' || $config['username'] === '' || $config['password'] === '') {
+            throw new MailerException('SMTP is not configured. Open Super Admin → Settings and enter your mail host, username, and password.');
+        }
+
         $mail = new PHPMailer(true);
         $mail->isSMTP();
         $mail->Timeout = 10;
         $mail->SMTPKeepAlive = false;
-        $mail->Host = Env::get('MAIL_HOST');
+        $mail->Host = $config['host'];
         $mail->SMTPAuth = true;
-        $mail->Username = Env::get('MAIL_USERNAME');
-        $mail->Password = Env::get('MAIL_PASSWORD');
-        $encryption = Env::get('MAIL_ENCRYPTION', 'tls');
+        $mail->Username = $config['username'];
+        $mail->Password = $config['password'];
+        $encryption = strtolower($config['encryption']);
         $mail->SMTPSecure = $encryption === 'ssl' ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port = (int) Env::get('MAIL_PORT', 587);
-        $mail->setFrom(Env::get('MAIL_FROM_ADDRESS', 'no-reply@example.com'), Env::get('MAIL_FROM_NAME', Env::get('APP_NAME', 'Ujuzi Training')));
+        $mail->Port = (int) ($config['port'] ?: 587);
+        $mail->setFrom($config['from_address'] ?: $config['username'], $config['from_name'] ?: 'Ujuzi Training');
         return $mail;
     }
 
