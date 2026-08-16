@@ -1,0 +1,9 @@
+RewriteEngine On
+
+# Serve real files/directories (assets, uploads, etc.) directly...
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# ...everything else is routed through the single front controller.
+RewriteRule ^ index.php [QSA,L]

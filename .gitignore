@@ -1,0 +1,13 @@
+node_modules/
+vendor/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+!app/collections_apps/.env.example
+public/assets/uploads/*
+!public/assets/uploads/products/.gitkeep
+!public/assets/uploads/categories/.gitkeep
