@@ -62,12 +62,9 @@ function fieldChoices(array $field): array
   </div>
 
   <div class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm space-y-4">
-    <div class="flex items-center justify-between border-b border-neutral-100 pb-3">
-      <div>
-        <h2 class="font-serif-heading text-lg font-bold">Fields</h2>
-        <p class="text-xs font-medium mt-1" style="color:var(--ke-muted)">Pick a type the way WordPress form builders do. Dropdowns, radios, and checkboxes need the choice values you want people to pick — you can change them later.</p>
-      </div>
-      <button type="button" id="add-field" class="btn-secondary">Add field</button>
+    <div class="border-b border-neutral-100 pb-3">
+      <h2 class="font-serif-heading text-lg font-bold">Fields</h2>
+      <p class="text-xs font-medium mt-1" style="color:var(--ke-muted)">Pick a type the way WordPress form builders do. Dropdowns, radios, and checkboxes need the choice values you want people to pick — you can change them later.</p>
     </div>
     <div id="fields-list" class="space-y-4">
       <?php foreach ($fields as $index => $field):
@@ -182,6 +179,7 @@ function fieldChoices(array $field): array
         </div>
       <?php endforeach; ?>
     </div>
+    <button type="button" id="add-field" class="btn-secondary">Add field</button>
   </div>
 
   <div class="flex items-center gap-3">
