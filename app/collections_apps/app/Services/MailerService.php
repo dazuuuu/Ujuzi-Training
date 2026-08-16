@@ -76,14 +76,14 @@ class MailerService
         return '
         <div style="font-family: Arial, sans-serif; background:#faf9f6; padding:32px;">
           <div style="max-width:420px;margin:0 auto;background:#ffffff;border:1px solid #e5e5e5;border-radius:12px;overflow:hidden;">
-            <div style="background:#0a0a0a;padding:20px 24px;">
-              <span style="color:#fcd34d;font-weight:bold;letter-spacing:2px;font-size:14px;">' . htmlspecialchars(Env::get('APP_NAME', 'Ujuzi Training')) . '</span>
+            <div style="background:#111111;padding:20px 24px;border-bottom:6px solid #bb0000;">
+              <span style="color:#ffffff;font-weight:bold;letter-spacing:2px;font-size:14px;">' . htmlspecialchars(Env::get('APP_NAME', 'Ujuzi Training')) . '</span>
             </div>
             <div style="padding:28px 24px;">
-              <h1 style="font-size:18px;color:#0a0a0a;margin:0 0 8px;">' . htmlspecialchars($heading) . '</h1>
-              <p style="font-size:13px;color:#555;line-height:1.5;margin:0 0 20px;">' . htmlspecialchars($blurb) . '</p>
-              <div style="background:#f5f5f5;border:1px solid #d4d4d4;border-radius:8px;padding:16px;text-align:center;margin-bottom:20px;">
-                <span style="font-size:28px;letter-spacing:8px;font-weight:bold;color:#0a0a0a;">' . htmlspecialchars($code) . '</span>
+              <h1 style="font-size:18px;color:#111111;margin:0 0 8px;">' . htmlspecialchars($heading) . '</h1>
+              <p style="font-size:13px;color:#2f3f37;line-height:1.5;margin:0 0 20px;">' . htmlspecialchars($blurb) . '</p>
+              <div style="background:#e8f5ee;border:2px solid #006b3f;border-radius:8px;padding:16px;text-align:center;margin-bottom:20px;">
+                <span style="font-size:28px;letter-spacing:8px;font-weight:bold;color:#006b3f;">' . htmlspecialchars($code) . '</span>
               </div>
               <p style="font-size:12px;color:#888;margin:0;">This code expires in 10 minutes. If you didn\'t request this, you can safely ignore this email.</p>
             </div>

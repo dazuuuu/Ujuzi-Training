@@ -15,7 +15,7 @@ $platformName = $settings['platform_name'] ?? appName();
         <h2 class="mt-2 text-2xl font-black text-black">LMS branding</h2>
         <p class="mt-1 text-sm font-medium text-neutral-700">This name and logo appear on the public LMS, logins, and dashboards.</p>
       </div>
-      <button type="submit" class="shrink-0 rounded-lg bg-black px-6 py-3 text-xs font-black uppercase tracking-widest text-white hover:bg-neutral-900">Save</button>
+      <button type="submit" class="btn-primary">Save</button>
     </div>
 
     <div>
@@ -30,7 +30,7 @@ $platformName = $settings['platform_name'] ?? appName();
           <?php if ($logo): ?>
             <img src="<?= e(imageUrl($logo)) ?>" alt="Current logo" class="max-h-full max-w-full object-contain" />
           <?php else: ?>
-            <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-black text-white">
+            <div class="flex h-12 w-12 items-center justify-center rounded-lg text-white" style="background:var(--ke-green)">
               <?= pentagonLogoSvg('w-7 h-7 text-white') ?>
             </div>
           <?php endif; ?>

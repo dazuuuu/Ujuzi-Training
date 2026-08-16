@@ -13,37 +13,39 @@
   <link rel="stylesheet" href="<?= asset('assets/css/tailwind.css') ?>">
   <link rel="stylesheet" href="<?= asset('assets/css/app.css') ?>">
 </head>
-<body class="bg-[#0a0a0a] text-white antialiased min-h-screen flex items-center justify-center p-4">
+<body class="antialiased min-h-screen flex flex-col" style="background:var(--ke-black);color:var(--ke-white)">
+  <div class="flag-stripe" aria-hidden="true"></div>
+  <div class="flex-1 flex items-center justify-center p-4">
   <div class="w-full max-w-sm">
     <div class="text-center mb-8">
-      <div class="inline-flex items-center justify-center w-12 h-12 bg-black text-white rounded-xl border border-neutral-300 mb-3">
+      <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3" style="background:var(--ke-red)">
         <?= storeLogoHtml('w-full h-full object-contain rounded-xl', 'w-6 h-6 text-white') ?>
       </div>
       <h1 class="font-serif-heading text-2xl font-bold tracking-widest uppercase"><?= e(appName()) ?></h1>
-      <p class="text-xs text-neutral-500 mt-1">Super Admin — roles, forms, organisations, and users</p>
+      <p class="text-xs mt-1" style="color:#b8e0cc">Super Admin — roles, forms, organisations, and users</p>
     </div>
 
-    <form method="post" action="<?= url('/admin/login') ?>" class="bg-black border border-neutral-700 rounded-xl p-6 space-y-4 shadow-2xl">
+    <form method="post" action="<?= url('/admin/login') ?>" class="rounded-xl p-6 space-y-4" style="background:#1a1a1a;border:1px solid var(--ke-green)">
       <?= csrfField() ?>
       <?php if ($error): ?>
-        <div class="bg-rose-950 border border-rose-600/40 text-rose-300 text-xs font-semibold rounded-lg p-3"><?= e($error) ?></div>
+        <div class="flash-error"><?= e($error) ?></div>
       <?php endif; ?>
       <div>
-        <label class="text-[11px] font-bold text-neutral-300 uppercase tracking-wider">Email</label>
-        <input type="email" name="email" required autofocus class="w-full mt-1 bg-[#0a0a0a] border border-neutral-700 text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-white" />
+        <label class="text-[11px] font-bold uppercase tracking-wider" style="color:#b8e0cc">Email</label>
+        <input type="email" name="email" required autofocus class="w-full mt-1 text-sm rounded-lg px-3 py-2.5" style="background:#111;border:1px solid #6b7f74;color:#fff" />
       </div>
       <div>
-        <label class="text-[11px] font-bold text-neutral-300 uppercase tracking-wider">Password</label>
-        <input type="password" name="password" required class="w-full mt-1 bg-[#0a0a0a] border border-neutral-700 text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-white" />
+        <label class="text-[11px] font-bold uppercase tracking-wider" style="color:#b8e0cc">Password</label>
+        <input type="password" name="password" required class="w-full mt-1 text-sm rounded-lg px-3 py-2.5" style="background:#111;border:1px solid #6b7f74;color:#fff" />
       </div>
-      <button type="submit" class="w-full bg-white hover:bg-neutral-100 text-black text-xs font-bold py-3 rounded-lg uppercase tracking-widest transition-colors cursor-pointer">Sign In</button>
+      <button type="submit" class="btn-primary btn-block">Sign In</button>
     </form>
 
-    <p class="text-center text-[11px] text-neutral-500 mt-6">
-      <a href="<?= url('/account/login') ?>" class="hover:text-white">User login</a>
-      <span class="mx-2">·</span>
-      <a href="<?= url('/') ?>" class="hover:text-white">&larr; Back to LMS</a>
+    <p class="text-center text-[11px] mt-6" style="color:#b8e0cc">
+      <a href="<?= url('/account/login') ?>" class="btn-secondary" style="padding:0.4rem 0.8rem;">User login</a>
+      <a href="<?= url('/') ?>" class="ml-2 underline" style="color:#b8e0cc">&larr; Back to LMS</a>
     </p>
+  </div>
   </div>
 </body>
 </html>

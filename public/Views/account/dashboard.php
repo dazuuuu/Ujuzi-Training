@@ -5,7 +5,7 @@ require __DIR__ . '/layout-header.php';
 
 <div class="space-y-8">
   <div>
-    <p class="text-xs font-black uppercase tracking-widest text-neutral-600"><?= e($currentUser['role_name']) ?></p>
+    <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)"><?= e($currentUser['role_name']) ?></p>
     <h1 class="mt-2 font-serif-heading text-3xl font-bold text-[#0a0a0a]">Hello, <?= e($currentUser['first_name'] ?: userDisplayName($currentUser)) ?></h1>
     <p class="mt-2 text-sm font-medium text-neutral-600">
       <?= e($currentUser['organisation_name'] ?? 'No organisation') ?>
@@ -18,8 +18,8 @@ require __DIR__ . '/layout-header.php';
   </div>
 
   <section class="grid gap-4 sm:grid-cols-3">
-    <a href="<?= url('/account/profile') ?>" class="rounded-xl border border-neutral-300 bg-white p-5 hover:border-black">
-      <p class="text-[11px] font-black uppercase tracking-widest text-neutral-600">Profile forms</p>
+    <a href="<?= url('/account/profile') ?>" class="rounded-xl bg-white p-5" style="border:2px solid var(--ke-green)">
+      <p class="text-[11px] font-black uppercase tracking-widest" style="color:var(--ke-green)">Profile forms</p>
       <p class="mt-3 text-2xl font-black"><?= (int) $completedForms ?>/<?= (int) $totalForms ?></p>
       <p class="mt-1 text-xs font-bold text-neutral-600">Completed</p>
     </a>
@@ -29,8 +29,8 @@ require __DIR__ . '/layout-header.php';
       <p class="mt-1 text-xs font-bold text-neutral-600"><?= !empty($currentUser['is_under_organisation']) ? 'Under organisation power' : 'Organisation owner role' ?></p>
     </div>
     <?php if ($canManageUsers): ?>
-      <a href="<?= url('/account/people') ?>" class="rounded-xl border border-neutral-300 bg-white p-5 hover:border-black">
-        <p class="text-[11px] font-black uppercase tracking-widest text-neutral-600">People</p>
+      <a href="<?= url('/account/people') ?>" class="rounded-xl bg-white p-5" style="border:2px solid var(--ke-red)">
+        <p class="text-[11px] font-black uppercase tracking-widest" style="color:var(--ke-red)">People</p>
         <p class="mt-3 text-2xl font-black"><?= count($managedUsers ?? []) ?></p>
         <p class="mt-1 text-xs font-bold text-neutral-600">You can manage</p>
       </a>
@@ -46,7 +46,7 @@ require __DIR__ . '/layout-header.php';
   <section class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
     <div class="flex items-center justify-between gap-3">
       <h2 class="font-serif-heading text-lg font-bold">Assigned profile forms</h2>
-      <a href="<?= url('/account/profile') ?>" class="text-xs font-black uppercase tracking-widest text-black hover:underline">Open profile</a>
+      <a href="<?= url('/account/profile') ?>" class="btn-primary">Open profile</a>
     </div>
     <div class="mt-4 divide-y divide-neutral-100">
       <?php if (!$forms): ?>
@@ -65,7 +65,7 @@ require __DIR__ . '/layout-header.php';
     <section class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
       <div class="flex items-center justify-between gap-3">
         <h2 class="font-serif-heading text-lg font-bold">People in your organisation</h2>
-        <a href="<?= url('/account/people/create') ?>" class="text-xs font-black uppercase tracking-widest text-black hover:underline">Add person</a>
+        <a href="<?= url('/account/people/create') ?>" class="btn-primary">Add person</a>
       </div>
       <div class="mt-4 divide-y divide-neutral-100">
         <?php if (empty($recentManaged)): ?>
@@ -77,7 +77,7 @@ require __DIR__ . '/layout-header.php';
               <p class="text-sm font-black"><?= e(userDisplayName($person)) ?></p>
               <p class="text-xs font-semibold text-neutral-600"><?= e($person['role_name']) ?></p>
             </div>
-            <a href="<?= url('/account/people/' . (int) $person['id']) ?>" class="text-xs font-black uppercase tracking-widest hover:underline">View</a>
+            <a href="<?= url('/account/people/' . (int) $person['id']) ?>" class="btn-secondary" style="padding:0.35rem 0.65rem;">View</a>
           </div>
         <?php endforeach; ?>
       </div>

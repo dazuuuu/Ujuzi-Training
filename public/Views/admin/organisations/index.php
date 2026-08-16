@@ -10,7 +10,7 @@ require __DIR__ . '/../layout-header.php';
       <h2 class="mt-2 text-2xl font-black text-black">Organisations</h2>
       <p class="mt-1 text-sm font-medium text-neutral-700">Every LMS user belongs to an organisation. Organisation admins manage people inside their own org.</p>
     </div>
-    <a href="<?= url('/admin/organisations/create') ?>" class="rounded-lg bg-black px-4 py-2 text-xs font-black uppercase tracking-widest text-white hover:bg-neutral-900">Add organisation</a>
+    <a href="<?= url('/admin/organisations/create') ?>" class="btn-primary">Add organisation</a>
   </section>
 
   <div class="overflow-x-auto rounded-xl border border-neutral-300 bg-white shadow-sm">
@@ -36,7 +36,7 @@ require __DIR__ . '/../layout-header.php';
             <td class="px-5 py-4 font-bold"><?= !empty($org['is_active']) ? 'Active' : 'Inactive' ?></td>
             <td class="px-5 py-4 font-semibold text-neutral-700"><?= e(date('M j, Y', strtotime($org['created_at']))) ?></td>
             <td class="px-5 py-4">
-              <a href="<?= url('/admin/organisations/' . (int) $org['id'] . '/edit') ?>" class="text-xs font-black uppercase tracking-widest text-black hover:underline">Edit</a>
+              <a href="<?= url('/admin/organisations/' . (int) $org['id'] . '/edit') ?>" class="btn-secondary" style="padding:0.35rem 0.65rem;">Edit</a>
             </td>
           </tr>
         <?php endforeach; ?>

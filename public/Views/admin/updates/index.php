@@ -21,7 +21,7 @@ require __DIR__ . '/../layout-header.php';
 
     <form method="post" action="<?= url('/admin/updates/run') ?>" onsubmit="return confirm('Run pending updates now?');">
       <?= csrfField() ?>
-      <button type="submit" class="bg-black hover:bg-neutral-900 text-white text-xs font-bold px-5 py-3 rounded-lg uppercase tracking-widest">
+      <button type="submit" class="btn-primary">
         Run Updates
       </button>
     </form>

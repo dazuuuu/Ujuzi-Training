@@ -19,7 +19,7 @@ require __DIR__ . '/layout-header.php';
     </div>
 
     <?php if ($error): ?>
-      <div class="bg-rose-50 border border-rose-300 text-rose-800 text-sm rounded-lg p-3 mb-4"><?= e($error) ?></div>
+      <div class="flash-error"><?= e($error) ?></div>
     <?php endif; ?>
 
     <form method="post" action="<?= url('/account/login') ?>" id="email-form" class="space-y-4">
@@ -29,7 +29,7 @@ require __DIR__ . '/layout-header.php';
         <label class="text-[11px] font-bold text-neutral-600 uppercase">Email Address</label>
         <input type="email" name="email" required value="<?= e($old['email'] ?? '') ?>" placeholder="you@example.com" class="w-full mt-1 bg-white border border-neutral-300 rounded-lg p-2.5 text-sm focus:outline-none focus:border-black" />
       </div>
-      <button type="submit" class="w-full bg-[#0a0a0a] hover:bg-black text-white text-xs font-bold py-3 rounded-lg uppercase tracking-widest transition-colors cursor-pointer border border-neutral-300">Send Login Code</button>
+      <button type="submit" class="btn-primary btn-block">Send Login Code</button>
       <p class="text-[11px] text-neutral-400 text-center">We'll email you a 6-digit code that expires in 10 minutes.</p>
     </form>
 
@@ -40,7 +40,7 @@ require __DIR__ . '/layout-header.php';
         <label class="text-[11px] font-bold text-neutral-600 uppercase">Phone Number</label>
         <input type="tel" name="phone" required value="<?= e($old['phone'] ?? '') ?>" placeholder="254712345678" class="w-full mt-1 bg-white border border-neutral-300 rounded-lg p-2.5 text-sm font-mono focus:outline-none focus:border-black" />
       </div>
-      <button type="submit" class="w-full bg-[#0a0a0a] hover:bg-black text-white text-xs font-bold py-3 rounded-lg uppercase tracking-widest transition-colors cursor-pointer border border-neutral-300">Continue</button>
+      <button type="submit" class="btn-primary btn-block">Continue</button>
       <p class="text-[11px] text-neutral-400 text-center">Use the exact phone number your admin saved.</p>
     </form>
   </div>
@@ -48,7 +48,7 @@ require __DIR__ . '/layout-header.php';
   <div class="mt-6 bg-neutral-50 border border-neutral-200 rounded-xl p-5 text-xs text-neutral-600 space-y-2">
     <p class="font-bold text-neutral-800 uppercase tracking-wider text-[11px]">Need an account?</p>
     <p>Users are created by Super Admin or by Organisation Admins / Attachment Trainers. Once created, your dashboard and profile are ready — sign in here to fill your assigned forms.</p>
-    <p>Platform owner? <a href="<?= url('/admin/login') ?>" class="font-bold text-black hover:underline">Super Admin login</a>.</p>
+    <p>Platform owner? <a href="<?= url('/admin/login') ?>" class="font-bold" style="color:var(--ke-red)">Super Admin login</a>.</p>
   </div>
 </div>
 
@@ -63,8 +63,8 @@ require __DIR__ . '/layout-header.php';
       var active = t.getAttribute('data-tab') === method;
       t.classList.toggle('bg-white', active);
       t.classList.toggle('shadow-sm', active);
-      t.classList.toggle('text-[#0a0a0a]', active);
-      t.classList.toggle('text-neutral-500', !active);
+      t.style.color = active ? '#006b3f' : '#2f3f37';
+      t.style.fontWeight = active ? '800' : '700';
     });
     forms.email.classList.toggle('hidden', method !== 'email');
     forms.phone.classList.toggle('hidden', method !== 'phone');

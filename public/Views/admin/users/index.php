@@ -10,7 +10,7 @@ require __DIR__ . '/../layout-header.php';
       <h2 class="mt-2 text-2xl font-black text-black">Users</h2>
       <p class="mt-1 text-sm font-medium text-neutral-700">Creating a user automatically provisions their dashboard and profile, then attaches every form assigned to their role.</p>
     </div>
-    <a href="<?= url('/admin/users/create') ?>" class="rounded-lg bg-black px-4 py-2 text-xs font-black uppercase tracking-widest text-white hover:bg-neutral-900">Create user</a>
+    <a href="<?= url('/admin/users/create') ?>" class="btn-primary">Create user</a>
   </section>
 
   <div class="overflow-x-auto rounded-xl border border-neutral-300 bg-white shadow-sm">
@@ -39,7 +39,7 @@ require __DIR__ . '/../layout-header.php';
             </td>
             <td class="px-5 py-4 font-bold"><?= !empty($person['is_active']) ? 'Active' : 'Inactive' ?></td>
             <td class="px-5 py-4">
-              <a href="<?= url('/admin/users/' . (int) $person['id'] . '/edit') ?>" class="text-xs font-black uppercase tracking-widest text-black hover:underline">Edit</a>
+              <a href="<?= url('/admin/users/' . (int) $person['id'] . '/edit') ?>" class="btn-secondary" style="padding:0.35rem 0.65rem;">Edit</a>
             </td>
           </tr>
         <?php endforeach; ?>

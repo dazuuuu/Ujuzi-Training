@@ -71,7 +71,7 @@ if (!function_exists('renderProfileField')) {
             <p class="mt-1 text-sm font-medium text-neutral-600"><?= e($form['description']) ?></p>
           <?php endif; ?>
         </div>
-        <span class="rounded-full border px-2 py-1 text-[10px] font-black uppercase <?= $saved ? 'border-black bg-black text-white' : 'border-neutral-300 text-neutral-700' ?>">
+        <span class="rounded-full px-2 py-1 text-[10px] font-black uppercase <?= $saved ? 'text-white' : '' ?>" style="<?= $saved ? 'background:var(--ke-green)' : 'background:#e8f5ee;color:var(--ke-green-dark);border:1px solid var(--ke-green)' ?>">
           <?= $saved ? 'Saved' : 'Not filled' ?>
         </span>
       </div>
@@ -80,7 +80,7 @@ if (!function_exists('renderProfileField')) {
           <?php renderProfileField($field, $answers[$field['field_key']] ?? ''); ?>
         </div>
       <?php endforeach; ?>
-      <button type="submit" class="rounded-lg bg-black px-6 py-3 text-xs font-black uppercase tracking-widest text-white hover:bg-neutral-900"><?= $saved ? 'Update details' : 'Save details' ?></button>
+      <button type="submit" class="btn-primary"><?= $saved ? 'Update details' : 'Save details' ?></button>
     </form>
   <?php endforeach; ?>
 </div>

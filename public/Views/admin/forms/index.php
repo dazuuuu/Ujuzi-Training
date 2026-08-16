@@ -10,7 +10,7 @@ require __DIR__ . '/../layout-header.php';
       <h2 class="mt-2 text-2xl font-black text-black">Forms</h2>
       <p class="mt-1 max-w-2xl text-sm font-medium text-neutral-700">Build registration-style forms, assign them to roles, and they appear on each matching user’s profile for filling and re-editing.</p>
     </div>
-    <a href="<?= url('/admin/forms/create') ?>" class="rounded-lg bg-black px-4 py-2 text-xs font-black uppercase tracking-widest text-white hover:bg-neutral-900">Create form</a>
+    <a href="<?= url('/admin/forms/create') ?>" class="btn-primary">Create form</a>
   </section>
 
   <div class="overflow-x-auto rounded-xl border border-neutral-300 bg-white shadow-sm">
@@ -45,10 +45,10 @@ require __DIR__ . '/../layout-header.php';
             <td class="px-5 py-4 font-bold"><?= !empty($form['is_active']) ? 'Active' : 'Inactive' ?></td>
             <td class="px-5 py-4">
               <div class="flex items-center gap-3">
-                <a href="<?= url('/admin/forms/' . (int) $form['id'] . '/edit') ?>" class="text-xs font-black uppercase tracking-widest text-black hover:underline">Edit</a>
+                <a href="<?= url('/admin/forms/' . (int) $form['id'] . '/edit') ?>" class="btn-secondary" style="padding:0.4rem 0.7rem;">Edit</a>
                 <form method="post" action="<?= url('/admin/forms/' . (int) $form['id'] . '/delete') ?>" onsubmit="return confirm('Delete this form and its saved answers?');">
                   <?= csrfField() ?>
-                  <button type="submit" class="text-xs font-black uppercase tracking-widest text-rose-700 hover:underline">Delete</button>
+                  <button type="submit" class="btn-danger" style="padding:0.4rem 0.7rem;">Delete</button>
                 </form>
               </div>
             </td>

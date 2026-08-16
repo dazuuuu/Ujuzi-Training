@@ -28,8 +28,8 @@ $action = $organisation ? url('/admin/organisations/' . (int) $organisation['id'
   </div>
 
   <div class="flex items-center gap-3">
-    <button type="submit" class="rounded-lg bg-black px-6 py-3 text-xs font-black uppercase tracking-widest text-white hover:bg-neutral-900"><?= $organisation ? 'Save organisation' : 'Create organisation' ?></button>
-    <a href="<?= url('/admin/organisations') ?>" class="text-xs font-black text-neutral-700 hover:text-black">Cancel</a>
+    <button type="submit" class="btn-primary"><?= $organisation ? 'Save organisation' : 'Create organisation' ?></button>
+    <a href="<?= url('/admin/organisations') ?>" class="btn-secondary">Cancel</a>
   </div>
 </form>
 

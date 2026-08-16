@@ -18,47 +18,44 @@ $canManageUsers = $canManageUsers ?? false;
   <link rel="stylesheet" href="<?= asset('assets/css/tailwind.css') ?>">
   <link rel="stylesheet" href="<?= asset('assets/css/app.css') ?>">
 </head>
-<body class="bg-white text-[#1a1a1a] antialiased min-h-screen flex flex-col">
+<body class="antialiased min-h-screen flex flex-col" style="background:var(--ke-paper);color:var(--ke-ink)">
+  <div class="flag-stripe" aria-hidden="true"></div>
 
-  <header class="w-full bg-black py-3 sm:py-4 border-b border-neutral-800 text-white">
+  <header class="w-full py-3 sm:py-4 text-white" style="background:var(--ke-black)">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 flex items-center justify-between">
       <a href="<?= url('/') ?>" class="inline-flex items-center gap-2 group">
-        <div class="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center bg-[#0a0a0a] text-white rounded-md border border-neutral-300 shrink-0">
+        <div class="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-md shrink-0" style="background:var(--ke-red)">
           <?= storeLogoHtml('w-full h-full object-contain rounded-md', 'w-4 h-4 text-white') ?>
         </div>
         <div class="flex flex-col text-left leading-none">
           <span class="font-serif-heading text-base sm:text-lg font-extrabold tracking-[0.18em] text-white uppercase"><?= e(appName()) ?></span>
-          <span class="text-[8px] tracking-[0.3em] text-neutral-300 font-sans font-semibold uppercase mt-0.5">
+          <span class="text-[8px] tracking-[0.3em] font-sans font-semibold uppercase mt-0.5" style="color:#b8e0cc">
             <?= $loggedInUser ? e($loggedInUser['role_name'] ?? 'Account') : 'Sign in' ?>
           </span>
         </div>
       </a>
-      <nav class="flex items-center gap-4 text-xs font-bold uppercase tracking-wider text-neutral-300">
+      <nav class="flex items-center gap-3 text-xs font-bold uppercase tracking-wider">
         <?php if ($loggedInUser): ?>
-          <a href="<?= url('/account/dashboard') ?>" class="<?= ($activeNav ?? '') === 'dashboard' ? 'text-white' : 'hover:text-white' ?>">Dashboard</a>
-          <a href="<?= url('/account/profile') ?>" class="<?= ($activeNav ?? '') === 'profile' ? 'text-white' : 'hover:text-white' ?>">Profile</a>
+          <a href="<?= url('/account/dashboard') ?>" class="<?= ($activeNav ?? '') === 'dashboard' ? 'text-white' : '' ?>" style="color: <?= ($activeNav ?? '') === 'dashboard' ? '#ffffff' : '#b8e0cc' ?>">Dashboard</a>
+          <a href="<?= url('/account/profile') ?>" style="color: <?= ($activeNav ?? '') === 'profile' ? '#ffffff' : '#b8e0cc' ?>">Profile</a>
           <?php if ($canManageUsers): ?>
-            <a href="<?= url('/account/people') ?>" class="<?= ($activeNav ?? '') === 'people' ? 'text-white' : 'hover:text-white' ?>">People</a>
+            <a href="<?= url('/account/people') ?>" style="color: <?= ($activeNav ?? '') === 'people' ? '#ffffff' : '#b8e0cc' ?>">People</a>
           <?php endif; ?>
-          <a href="<?= url('/account/logout') ?>" class="hover:text-white">Sign Out</a>
+          <a href="<?= url('/account/logout') ?>" class="btn-danger" style="padding:0.4rem 0.75rem;">Sign Out</a>
         <?php else: ?>
-          <a href="<?= url('/admin/login') ?>" class="hover:text-white">Super Admin</a>
+          <a href="<?= url('/admin/login') ?>" class="btn-danger" style="padding:0.4rem 0.75rem;">Super Admin</a>
         <?php endif; ?>
-        <a href="<?= url('/') ?>" class="hover:text-white">Home &rarr;</a>
+        <a href="<?= url('/') ?>" class="btn-primary" style="padding:0.4rem 0.75rem;">Home</a>
       </nav>
     </div>
   </header>
 
   <main class="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
     <?php if (!empty($_SESSION['flash_success'])): ?>
-      <div class="mb-5 bg-neutral-50 border border-neutral-300 text-black text-sm font-semibold rounded-lg p-3">
-        <?= e($_SESSION['flash_success']) ?>
-      </div>
+      <div class="flash-success"><?= e($_SESSION['flash_success']) ?></div>
       <?php unset($_SESSION['flash_success']); ?>
     <?php endif; ?>
     <?php if (!empty($_SESSION['flash_error'])): ?>
-      <div class="mb-5 bg-rose-50 border border-rose-300 text-rose-800 text-sm font-semibold rounded-lg p-3">
-        <?= e($_SESSION['flash_error']) ?>
-      </div>
+      <div class="flash-error"><?= e($_SESSION['flash_error']) ?></div>
       <?php unset($_SESSION['flash_error']); ?>
     <?php endif; ?>

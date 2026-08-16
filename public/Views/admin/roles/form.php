@@ -56,8 +56,8 @@ require __DIR__ . '/../layout-header.php';
   </div>
 
   <div class="flex items-center gap-3">
-    <button type="submit" class="rounded-lg bg-black px-6 py-3 text-xs font-black uppercase tracking-widest text-white hover:bg-neutral-900">Save role</button>
-    <a href="<?= url('/admin/roles') ?>" class="text-xs font-black text-neutral-700 hover:text-black">Back to roles</a>
+    <button type="submit" class="btn-primary">Save role</button>
+    <a href="<?= url('/admin/roles') ?>" class="btn-secondary">Back to roles</a>
   </div>
 </form>
 

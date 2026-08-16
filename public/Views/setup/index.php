@@ -13,13 +13,14 @@
   <link rel="stylesheet" href="<?= asset('assets/css/tailwind.css') ?>">
   <link rel="stylesheet" href="<?= asset('assets/css/app.css') ?>">
 </head>
-<body class="min-h-screen bg-white text-black antialiased">
+<body class="min-h-screen antialiased" style="background:var(--ke-paper);color:var(--ke-ink)">
+  <div class="flag-stripe" aria-hidden="true"></div>
   <main class="mx-auto grid min-h-screen max-w-6xl items-center gap-8 px-4 py-8 lg:grid-cols-[0.9fr_1.1fr]">
-    <section class="rounded-2xl bg-black p-8 text-white">
-      <div class="mb-10 flex h-14 w-14 items-center justify-center rounded-xl border border-white/20 bg-white text-black">
-        <?= pentagonLogoSvg('w-8 h-8 text-black') ?>
+    <section class="rounded-2xl p-8 text-white" style="background:var(--ke-black)">
+      <div class="mb-10 flex h-14 w-14 items-center justify-center rounded-xl text-white" style="background:var(--ke-red)">
+        <?= pentagonLogoSvg('w-8 h-8 text-white') ?>
       </div>
-      <p class="text-xs font-black uppercase tracking-widest text-neutral-300">First Run Setup</p>
+      <p class="text-xs font-black uppercase tracking-widest" style="color:#b8e0cc">First Run Setup</p>
       <h1 class="mt-3 font-serif-heading text-4xl font-black leading-tight">Prepare your LMS.</h1>
       <div class="mt-8 space-y-3 text-sm font-semibold text-neutral-200">
         <div class="rounded-lg border border-white/15 p-4">
@@ -45,7 +46,7 @@
       </div>
 
       <?php foreach ($errors as $error): ?>
-        <div class="mb-3 rounded-lg border border-rose-300 bg-rose-50 p-3 text-sm font-bold text-rose-800"><?= e($error) ?></div>
+        <div class="flash-error"><?= e($error) ?></div>
       <?php endforeach; ?>
 
       <form method="post" action="<?= url('/setup') ?>" enctype="multipart/form-data" class="space-y-5">
@@ -73,7 +74,7 @@
           <input type="file" name="store_logo" accept="image/*" class="mt-2 block w-full rounded-lg border border-neutral-400 bg-white p-3 text-sm font-semibold text-black" />
           <p class="mt-2 text-xs font-medium text-neutral-600">This logo appears on the LMS, Super Admin login, and user dashboards.</p>
         </div>
-        <button type="submit" class="w-full rounded-lg bg-black px-6 py-4 text-xs font-black uppercase tracking-widest text-white hover:bg-neutral-900">Run Setup &amp; Enter Admin</button>
+        <button type="submit" class="btn-primary btn-block">Run Setup &amp; Enter Admin</button>
       </form>
     </section>
   </main>

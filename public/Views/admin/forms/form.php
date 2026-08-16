@@ -55,7 +55,7 @@ $fieldTypes = [
   <div class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm space-y-4">
     <div class="flex items-center justify-between border-b border-neutral-100 pb-3">
       <h2 class="font-serif-heading text-lg font-bold text-[#0a0a0a]">Fields</h2>
-      <button type="button" id="add-field" class="rounded-lg border border-neutral-300 px-3 py-2 text-[11px] font-black uppercase tracking-widest text-black hover:border-black">Add field</button>
+      <button type="button" id="add-field" class="btn-secondary">Add field</button>
     </div>
     <div id="fields-list" class="space-y-4">
       <?php foreach ($fields as $index => $field):
@@ -80,7 +80,7 @@ $fieldTypes = [
               </select>
             </div>
             <div class="flex items-end">
-              <button type="button" class="remove-field rounded-lg border border-rose-200 px-3 py-2.5 text-[11px] font-black uppercase tracking-widest text-rose-700">Remove</button>
+              <button type="button" class="remove-field btn-danger">Remove</button>
             </div>
           </div>
           <label class="flex items-center gap-2 text-sm font-bold text-neutral-800">
@@ -97,8 +97,8 @@ $fieldTypes = [
   </div>
 
   <div class="flex items-center gap-3">
-    <button type="submit" class="rounded-lg bg-black px-6 py-3 text-xs font-black uppercase tracking-widest text-white hover:bg-neutral-900"><?= $formRecord ? 'Save form' : 'Create form' ?></button>
-    <a href="<?= url('/admin/forms') ?>" class="text-xs font-black text-neutral-700 hover:text-black">Cancel</a>
+    <button type="submit" class="btn-primary"><?= $formRecord ? 'Save form' : 'Create form' ?></button>
+    <a href="<?= url('/admin/forms') ?>" class="btn-secondary">Cancel</a>
   </div>
 </form>
 
@@ -121,7 +121,7 @@ $fieldTypes = [
         </select>
       </div>
       <div class="flex items-end">
-        <button type="button" class="remove-field rounded-lg border border-rose-200 px-3 py-2.5 text-[11px] font-black uppercase tracking-widest text-rose-700">Remove</button>
+        <button type="button" class="remove-field btn-danger">Remove</button>
       </div>
     </div>
     <label class="flex items-center gap-2 text-sm font-bold text-neutral-800">

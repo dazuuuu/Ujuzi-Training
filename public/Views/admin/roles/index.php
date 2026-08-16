@@ -50,7 +50,7 @@ require __DIR__ . '/../layout-header.php';
               <?php endif; ?>
             </td>
             <td class="px-5 py-4">
-              <a href="<?= url('/admin/roles/' . (int) $role['id'] . '/edit') ?>" class="text-xs font-black uppercase tracking-widest text-black hover:underline">Edit limits</a>
+              <a href="<?= url('/admin/roles/' . (int) $role['id'] . '/edit') ?>" class="btn-secondary" style="padding:0.35rem 0.65rem;">Edit limits</a>
             </td>
           </tr>
         <?php endforeach; ?>

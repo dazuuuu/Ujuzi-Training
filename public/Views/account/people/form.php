@@ -48,8 +48,8 @@ $action = $person ? url('/account/people/' . (int) $person['id']) : url('/accoun
   </div>
 
   <div class="flex items-center gap-3">
-    <button type="submit" class="rounded-lg bg-black px-6 py-3 text-xs font-black uppercase tracking-widest text-white"><?= $person ? 'Save person' : 'Create person' ?></button>
-    <a href="<?= url('/account/people') ?>" class="text-xs font-black text-neutral-700">Cancel</a>
+    <button type="submit" class="btn-primary"><?= $person ? 'Save person' : 'Create person' ?></button>
+    <a href="<?= url('/account/people') ?>" class="btn-secondary">Cancel</a>
   </div>
 </form>
 
