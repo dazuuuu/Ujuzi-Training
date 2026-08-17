@@ -1,14 +1,18 @@
 <?php
-/** Requires $error, $method, $old in scope. */
+/** Role-specific LMS login. Requires $error, $method, $old, $roleSlug, $roleMeta, $loginPath. */
+use App\Core\LoginRoles;
 require __DIR__ . '/layout-header.php';
+$meta = $roleMeta ?? LoginRoles::meta($roleSlug ?? '');
+$loginPath = $loginPath ?? '/account/login';
+$registerPath = $registerPath ?? LoginRoles::registerPath((string) ($roleSlug ?? ''));
 ?>
 
 <div class="max-w-md mx-auto">
   <div class="text-center mb-8">
-    <span class="text-xs font-bold text-black uppercase tracking-widest block mb-1">Learner &amp; staff login</span>
-    <h1 class="font-serif-heading text-3xl font-bold text-[#0a0a0a]">Sign in to your dashboard</h1>
+    <span class="text-xs font-bold uppercase tracking-widest block mb-1" style="color:var(--ke-green)"><?= e($meta['badge'] ?? 'Sign in') ?></span>
+    <h1 class="font-serif-heading text-3xl font-bold text-[#0a0a0a]"><?= e($meta['heading'] ?? 'Sign in to your dashboard') ?></h1>
     <p class="text-sm text-neutral-500 mt-2">
-      Use the email and password you registered with. On first login you will complete the form assigned to your role.
+      <?= e($meta['blurb'] ?? 'Use the email and password for this role.') ?>
     </p>
   </div>
 
@@ -22,7 +26,7 @@ require __DIR__ . '/layout-header.php';
       <div class="flash-error"><?= e($error) ?></div>
     <?php endif; ?>
 
-    <form method="post" action="<?= url('/account/login') ?>" id="email-form" class="space-y-4">
+    <form method="post" action="<?= url($loginPath) ?>" id="email-form" class="space-y-4">
       <?= csrfField() ?>
       <input type="hidden" name="method" value="email" />
       <div>
@@ -37,7 +41,7 @@ require __DIR__ . '/layout-header.php';
       <button type="submit" class="btn-primary btn-block">Sign in</button>
     </form>
 
-    <form method="post" action="<?= url('/account/login') ?>" id="phone-form" class="space-y-4 hidden">
+    <form method="post" action="<?= url($loginPath) ?>" id="phone-form" class="space-y-4 hidden">
       <?= csrfField() ?>
       <input type="hidden" name="method" value="phone" />
       <div>
@@ -51,9 +55,11 @@ require __DIR__ . '/layout-header.php';
 
   <div class="mt-6 bg-neutral-50 border border-neutral-200 rounded-xl p-5 text-xs text-neutral-600 space-y-2">
     <p class="font-bold text-neutral-800 uppercase tracking-wider text-[11px]">Need an account?</p>
-    <p>Students can <a href="<?= url('/account/register') ?>" class="font-bold" style="color:var(--ke-green)">register here</a> with email and password.</p>
-    <p>Trainers, tutors, and teachers can <a href="<?= url('/account/register/trainer') ?>" class="font-bold" style="color:var(--ke-green)">register here</a>, then pick organisation(s) on their profile form for approval.</p>
-    <p>Organisation admins register only through a Super Admin invite URL (valid for 5 minutes, one registration).</p>
+    <p><?= e($meta['need_account'] ?? 'Ask Super Admin or your organisation admin to create your account.') ?></p>
+    <?php if ($registerPath): ?>
+      <p><a href="<?= url($registerPath) ?>" class="font-bold" style="color:var(--ke-green)">Register for this role</a></p>
+    <?php endif; ?>
+    <p><a href="<?= url('/account/login') ?>" class="font-bold" style="color:var(--ke-green)">Choose a different role login</a></p>
     <p>Platform owner? <a href="<?= url('/admin/login') ?>" class="font-bold" style="color:var(--ke-red)">Super Admin login</a>.</p>
   </div>
 </div>

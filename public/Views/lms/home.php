@@ -57,10 +57,11 @@
         <div class="rounded-2xl p-6" style="border:1px solid rgba(184,224,204,.35);background:rgba(0,107,63,.18)">
           <p class="text-[11px] font-black uppercase tracking-widest" style="color:#b8e0cc">Who signs in where</p>
           <ul class="mt-4 space-y-3 text-sm font-semibold">
-            <li class="rounded-lg p-4" style="border:1px solid rgba(187,0,0,.45);background:rgba(187,0,0,.18)"><span class="block text-xs uppercase tracking-widest" style="color:#ffd0d0">Platform owner</span>Super Admin login</li>
-            <li class="rounded-lg p-4" style="border:1px solid rgba(184,224,204,.35);background:rgba(0,107,63,.22)"><span class="block text-xs uppercase tracking-widest" style="color:#b8e0cc">Students</span>Register or sign in with email and password</li>
-            <li class="rounded-lg p-4" style="border:1px solid rgba(184,224,204,.35);background:rgba(0,107,63,.22)"><span class="block text-xs uppercase tracking-widest" style="color:#b8e0cc">Trainers / tutors / teachers</span>Register, pick organisation(s), then wait for each organisation to approve you</li>
-            <li class="rounded-lg p-4" style="border:1px solid rgba(184,224,204,.35);background:rgba(0,107,63,.22)"><span class="block text-xs uppercase tracking-widest" style="color:#b8e0cc">Organisation admins</span>Use a Super Admin invite link, then sign in</li>
+            <li class="rounded-lg p-4" style="border:1px solid rgba(187,0,0,.45);background:rgba(187,0,0,.18)"><span class="block text-xs uppercase tracking-widest" style="color:#ffd0d0">Platform owner</span>Super Admin login — separate dashboard</li>
+            <li class="rounded-lg p-4" style="border:1px solid rgba(184,224,204,.35);background:rgba(0,107,63,.22)"><span class="block text-xs uppercase tracking-widest" style="color:#b8e0cc">Students</span>Student login, then the student dashboard</li>
+            <li class="rounded-lg p-4" style="border:1px solid rgba(184,224,204,.35);background:rgba(0,107,63,.22)"><span class="block text-xs uppercase tracking-widest" style="color:#b8e0cc">Trainers / tutors / teachers</span>Trainer login, then the trainer dashboard</li>
+            <li class="rounded-lg p-4" style="border:1px solid rgba(184,224,204,.35);background:rgba(0,107,63,.22)"><span class="block text-xs uppercase tracking-widest" style="color:#b8e0cc">Attachment trainers</span>Attachment trainer login, then that dashboard</li>
+            <li class="rounded-lg p-4" style="border:1px solid rgba(184,224,204,.35);background:rgba(0,107,63,.22)"><span class="block text-xs uppercase tracking-widest" style="color:#b8e0cc">Organisation admins</span>Organisation admin login, then the organisation dashboard</li>
           </ul>
         </div>
       </div>
@@ -72,19 +73,21 @@
       <div class="mt-8 grid gap-4 md:grid-cols-2">
         <?php
         $fallbackRoles = [
-            ['name' => 'Organisation Admin', 'description' => 'Admin-like tools inside an organisation.', 'has_admin_features' => true],
-            ['name' => 'Attachment Trainer', 'description' => 'Admin-like tools for students in the organisation.', 'has_admin_features' => true],
-            ['name' => 'Trainer / Tutor / Teacher', 'description' => 'Under organisation power. Dashboard and profile only.', 'has_admin_features' => false],
-            ['name' => 'Student', 'description' => 'Under organisation power. Completes assigned profile forms.', 'has_admin_features' => false],
+            ['slug' => 'organisation_admin', 'name' => 'Organisation Admin', 'description' => 'Admin-like tools inside an organisation.', 'has_admin_features' => true],
+            ['slug' => 'attachment_trainer', 'name' => 'Attachment Trainer', 'description' => 'Admin-like tools for students in the organisation.', 'has_admin_features' => true],
+            ['slug' => 'trainer', 'name' => 'Trainer / Tutor / Teacher', 'description' => 'Under organisation power. Dashboard and profile only.', 'has_admin_features' => false],
+            ['slug' => 'student', 'name' => 'Student', 'description' => 'Under organisation power. Completes assigned profile forms.', 'has_admin_features' => false],
         ];
         $cards = $roles ?: $fallbackRoles;
         foreach ($cards as $role):
           $adminLike = !empty($role['has_admin_features']);
+          $loginHref = !empty($role['slug']) ? url(\App\Core\LoginRoles::loginPath((string) $role['slug'])) : url('/account/login');
         ?>
           <article class="rounded-xl bg-white p-6" style="border:2px solid <?= $adminLike ? 'var(--ke-red)' : 'var(--ke-green)' ?>">
             <p class="text-[11px] font-black uppercase tracking-widest" style="color: <?= $adminLike ? 'var(--ke-red)' : 'var(--ke-green)' ?>"><?= $adminLike ? 'Admin-like' : 'Under organisation' ?></p>
             <h3 class="mt-2 text-xl font-black"><?= e($role['name']) ?></h3>
             <p class="mt-2 text-sm font-medium" style="color:var(--ke-muted)"><?= e($role['description'] ?? '') ?></p>
+            <a href="<?= $loginHref ?>" class="btn-primary mt-4 inline-flex" style="padding:0.4rem 0.85rem;">Sign in as <?= e($role['name']) ?></a>
           </article>
         <?php endforeach; ?>
       </div>

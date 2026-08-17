@@ -89,8 +89,10 @@ $router->get('/register/organisation-admin/{token}', [RegisterController::class,
 $router->post('/register/organisation-admin/{token}', [RegisterController::class, 'storeOrganisationAdmin']);
 
 // --- User account (role-based dashboards) ---
-$router->get('/account/login', [AccountAuthController::class, 'showLogin']);
-$router->post('/account/login', [AccountAuthController::class, 'login']);
+$router->get('/account/login', [AccountAuthController::class, 'choose']);
+$router->post('/account/login', [AccountAuthController::class, 'choose']);
+$router->get('/account/login/{role}', [AccountAuthController::class, 'showLogin']);
+$router->post('/account/login/{role}', [AccountAuthController::class, 'login']);
 $router->get('/account/verify', [AccountAuthController::class, 'showVerify']);
 $router->post('/account/verify', [AccountAuthController::class, 'verify']);
 $router->get('/account/logout', [AccountAuthController::class, 'logout']);

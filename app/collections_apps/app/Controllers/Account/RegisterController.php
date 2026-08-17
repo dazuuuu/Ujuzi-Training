@@ -278,6 +278,7 @@ class RegisterController
             'action' => url('/account/register'),
             'heading' => 'Create a student account',
             'blurb' => 'Register with email and password. After you sign in, the first page you see is the registration form Super Admin assigned to students.',
+            'loginUrl' => '/account/login/student',
         ]);
     }
 
@@ -291,6 +292,7 @@ class RegisterController
             'action' => url('/account/register/trainer'),
             'heading' => 'Create a trainer account',
             'blurb' => 'Register as a trainer, tutor, or teacher. After you sign in, fill the assigned form and pick organisation(s). Each organisation must approve you before you appear on their dashboard.',
+            'loginUrl' => '/account/login/trainer',
         ]);
     }
 
@@ -306,6 +308,7 @@ class RegisterController
             'blurb' => 'Create an account for ' . ($invite['organisation_name'] ?? 'this organisation') . ' with email and password. This link expires in 5 minutes and can only be used once.',
             'organisationName' => $invite['organisation_name'] ?? '',
             'expiresAt' => $invite['expires_at'] ?? '',
+            'loginUrl' => '/account/login/organisation-admin',
         ]);
     }
 

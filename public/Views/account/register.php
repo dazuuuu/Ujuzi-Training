@@ -38,7 +38,7 @@ require __DIR__ . '/layout-header.php';
   </div>
 
   <p class="mt-6 text-center text-sm font-semibold" style="color:var(--ke-muted)">
-    Already registered? <a href="<?= url('/account/login') ?>" class="font-bold" style="color:var(--ke-green)">Sign in</a>
+    Already registered? <a href="<?= url($loginUrl ?? '/account/login') ?>" class="font-bold" style="color:var(--ke-green)">Sign in</a>
   </p>
 </div>
 

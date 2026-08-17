@@ -42,7 +42,7 @@
     </form>
 
     <p class="text-center text-[11px] mt-6" style="color:#b8e0cc">
-      <a href="<?= url('/account/login') ?>" class="btn-secondary" style="padding:0.4rem 0.8rem;">User login</a>
+      <a href="<?= url('/account/login') ?>" class="btn-secondary" style="padding:0.4rem 0.8rem;">Role logins</a>
       <a href="<?= url('/') ?>" class="ml-2 underline" style="color:#b8e0cc">&larr; Back to LMS</a>
     </p>
   </div>

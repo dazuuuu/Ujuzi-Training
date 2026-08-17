@@ -34,7 +34,7 @@ require __DIR__ . '/layout-header.php';
     </form>
   </div>
 
-  <p class="text-[11px] text-neutral-400 mt-4"><a href="<?= url('/account/login') ?>" class="hover:text-neutral-700">&larr; Use a different email or phone number</a></p>
+  <p class="text-[11px] text-neutral-400 mt-4"><a href="<?= url($loginPath ?? '/account/login') ?>" class="hover:text-neutral-700">&larr; Use a different email or phone number</a></p>
 </div>
 
 <?php require __DIR__ . '/layout-footer.php'; ?>
