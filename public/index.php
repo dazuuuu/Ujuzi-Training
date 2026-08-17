@@ -1,6 +1,6 @@
 <?php
 /**
- * Pentagon Collections — single front controller (see .htaccess: every
+ * Ujuzi Training LMS — single front controller (see .htaccess: every
  * request that isn't a real file/directory is routed through this file).
  * Application code lives outside the web root, in /app/collections_apps.
  */
@@ -9,19 +9,23 @@ require dirname(__DIR__) . '/app/collections_apps/app/bootstrap.php';
 
 use App\Core\Router;
 use App\Controllers\SetupController;
-use App\Controllers\StorefrontController;
-use App\Controllers\Api\OrderController as ApiOrderController;
+use App\Controllers\LmsController;
 use App\Controllers\Admin\AuthController as AdminAuthController;
 use App\Controllers\Admin\DashboardController;
-use App\Controllers\Admin\ProductController;
-use App\Controllers\Admin\CategoryController;
-use App\Controllers\Admin\OfferController;
-use App\Controllers\Admin\OrderController as AdminOrderController;
-use App\Controllers\Admin\SeoController;
+use App\Controllers\Admin\RoleController;
+use App\Controllers\Admin\OrganisationController;
+use App\Controllers\Admin\UserController;
+use App\Controllers\Admin\FormController;
 use App\Controllers\Admin\SettingsController;
 use App\Controllers\Admin\UpdateController;
 use App\Controllers\Account\AuthController as AccountAuthController;
-use App\Controllers\Account\OrderController as AccountOrderController;
+use App\Controllers\Account\DashboardController as AccountDashboardController;
+use App\Controllers\Account\ProfileController;
+use App\Controllers\Account\PeopleController;
+use App\Controllers\Account\RegisterController;
+use App\Controllers\Account\TrainerRequestController;
+use App\Controllers\Account\CategoryController as AccountCategoryController;
+use App\Controllers\Account\CourseController;
 
 $router = new Router();
 
@@ -29,70 +33,99 @@ $router = new Router();
 $router->get('/setup', [SetupController::class, 'index']);
 $router->post('/setup', [SetupController::class, 'store']);
 
-// --- Storefront ---
-$router->get('/', [StorefrontController::class, 'home']);
-$router->get('/product/{code}', [StorefrontController::class, 'product']);
-$router->get('/category/{key}', [StorefrontController::class, 'category']);
-$router->get('/track-order', [StorefrontController::class, 'trackOrder']);
-$router->post('/track-order', [StorefrontController::class, 'trackOrder']);
+// --- Public LMS ---
+$router->get('/', [LmsController::class, 'home']);
 
-// --- API ---
-$router->post('/api/place-order', [ApiOrderController::class, 'store']);
-
-// --- Admin: auth ---
+// --- Super admin: auth ---
 $router->get('/admin/login', [AdminAuthController::class, 'showLogin']);
 $router->post('/admin/login', [AdminAuthController::class, 'login']);
 $router->get('/admin/logout', [AdminAuthController::class, 'logout']);
 
-// --- Admin: dashboard ---
+// --- Super admin: dashboard ---
 $router->get('/admin', [DashboardController::class, 'index']);
 
-// --- Admin: products ---
-$router->get('/admin/products', [ProductController::class, 'index']);
-$router->get('/admin/products/create', [ProductController::class, 'create']);
-$router->post('/admin/products', [ProductController::class, 'store']);
-$router->get('/admin/products/{id}/edit', [ProductController::class, 'edit']);
-$router->post('/admin/products/{id}', [ProductController::class, 'update']);
-$router->post('/admin/products/{id}/delete', [ProductController::class, 'destroy']);
+// --- Super admin: roles ---
+$router->get('/admin/roles', [RoleController::class, 'index']);
+$router->get('/admin/roles/{id}/edit', [RoleController::class, 'edit']);
+$router->post('/admin/roles/{id}', [RoleController::class, 'update']);
 
-// --- Admin: categories ---
-$router->get('/admin/categories', [CategoryController::class, 'index']);
-$router->get('/admin/categories/create', [CategoryController::class, 'create']);
-$router->post('/admin/categories', [CategoryController::class, 'store']);
-$router->get('/admin/categories/{id}/edit', [CategoryController::class, 'edit']);
-$router->post('/admin/categories/{id}', [CategoryController::class, 'update']);
-$router->post('/admin/categories/{id}/delete-image', [CategoryController::class, 'deleteImage']);
+// --- Super admin: organisations ---
+$router->get('/admin/organisations', [OrganisationController::class, 'index']);
+$router->get('/admin/organisations/create', [OrganisationController::class, 'create']);
+$router->post('/admin/organisations', [OrganisationController::class, 'store']);
+$router->get('/admin/organisations/{id}/edit', [OrganisationController::class, 'edit']);
+$router->post('/admin/organisations/{id}/invite', [OrganisationController::class, 'generateInvite']);
+$router->post('/admin/organisations/{id}/invite/email', [OrganisationController::class, 'emailInvite']);
+$router->post('/admin/organisations/{id}', [OrganisationController::class, 'update']);
+$router->get('/admin/share-registration', [OrganisationController::class, 'share']);
 
-// --- Admin: offers ---
-$router->get('/admin/offers', [OfferController::class, 'index']);
-$router->post('/admin/offers/{id}/update', [OfferController::class, 'update']);
-$router->post('/admin/offers/{id}/remove', [OfferController::class, 'remove']);
-$router->post('/admin/offers/{id}/add', [OfferController::class, 'add']);
+// --- Super admin: users ---
+$router->get('/admin/users', [UserController::class, 'index']);
+$router->get('/admin/users/create', [UserController::class, 'create']);
+$router->post('/admin/users', [UserController::class, 'store']);
+$router->get('/admin/users/{id}/edit', [UserController::class, 'edit']);
+$router->post('/admin/users/{id}', [UserController::class, 'update']);
 
-// --- Admin: orders ---
-$router->get('/admin/orders', [AdminOrderController::class, 'index']);
-$router->get('/admin/orders/{ref}', [AdminOrderController::class, 'show']);
-$router->post('/admin/orders/{id}/status', [AdminOrderController::class, 'updateStatus']);
+// --- Super admin: forms ---
+$router->get('/admin/forms', [FormController::class, 'index']);
+$router->get('/admin/forms/create', [FormController::class, 'create']);
+$router->post('/admin/forms', [FormController::class, 'store']);
+$router->get('/admin/forms/{id}/edit', [FormController::class, 'edit']);
+$router->post('/admin/forms/{id}', [FormController::class, 'update']);
+$router->post('/admin/forms/{id}/delete', [FormController::class, 'destroy']);
 
-// --- Admin: SEO ---
-$router->get('/admin/seo', [SeoController::class, 'index']);
-$router->get('/admin/seo/{pageKey}/edit', [SeoController::class, 'edit']);
-$router->post('/admin/seo/{pageKey}', [SeoController::class, 'update']);
-
-// --- Admin: settings ---
+// --- Super admin: settings ---
 $router->get('/admin/settings', [SettingsController::class, 'index']);
 $router->post('/admin/settings', [SettingsController::class, 'update']);
 
-// --- Admin: updates ---
+// --- Super admin: updates ---
 $router->get('/admin/updates', [UpdateController::class, 'index']);
 $router->post('/admin/updates/run', [UpdateController::class, 'run']);
 
-// --- Account ---
-$router->get('/account/login', [AccountAuthController::class, 'showLogin']);
-$router->post('/account/login', [AccountAuthController::class, 'login']);
+// --- Public registration ---
+$router->get('/account/register', [RegisterController::class, 'showStudent']);
+$router->post('/account/register', [RegisterController::class, 'storeStudent']);
+$router->get('/account/register/trainer', [RegisterController::class, 'showTrainer']);
+$router->post('/account/register/trainer', [RegisterController::class, 'storeTrainer']);
+$router->get('/register/organisation-admin/{token}', [RegisterController::class, 'showOrganisationAdmin']);
+$router->post('/register/organisation-admin/{token}', [RegisterController::class, 'storeOrganisationAdmin']);
+
+// --- User account (role-based dashboards) ---
+$router->get('/account/login', [AccountAuthController::class, 'choose']);
+$router->post('/account/login', [AccountAuthController::class, 'choose']);
+$router->get('/account/login/{role}', [AccountAuthController::class, 'showLogin']);
+$router->post('/account/login/{role}', [AccountAuthController::class, 'login']);
 $router->get('/account/verify', [AccountAuthController::class, 'showVerify']);
 $router->post('/account/verify', [AccountAuthController::class, 'verify']);
 $router->get('/account/logout', [AccountAuthController::class, 'logout']);
-$router->get('/account/orders', [AccountOrderController::class, 'index']);
+$router->get('/account/dashboard', [AccountDashboardController::class, 'index']);
+$router->get('/account/profile', [ProfileController::class, 'index']);
+$router->post('/account/profile', [ProfileController::class, 'update']);
+$router->get('/account/people', [PeopleController::class, 'index']);
+$router->get('/account/people/create', [PeopleController::class, 'create']);
+$router->post('/account/people', [PeopleController::class, 'store']);
+$router->get('/account/people/{id}', [PeopleController::class, 'show']);
+$router->get('/account/people/{id}/edit', [PeopleController::class, 'edit']);
+$router->post('/account/people/{id}', [PeopleController::class, 'update']);
+$router->post('/account/trainer-requests/{id}/approve', [TrainerRequestController::class, 'approve']);
+$router->post('/account/trainer-requests/{id}/reject', [TrainerRequestController::class, 'reject']);
+
+$router->get('/account/categories', [AccountCategoryController::class, 'index']);
+$router->get('/account/categories/create', [AccountCategoryController::class, 'create']);
+$router->post('/account/categories', [AccountCategoryController::class, 'store']);
+$router->get('/account/categories/{id}/edit', [AccountCategoryController::class, 'edit']);
+$router->post('/account/categories/{id}', [AccountCategoryController::class, 'update']);
+$router->post('/account/categories/{id}/delete', [AccountCategoryController::class, 'destroy']);
+
+$router->get('/account/courses', [CourseController::class, 'index']);
+$router->get('/account/courses/create', [CourseController::class, 'create']);
+$router->post('/account/courses', [CourseController::class, 'store']);
+$router->get('/account/courses/{id}', [CourseController::class, 'show']);
+$router->get('/account/courses/{id}/edit', [CourseController::class, 'edit']);
+$router->post('/account/courses/{id}', [CourseController::class, 'update']);
+$router->post('/account/courses/{id}/delete', [CourseController::class, 'destroy']);
+$router->post('/account/courses/{id}/modules', [CourseController::class, 'storeModule']);
+$router->post('/account/courses/{id}/modules/{moduleId}', [CourseController::class, 'updateModule']);
+$router->post('/account/courses/{id}/modules/{moduleId}/delete', [CourseController::class, 'destroyModule']);
 
 $router->dispatch();

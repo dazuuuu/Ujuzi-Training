@@ -9,5 +9,9 @@ coverage/
 !.env.example
 !app/collections_apps/.env.example
 public/assets/uploads/*
+!public/assets/uploads/products/
 !public/assets/uploads/products/.gitkeep
+!public/assets/uploads/categories/
 !public/assets/uploads/categories/.gitkeep
+!public/assets/uploads/forms/
+!public/assets/uploads/forms/.gitkeep

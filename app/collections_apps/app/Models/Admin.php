@@ -18,11 +18,18 @@ class Admin
         return $stmt->fetch() ?: null;
     }
 
-    public static function create(string $email, string $password): int
+    public static function create(string $email, string $password, ?string $name = null): int
     {
         $pdo = Database::connection();
-        $pdo->prepare('INSERT INTO admins (email, password_hash) VALUES (?, ?)')
-            ->execute([$email, password_hash($password, PASSWORD_DEFAULT)]);
+        $pdo->prepare('INSERT INTO admins (email, password_hash, name) VALUES (?, ?, ?)')
+            ->execute([$email, password_hash($password, PASSWORD_DEFAULT), $name !== '' ? $name : null]);
         return (int) $pdo->lastInsertId();
+    }
+
+    public static function find(int $id): ?array
+    {
+        $stmt = Database::connection()->prepare('SELECT * FROM admins WHERE id = ?');
+        $stmt->execute([$id]);
+        return $stmt->fetch() ?: null;
     }
 }

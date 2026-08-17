@@ -78,13 +78,16 @@ class SetupController
             return;
         }
 
-        $adminId = Admin::create($email, $password);
+        $adminId = Admin::create($email, $password, $name !== '' ? $name : null);
         if ($logoPath) {
             StoreSetting::set('store_logo', $logoPath);
         }
+        if ($name !== '') {
+            StoreSetting::set('platform_name', $name);
+        }
 
         AdminSession::start();
-        AdminSession::loginAdmin($adminId, $email);
+        AdminSession::loginAdmin($adminId, $email, $name !== '' ? $name : null);
         redirect('/admin');
     }
 }

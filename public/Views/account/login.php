@@ -1,14 +1,18 @@
 <?php
-/** Requires $error, $method, $old (array with email/phone) in scope. */
+/** Role-specific LMS login. Requires $error, $method, $old, $roleSlug, $roleMeta, $loginPath. */
+use App\Core\LoginRoles;
 require __DIR__ . '/layout-header.php';
+$meta = $roleMeta ?? LoginRoles::meta($roleSlug ?? '');
+$loginPath = $loginPath ?? '/account/login';
+$registerPath = $registerPath ?? LoginRoles::registerPath((string) ($roleSlug ?? ''));
 ?>
 
 <div class="max-w-md mx-auto">
   <div class="text-center mb-8">
-    <span class="text-xs font-bold text-black uppercase tracking-widest block mb-1">My Account</span>
-    <h1 class="font-serif-heading text-3xl font-bold text-[#0a0a0a]">Track Your Order</h1>
+    <span class="text-xs font-bold uppercase tracking-widest block mb-1" style="color:var(--ke-green)"><?= e($meta['badge'] ?? 'Sign in') ?></span>
+    <h1 class="font-serif-heading text-3xl font-bold text-[#0a0a0a]"><?= e($meta['heading'] ?? 'Sign in to your dashboard') ?></h1>
     <p class="text-sm text-neutral-500 mt-2">
-      Sign in with the email or phone number you used at checkout — no password needed.
+      <?= e($meta['blurb'] ?? 'Use the email and password for this role.') ?>
     </p>
   </div>
 
@@ -19,36 +23,44 @@ require __DIR__ . '/layout-header.php';
     </div>
 
     <?php if ($error): ?>
-      <div class="bg-rose-50 border border-rose-300 text-rose-800 text-sm rounded-lg p-3 mb-4"><?= e($error) ?></div>
+      <div class="flash-error"><?= e($error) ?></div>
     <?php endif; ?>
 
-    <form method="post" action="<?= url('/account/login') ?>" id="email-form" class="space-y-4">
+    <form method="post" action="<?= url($loginPath) ?>" id="email-form" class="space-y-4">
       <?= csrfField() ?>
       <input type="hidden" name="method" value="email" />
       <div>
         <label class="text-[11px] font-bold text-neutral-600 uppercase">Email Address</label>
-        <input type="email" name="email" required value="<?= e($old['email'] ?? '') ?>" placeholder="you@example.com" class="w-full mt-1 bg-white border border-neutral-300 rounded-lg p-2.5 text-sm focus:outline-none focus:border-black" />
+        <input type="email" name="email" required value="<?= e($old['email'] ?? '') ?>" placeholder="you@example.com" autocomplete="email" class="w-full mt-1 bg-white border border-neutral-300 rounded-lg p-2.5 text-sm focus:outline-none focus:border-black" />
       </div>
-      <button type="submit" class="w-full bg-[#0a0a0a] hover:bg-black text-white text-xs font-bold py-3 rounded-lg uppercase tracking-widest transition-colors cursor-pointer border border-neutral-300">Send Login Code</button>
-      <p class="text-[11px] text-neutral-400 text-center">We'll email you a 6-digit code that expires in 10 minutes.</p>
+      <div>
+        <label class="text-[11px] font-bold text-neutral-600 uppercase">Password</label>
+        <input type="password" name="password" autocomplete="current-password" class="w-full mt-1 bg-white border border-neutral-300 rounded-lg p-2.5 text-sm focus:outline-none focus:border-black" />
+        <p class="field-hint">Leave blank only if an admin created your account and you still use an email login code.</p>
+      </div>
+      <button type="submit" class="btn-primary btn-block">Sign in</button>
     </form>
 
-    <form method="post" action="<?= url('/account/login') ?>" id="phone-form" class="space-y-4 hidden">
+    <form method="post" action="<?= url($loginPath) ?>" id="phone-form" class="space-y-4 hidden">
       <?= csrfField() ?>
       <input type="hidden" name="method" value="phone" />
       <div>
         <label class="text-[11px] font-bold text-neutral-600 uppercase">Phone Number</label>
         <input type="tel" name="phone" required value="<?= e($old['phone'] ?? '') ?>" placeholder="254712345678" class="w-full mt-1 bg-white border border-neutral-300 rounded-lg p-2.5 text-sm font-mono focus:outline-none focus:border-black" />
       </div>
-      <button type="submit" class="w-full bg-[#0a0a0a] hover:bg-black text-white text-xs font-bold py-3 rounded-lg uppercase tracking-widest transition-colors cursor-pointer border border-neutral-300">Continue</button>
-      <p class="text-[11px] text-neutral-400 text-center">Use the exact phone number you gave at checkout.</p>
+      <button type="submit" class="btn-primary btn-block">Continue</button>
+      <p class="text-[11px] text-neutral-400 text-center">Use the exact phone number your admin saved.</p>
     </form>
   </div>
 
-  <div class="mt-6 bg-neutral-50 border border-neutral-700 rounded-xl p-5 text-xs text-neutral-600 space-y-2">
-    <p class="font-bold text-neutral-800 uppercase tracking-wider text-[11px]">First time here?</p>
-    <p>You don't need to sign up. The moment you place an order, we automatically create a tracking account using the email or phone number from your checkout details.</p>
-    <p>Come back to this page any time and sign in with that same email or phone number to see your order status.</p>
+  <div class="mt-6 bg-neutral-50 border border-neutral-200 rounded-xl p-5 text-xs text-neutral-600 space-y-2">
+    <p class="font-bold text-neutral-800 uppercase tracking-wider text-[11px]">Need an account?</p>
+    <p><?= e($meta['need_account'] ?? 'Ask Super Admin or your organisation admin to create your account.') ?></p>
+    <?php if ($registerPath): ?>
+      <p><a href="<?= url($registerPath) ?>" class="font-bold" style="color:var(--ke-green)">Register for this role</a></p>
+    <?php endif; ?>
+    <p><a href="<?= url('/account/login') ?>" class="font-bold" style="color:var(--ke-green)">Choose a different role login</a></p>
+    <p>Platform owner? <a href="<?= url('/admin/login') ?>" class="font-bold" style="color:var(--ke-red)">Super Admin login</a>.</p>
   </div>
 </div>
 
@@ -63,8 +75,8 @@ require __DIR__ . '/layout-header.php';
       var active = t.getAttribute('data-tab') === method;
       t.classList.toggle('bg-white', active);
       t.classList.toggle('shadow-sm', active);
-      t.classList.toggle('text-[#0a0a0a]', active);
-      t.classList.toggle('text-neutral-500', !active);
+      t.style.color = active ? '#006b3f' : '#2f3f37';
+      t.style.fontWeight = active ? '800' : '700';
     });
     forms.email.classList.toggle('hidden', method !== 'email');
     forms.phone.classList.toggle('hidden', method !== 'phone');
