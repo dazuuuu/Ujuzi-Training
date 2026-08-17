@@ -72,4 +72,47 @@ class Authz
             fn(array $user): bool => in_array($user['role_slug'], $allowed, true)
         ));
     }
+
+    public static function isOrganisationAdmin(array $actor): bool
+    {
+        return ($actor['role_slug'] ?? '') === 'organisation_admin' && !empty($actor['organisation_id']);
+    }
+
+    public static function approvedOrganisationIds(array $actor): array
+    {
+        $ids = [];
+        try {
+            $ids = OrganisationMembership::approvedOrganisationIds((int) $actor['id']);
+        } catch (\Throwable $e) {
+            $ids = [];
+        }
+        if (!$ids && !empty($actor['organisation_id']) && OrganisationMembership::isTrainerRole((string) ($actor['role_slug'] ?? ''))) {
+            $ids[] = (int) $actor['organisation_id'];
+        }
+        return array_values(array_unique(array_filter($ids)));
+    }
+
+    public static function canCreateCourses(array $actor): bool
+    {
+        return OrganisationMembership::isTrainerRole((string) ($actor['role_slug'] ?? ''))
+            && self::approvedOrganisationIds($actor) !== [];
+    }
+
+    public static function canViewCourses(array $actor): bool
+    {
+        return self::isOrganisationAdmin($actor) || self::canCreateCourses($actor);
+    }
+
+    public static function canAccessCourse(array $actor, array $course): bool
+    {
+        if (self::isOrganisationAdmin($actor) && (int) $course['organisation_id'] === (int) $actor['organisation_id']) {
+            return true;
+        }
+        return (int) ($course['trainer_user_id'] ?? 0) === (int) $actor['id'] && self::canCreateCourses($actor);
+    }
+
+    public static function canEditCourse(array $actor, array $course): bool
+    {
+        return (int) ($course['trainer_user_id'] ?? 0) === (int) $actor['id'] && self::canCreateCourses($actor);
+    }
 }

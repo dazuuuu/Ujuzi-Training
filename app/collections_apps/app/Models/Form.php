@@ -27,28 +27,46 @@ class Form
         return $row ? self::withRoles($row) : null;
     }
 
-    public static function forRole(int $roleId, bool $activeOnly = true): array
+    public static function forRole(int $roleId, bool $activeOnly = true, string $purpose = 'profile'): array
     {
         $sql = 'SELECT f.* FROM forms f
                 INNER JOIN form_roles fr ON fr.form_id = f.id
                 WHERE fr.role_id = ?';
+        $params = [$roleId];
         if ($activeOnly) {
             $sql .= ' AND f.is_active = 1';
         }
+        if ($purpose !== '') {
+            $sql .= ' AND COALESCE(f.purpose, \'profile\') = ?';
+            $params[] = $purpose;
+        }
         $sql .= ' ORDER BY f.title ASC';
-        $stmt = Database::connection()->prepare($sql);
-        $stmt->execute([$roleId]);
-        return array_map([self::class, 'withRoles'], $stmt->fetchAll());
+        try {
+            $stmt = Database::connection()->prepare($sql);
+            $stmt->execute($params);
+            return array_map([self::class, 'withRoles'], $stmt->fetchAll());
+        } catch (\Throwable $e) {
+            $fallback = 'SELECT f.* FROM forms f INNER JOIN form_roles fr ON fr.form_id = f.id WHERE fr.role_id = ?';
+            if ($activeOnly) {
+                $fallback .= ' AND f.is_active = 1';
+            }
+            $fallback .= ' ORDER BY f.title ASC';
+            $stmt = Database::connection()->prepare($fallback);
+            $stmt->execute([$roleId]);
+            return array_map([self::class, 'withRoles'], $stmt->fetchAll());
+        }
     }
 
     public static function create(array $fields): int
     {
         $pdo = Database::connection();
-        $pdo->prepare('INSERT INTO forms (title, description, is_active, created_by_admin_id) VALUES (?, ?, ?, ?)')
+        $purpose = ($fields['purpose'] ?? '') === 'course' ? 'course' : 'profile';
+        $pdo->prepare('INSERT INTO forms (title, description, is_active, purpose, created_by_admin_id) VALUES (?, ?, ?, ?, ?)')
             ->execute([
                 $fields['title'],
                 $fields['description'] ?? null,
                 !empty($fields['is_active']) ? 1 : 0,
+                $purpose,
                 $fields['created_by_admin_id'] ?? null,
             ]);
         $id = (int) $pdo->lastInsertId();
@@ -58,12 +76,14 @@ class Form
 
     public static function update(int $id, array $fields): void
     {
+        $purpose = ($fields['purpose'] ?? '') === 'course' ? 'course' : 'profile';
         Database::connection()->prepare(
-            'UPDATE forms SET title = ?, description = ?, is_active = ? WHERE id = ?'
+            'UPDATE forms SET title = ?, description = ?, is_active = ?, purpose = ? WHERE id = ?'
         )->execute([
             $fields['title'],
             $fields['description'] ?? null,
             !empty($fields['is_active']) ? 1 : 0,
+            $purpose,
             $id,
         ]);
         self::syncRoles($id, $fields['role_ids'] ?? []);
@@ -107,6 +127,7 @@ class Form
         $row['roles'] = $stmt->fetchAll();
         $row['role_ids'] = array_map(fn($role) => (int) $role['id'], $row['roles']);
         $row['field_count'] = FormField::countForForm((int) $row['id']);
+        $row['purpose'] = ($row['purpose'] ?? '') === 'course' ? 'course' : 'profile';
         return $row;
     }
 }

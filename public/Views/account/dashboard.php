@@ -34,6 +34,12 @@ require __DIR__ . '/layout-header.php';
         <p class="mt-3 text-2xl font-black"><?= count($managedUsers ?? []) ?></p>
         <p class="mt-1 text-xs font-bold text-neutral-600">You can manage</p>
       </a>
+    <?php elseif (!empty($canViewCourses)): ?>
+      <a href="<?= url('/account/courses') ?>" class="rounded-xl bg-white p-5" style="border:2px solid var(--ke-green)">
+        <p class="text-[11px] font-black uppercase tracking-widest" style="color:var(--ke-green)">Courses</p>
+        <p class="mt-3 text-lg font-black"><?= !empty($canCreateCourses) ? 'Create & teach' : 'Review catalogue' ?></p>
+        <p class="mt-1 text-xs font-bold text-neutral-600">Open courses</p>
+      </a>
     <?php else: ?>
       <div class="rounded-xl border border-neutral-300 bg-white p-5">
         <p class="text-[11px] font-black uppercase tracking-widest text-neutral-600">Workspace</p>
@@ -69,6 +75,32 @@ require __DIR__ . '/layout-header.php';
             </div>
           </div>
         <?php endforeach; ?>
+      </div>
+    </section>
+  <?php endif; ?>
+
+  <?php if (!empty($isOrgAdmin)): ?>
+    <section class="rounded-xl bg-white p-6 shadow-sm" style="border:2px solid var(--ke-green)">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <h2 class="font-serif-heading text-lg font-bold">Course categories</h2>
+          <p class="mt-1 text-xs font-semibold" style="color:var(--ke-muted)">List the subjects your organisation offers. Approved tutors only see these when they create a course.</p>
+        </div>
+        <a href="<?= url('/account/categories') ?>" class="btn-primary">Manage categories</a>
+      </div>
+    </section>
+  <?php endif; ?>
+
+  <?php if (!empty($canViewCourses)): ?>
+    <section class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <h2 class="font-serif-heading text-lg font-bold">Courses</h2>
+          <p class="mt-1 text-xs font-semibold" style="color:var(--ke-muted)"><?= !empty($canCreateCourses)
+            ? 'Create courses after an organisation approves you, then add one video module at a time.'
+            : 'Review courses tutors have created for your organisation.' ?></p>
+        </div>
+        <a href="<?= url(!empty($canCreateCourses) ? '/account/courses/create' : '/account/courses') ?>" class="btn-primary"><?= !empty($canCreateCourses) ? 'Create a course' : 'View courses' ?></a>
       </div>
     </section>
   <?php endif; ?>

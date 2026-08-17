@@ -8,7 +8,7 @@ require __DIR__ . '/../layout-header.php';
     <div>
       <p class="text-xs font-black uppercase tracking-widest text-neutral-600">Profile builder</p>
       <h2 class="mt-2 text-2xl font-black text-black">Forms</h2>
-      <p class="mt-1 max-w-2xl text-sm font-medium text-neutral-700">Build WordPress-style profile forms with text, choices, organisations from the database, files, dates, and more. Drag fields to reorder them. Assign forms to roles and they appear on each matching user’s profile.</p>
+      <p class="mt-1 max-w-2xl text-sm font-medium text-neutral-700">Build WordPress-style forms. Profile forms appear on matching users’ profile pages. Course forms are filled by approved tutors to create courses. Include a Category field and document uploads on course forms.</p>
     </div>
     <a href="<?= url('/admin/forms/create') ?>" class="btn-primary">Create form</a>
   </section>
@@ -18,6 +18,7 @@ require __DIR__ . '/../layout-header.php';
       <thead class="bg-neutral-100 text-[11px] uppercase tracking-wider text-black">
         <tr>
           <th class="px-5 py-3">Form</th>
+          <th class="px-5 py-3">Purpose</th>
           <th class="px-5 py-3">Assigned to</th>
           <th class="px-5 py-3">Fields</th>
           <th class="px-5 py-3">Status</th>
@@ -26,7 +27,7 @@ require __DIR__ . '/../layout-header.php';
       </thead>
       <tbody class="divide-y divide-neutral-100">
         <?php if (!$forms): ?>
-          <tr><td colspan="5" class="px-5 py-8 text-center font-bold text-neutral-700">No forms yet. Create one to collect profile details.</td></tr>
+          <tr><td colspan="6" class="px-5 py-8 text-center font-bold text-neutral-700">No forms yet. Create a profile form or a course creation form.</td></tr>
         <?php endif; ?>
         <?php foreach ($forms as $form): ?>
           <tr>
@@ -34,6 +35,7 @@ require __DIR__ . '/../layout-header.php';
               <p class="font-black text-black"><?= e($form['title']) ?></p>
               <p class="text-xs font-semibold text-neutral-600"><?= e($form['description'] ?: 'No description') ?></p>
             </td>
+            <td class="px-5 py-4 text-xs font-bold text-neutral-800"><?= ($form['purpose'] ?? 'profile') === 'course' ? 'Course creation' : 'Profile details' ?></td>
             <td class="px-5 py-4 text-xs font-bold text-neutral-800">
               <?php if (empty($form['roles'])): ?>
                 Unassigned

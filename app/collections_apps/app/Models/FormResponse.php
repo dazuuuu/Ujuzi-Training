@@ -55,6 +55,10 @@ class FormResponse
 
     public static function provisionForForm(int $formId): void
     {
+        $form = Form::find($formId);
+        if ($form && ($form['purpose'] ?? 'profile') === 'course') {
+            return;
+        }
         $roleIds = Form::roleIds($formId);
         if (!$roleIds) {
             return;

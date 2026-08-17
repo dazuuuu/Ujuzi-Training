@@ -1418,3 +1418,61 @@ body.admin-panel .admin-data-table .btn-danger:hover {
   color: var(--ke-white) !important;
   text-decoration: none;
 }
+
+.course-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.course-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1rem;
+  background: var(--ke-white);
+  border: 1px solid var(--ke-line);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+}
+
+.course-card img,
+.course-cover {
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: 0.5rem;
+}
+
+.module-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--ke-line);
+}
+
+.module-card:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.module-player {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  background: #111;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.module-player iframe,
+.module-player video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #000;
+}

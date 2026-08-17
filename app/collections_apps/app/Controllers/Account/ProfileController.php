@@ -39,8 +39,8 @@ class ProfileController extends BaseAccountController
 
         $formId = (int) Request::post('form_id', 0);
         $form = Form::find($formId);
-        if (!$form || empty($form['is_active']) || !in_array((int) $this->user['role_id'], $form['role_ids'], true)) {
-            flashError('That form is not assigned to your role.');
+        if (!$form || empty($form['is_active']) || !in_array((int) $this->user['role_id'], $form['role_ids'], true) || ($form['purpose'] ?? 'profile') === 'course') {
+            flashError('That form is not assigned to your profile.');
             redirect('/account/profile');
         }
 
@@ -50,7 +50,7 @@ class ProfileController extends BaseAccountController
             $posted = [];
         }
         $existing = FormResponse::findForUserForm((int) $this->user['id'], $formId);
-        $collected = FormAnswerService::collect($fields, $posted, $existing['answers'] ?? []);
+        $collected = FormAnswerService::collect($fields, $posted, $existing['answers'] ?? [], $this->user);
 
         if ($collected['errors']) {
             flashError(implode(' ', $collected['errors']));

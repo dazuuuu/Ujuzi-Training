@@ -44,13 +44,26 @@ function fieldChoices(array $field): array
     <input type="hidden" name="is_active" value="0" />
     <label class="flex items-center gap-2 text-sm font-bold">
       <input type="checkbox" name="is_active" value="1" <?= !empty($form['is_active']) ? 'checked' : '' ?> class="h-4 w-4" />
-      Active — show on assigned profiles
+      Active — show this form to assigned roles
     </label>
+    <div class="pt-2">
+      <p class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">What this form is for</p>
+      <div class="mt-2 grid gap-2 sm:grid-cols-2">
+        <label class="flex items-start gap-2 rounded-lg border border-neutral-300 bg-white p-2.5 text-sm font-semibold">
+          <input type="radio" name="purpose" value="profile" <?= ($form['purpose'] ?? 'profile') !== 'course' ? 'checked' : '' ?> class="mt-0.5 h-4 w-4" />
+          <span>Profile details — appears on the user’s profile page</span>
+        </label>
+        <label class="flex items-start gap-2 rounded-lg border border-neutral-300 bg-white p-2.5 text-sm font-semibold">
+          <input type="radio" name="purpose" value="course" <?= ($form['purpose'] ?? '') === 'course' ? 'checked' : '' ?> class="mt-0.5 h-4 w-4" />
+          <span>Course creation — approved tutors use this to create courses</span>
+        </label>
+      </div>
+    </div>
   </div>
 
   <div class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm space-y-4">
     <h2 class="font-serif-heading text-lg font-bold border-b border-neutral-100 pb-3">Assign to roles</h2>
-    <p class="text-xs font-medium" style="color:var(--ke-muted)">The form is saved and attached to every matching user’s profile page.</p>
+      <p class="text-xs font-medium" style="color:var(--ke-muted)">Profile forms attach to matching users’ profile pages. Course forms appear when approved tutors create a course. Assign a course form to the Trainer / Tutor / Teacher role and include a Category field plus file uploads.</p>
     <div class="grid gap-2 sm:grid-cols-2">
       <?php foreach ($roles as $role): ?>
         <label class="flex items-center gap-2 rounded-lg border border-neutral-300 bg-white p-2.5 text-sm font-semibold">
@@ -64,7 +77,7 @@ function fieldChoices(array $field): array
   <div class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm space-y-4">
     <div class="border-b border-neutral-100 pb-3">
       <h2 class="font-serif-heading text-lg font-bold">Fields</h2>
-      <p class="text-xs font-medium mt-1" style="color:var(--ke-muted)">Pick a type the way WordPress form builders do. Drag a field by the handle (or use Up / Down) to reposition it. The Organisations field loads organisations from the database — choose whether people pick one or several.</p>
+      <p class="text-xs font-medium mt-1" style="color:var(--ke-muted)">Pick a type the way WordPress form builders do. Drag a field to reposition it. Organisation category loads categories each organisation lists — approved tutors only see categories for organisations they belong to. Documents accepts PDFs, images, and Word files.</p>
     </div>
     <div id="fields-list" class="space-y-4">
       <?php foreach ($fields as $index => $field):
@@ -192,6 +205,10 @@ function fieldChoices(array $field): array
             </select>
             <p class="field-hint">People pick from organisations saved in the database. For tutor registration, each selected organisation must approve them.</p>
           </div>
+          <div class="category-wrap rounded-lg p-3 <?= $type === 'category' ? '' : 'hidden' ?>" style="background:#f6f7f4;border:1px solid var(--ke-line)">
+            <p class="text-sm font-semibold">Organisation categories</p>
+            <p class="field-hint">This field lists categories each organisation has added. Approved tutors only see categories for organisations they belong to. Use it on a course-creation form assigned to trainers.</p>
+          </div>
             </div>
           </div>
         </div>
@@ -313,6 +330,10 @@ function fieldChoices(array $field): array
       </select>
       <p class="field-hint">People pick from organisations saved in the database. For tutor registration, each selected organisation must approve them.</p>
     </div>
+    <div class="category-wrap hidden rounded-lg p-3" style="background:#f6f7f4;border:1px solid var(--ke-line)">
+      <p class="text-sm font-semibold">Organisation categories</p>
+      <p class="field-hint">This field lists categories each organisation has added. Approved tutors only see categories for organisations they belong to. Use it on a course-creation form assigned to trainers.</p>
+    </div>
       </div>
     </div>
   </div>
@@ -359,6 +380,7 @@ function fieldChoices(array $field): array
     var minmax = row.querySelector('.minmax-wrap');
     var selectAll = row.querySelector('.select-all-wrap');
     var orgMode = row.querySelector('.org-mode-wrap');
+    var categoryWrap = row.querySelector('.category-wrap');
     if (choices) choices.classList.toggle('hidden', !choiceTypes[value]);
     if (range) range.classList.toggle('hidden', !rangeTypes[value]);
     if (placeholder) placeholder.classList.toggle('hidden', !placeholderTypes[value]);
@@ -368,6 +390,7 @@ function fieldChoices(array $field): array
     if (minmax) minmax.classList.toggle('hidden', !minmaxTypes[value]);
     if (selectAll) selectAll.classList.toggle('hidden', value !== 'checkboxes');
     if (orgMode) orgMode.classList.toggle('hidden', value !== 'organisation');
+    if (categoryWrap) categoryWrap.classList.toggle('hidden', value !== 'category');
     if (range && rangeTypes[value] && rangeDefaults[value]) {
       var minInput = range.querySelector('[name$="[range_min]"], [data-name="range_min"]');
       var maxInput = range.querySelector('[name$="[range_max]"], [data-name="range_max"]');

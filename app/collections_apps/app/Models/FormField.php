@@ -101,6 +101,11 @@ class FormField
             $names = Organisation::namesByIds($ids);
             return $names ? implode(', ', array_values($names)) : '—';
         }
+        if (($field['field_type'] ?? '') === 'category') {
+            $ids = is_array($value) ? $value : [$value];
+            $names = OrganisationCategory::namesByIds($ids);
+            return $names ? implode(', ', array_values($names)) : '—';
+        }
         if (is_array($value)) {
             if (isset($value['first']) || isset($value['last'])) {
                 return trim(($value['first'] ?? '') . ' ' . ($value['last'] ?? '')) ?: '—';

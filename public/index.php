@@ -24,6 +24,8 @@ use App\Controllers\Account\ProfileController;
 use App\Controllers\Account\PeopleController;
 use App\Controllers\Account\RegisterController;
 use App\Controllers\Account\TrainerRequestController;
+use App\Controllers\Account\CategoryController as AccountCategoryController;
+use App\Controllers\Account\CourseController;
 
 $router = new Router();
 
@@ -107,5 +109,23 @@ $router->get('/account/people/{id}/edit', [PeopleController::class, 'edit']);
 $router->post('/account/people/{id}', [PeopleController::class, 'update']);
 $router->post('/account/trainer-requests/{id}/approve', [TrainerRequestController::class, 'approve']);
 $router->post('/account/trainer-requests/{id}/reject', [TrainerRequestController::class, 'reject']);
+
+$router->get('/account/categories', [AccountCategoryController::class, 'index']);
+$router->get('/account/categories/create', [AccountCategoryController::class, 'create']);
+$router->post('/account/categories', [AccountCategoryController::class, 'store']);
+$router->get('/account/categories/{id}/edit', [AccountCategoryController::class, 'edit']);
+$router->post('/account/categories/{id}', [AccountCategoryController::class, 'update']);
+$router->post('/account/categories/{id}/delete', [AccountCategoryController::class, 'destroy']);
+
+$router->get('/account/courses', [CourseController::class, 'index']);
+$router->get('/account/courses/create', [CourseController::class, 'create']);
+$router->post('/account/courses', [CourseController::class, 'store']);
+$router->get('/account/courses/{id}', [CourseController::class, 'show']);
+$router->get('/account/courses/{id}/edit', [CourseController::class, 'edit']);
+$router->post('/account/courses/{id}', [CourseController::class, 'update']);
+$router->post('/account/courses/{id}/delete', [CourseController::class, 'destroy']);
+$router->post('/account/courses/{id}/modules', [CourseController::class, 'storeModule']);
+$router->post('/account/courses/{id}/modules/{moduleId}', [CourseController::class, 'updateModule']);
+$router->post('/account/courses/{id}/modules/{moduleId}/delete', [CourseController::class, 'destroyModule']);
 
 $router->dispatch();

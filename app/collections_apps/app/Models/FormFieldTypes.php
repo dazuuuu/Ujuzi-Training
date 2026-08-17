@@ -36,10 +36,12 @@ class FormFieldTypes
                 'county' => 'Kenya county',
                 'address' => 'Address (Kenya county)',
                 'organisation' => 'Organisations (from database)',
+                'category' => 'Organisation category',
             ],
             'Files' => [
                 'file' => 'File upload',
                 'image' => 'Image upload',
+                'files' => 'Documents (PDF, images, Word)',
             ],
             'Advanced' => [
                 'color' => 'Colour picker',
@@ -99,7 +101,7 @@ class FormFieldTypes
 
     public static function isFile(string $type): bool
     {
-        return in_array($type, ['file', 'image'], true);
+        return in_array($type, ['file', 'image', 'files'], true);
     }
 
     public static function isComposite(string $type): bool

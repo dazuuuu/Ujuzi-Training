@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Core\Request;
 use App\Models\FormFieldTypes;
 use App\Models\Organisation;
+use App\Models\OrganisationCategory;
 use App\Services\UploadException;
 use App\Services\UploadService;
 
@@ -15,7 +16,7 @@ class FormAnswerService
     /**
      * @return array{answers: array, errors: array}
      */
-    public static function collect(array $fields, array $posted, array $existing = []): array
+    public static function collect(array $fields, array $posted, array $existing = [], ?array $user = null): array
     {
         $answers = $existing;
         $errors = [];
@@ -24,6 +25,26 @@ class FormAnswerService
             $type = $field['field_type'];
             $key = $field['field_key'];
             if (FormFieldTypes::isLayout($type)) {
+                continue;
+            }
+
+            if ($type === 'files') {
+                $uploads = Request::nestedFileList('answers', $key);
+                $kept = is_array($existing[$key] ?? null) ? $existing[$key] : [];
+                if ($kept && !is_array($kept)) {
+                    $kept = [$kept];
+                }
+                foreach ($uploads as $file) {
+                    try {
+                        $kept[] = UploadService::storeDocument($file, 'forms');
+                    } catch (UploadException $e) {
+                        $errors[] = $field['label'] . ': ' . $e->getMessage();
+                    }
+                }
+                if ($field['is_required'] && !$kept) {
+                    $errors[] = $field['label'] . ' is required.';
+                }
+                $answers[$key] = array_values($kept);
                 continue;
             }
 
@@ -95,6 +116,32 @@ class FormAnswerService
                     $errors[] = $field['label'] . ' is required.';
                 }
                 $answers[$key] = $multiple ? $ids : ($ids[0] ?? '');
+                continue;
+            }
+
+            if ($type === 'category') {
+                $raw = $posted[$key] ?? [];
+                if (!is_array($raw)) {
+                    $raw = $raw !== '' && $raw !== null ? [$raw] : [];
+                }
+                $allowed = [];
+                foreach (OrganisationCategory::groupedForUser($user) as $group) {
+                    foreach ($group as $category) {
+                        $allowed[] = (int) $category['id'];
+                    }
+                }
+                $ids = [];
+                foreach ($raw as $item) {
+                    $id = (int) $item;
+                    if ($id > 0 && in_array($id, $allowed, true) && !in_array($id, $ids, true)) {
+                        $ids[] = $id;
+                    }
+                }
+                $ids = array_slice($ids, 0, 1);
+                if ($field['is_required'] && !$ids) {
+                    $errors[] = $field['label'] . ' is required.';
+                }
+                $answers[$key] = $ids[0] ?? '';
                 continue;
             }
 

@@ -73,14 +73,14 @@ class UploadService
         if ($file['error'] !== UPLOAD_ERR_OK) {
             throw new UploadException('Upload failed (error code ' . $file['error'] . ').');
         }
-        if ($file['size'] > 8 * 1024 * 1024) {
-            throw new UploadException('File is larger than 8MB.');
+        if ($file['size'] > 20 * 1024 * 1024) {
+            throw new UploadException('File is larger than 20MB.');
         }
 
         $ext = strtolower(pathinfo((string) $file['name'], PATHINFO_EXTENSION));
-        $allowed = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'txt'];
+        $allowed = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'txt', 'csv', 'zip'];
         if (!in_array($ext, $allowed, true)) {
-            throw new UploadException('Allowed files: PDF, Word, JPG, PNG, WEBP, GIF, or TXT.');
+            throw new UploadException('Allowed files: PDF, Word, Excel, PowerPoint, images, TXT, CSV, or ZIP.');
         }
 
         $dir = self::uploadsRoot() . '/' . $subdir;
@@ -91,6 +91,40 @@ class UploadService
         $filename = bin2hex(random_bytes(10)) . '.' . $ext;
         if (!move_uploaded_file($file['tmp_name'], $dir . '/' . $filename)) {
             throw new UploadException('Could not save uploaded file.');
+        }
+
+        return 'assets/uploads/' . $subdir . '/' . $filename;
+    }
+
+    public static function storeVideo(array $file, string $subdir): string
+    {
+        if (!isset($file['error']) || is_array($file['error'])) {
+            throw new UploadException('Invalid upload.');
+        }
+        if ($file['error'] === UPLOAD_ERR_NO_FILE) {
+            throw new UploadException('No video was selected.');
+        }
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            throw new UploadException('Upload failed (error code ' . $file['error'] . ').');
+        }
+        if ($file['size'] > 200 * 1024 * 1024) {
+            throw new UploadException('Video is larger than 200MB.');
+        }
+
+        $ext = strtolower(pathinfo((string) $file['name'], PATHINFO_EXTENSION));
+        $allowed = ['mp4', 'webm', 'mov', 'm4v'];
+        if (!in_array($ext, $allowed, true)) {
+            throw new UploadException('Upload an MP4, WEBM, or MOV video.');
+        }
+
+        $dir = self::uploadsRoot() . '/' . $subdir;
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $filename = bin2hex(random_bytes(10)) . '.' . $ext;
+        if (!move_uploaded_file($file['tmp_name'], $dir . '/' . $filename)) {
+            throw new UploadException('Could not save uploaded video.');
         }
 
         return 'assets/uploads/' . $subdir . '/' . $filename;

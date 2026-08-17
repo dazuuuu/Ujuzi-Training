@@ -5,6 +5,8 @@
 use App\Core\UserSession;
 $loggedInUser = $currentUser ?? UserSession::current();
 $canManageUsers = $canManageUsers ?? false;
+$isOrgAdmin = $isOrgAdmin ?? false;
+$canViewCourses = $canViewCourses ?? false;
 ?>
 <!doctype html>
 <html lang="en">
@@ -34,12 +36,18 @@ $canManageUsers = $canManageUsers ?? false;
           </span>
         </div>
       </a>
-      <nav class="flex items-center gap-3 text-xs font-bold uppercase tracking-wider">
+      <nav class="flex flex-wrap items-center justify-end gap-3 text-xs font-bold uppercase tracking-wider">
         <?php if ($loggedInUser): ?>
           <a href="<?= url('/account/dashboard') ?>" class="<?= ($activeNav ?? '') === 'dashboard' ? 'text-white' : '' ?>" style="color: <?= ($activeNav ?? '') === 'dashboard' ? '#ffffff' : '#b8e0cc' ?>">Dashboard</a>
           <a href="<?= url('/account/profile') ?>" style="color: <?= ($activeNav ?? '') === 'profile' ? '#ffffff' : '#b8e0cc' ?>">Profile</a>
           <?php if ($canManageUsers): ?>
             <a href="<?= url('/account/people') ?>" style="color: <?= ($activeNav ?? '') === 'people' ? '#ffffff' : '#b8e0cc' ?>">People</a>
+          <?php endif; ?>
+          <?php if ($isOrgAdmin): ?>
+            <a href="<?= url('/account/categories') ?>" style="color: <?= ($activeNav ?? '') === 'categories' ? '#ffffff' : '#b8e0cc' ?>">Categories</a>
+          <?php endif; ?>
+          <?php if ($canViewCourses): ?>
+            <a href="<?= url('/account/courses') ?>" style="color: <?= ($activeNav ?? '') === 'courses' ? '#ffffff' : '#b8e0cc' ?>">Courses</a>
           <?php endif; ?>
           <a href="<?= url('/account/logout') ?>" class="btn-danger" style="padding:0.4rem 0.75rem;">Sign Out</a>
         <?php else: ?>

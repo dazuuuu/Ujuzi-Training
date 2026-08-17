@@ -66,6 +66,15 @@ class OrganisationMembership
         return $stmt->fetchAll();
     }
 
+    public static function approvedOrganisationIds(int $userId): array
+    {
+        $stmt = Database::connection()->prepare(
+            "SELECT organisation_id FROM organisation_memberships WHERE user_id = ? AND status = 'approved'"
+        );
+        $stmt->execute([$userId]);
+        return array_map('intval', $stmt->fetchAll(\PDO::FETCH_COLUMN));
+    }
+
     public static function isApproved(int $userId, int $organisationId): bool
     {
         $stmt = Database::connection()->prepare(

@@ -28,6 +28,9 @@ abstract class BaseAccountController
             'pageTitle' => $data['pageTitle'] ?? 'Account',
             'currentUser' => $this->user,
             'canManageUsers' => Authz::canManageUsers($this->user),
+            'isOrgAdmin' => Authz::isOrganisationAdmin($this->user),
+            'canCreateCourses' => Authz::canCreateCourses($this->user),
+            'canViewCourses' => Authz::canViewCourses($this->user),
         ], $data));
     }
 }

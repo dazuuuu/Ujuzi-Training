@@ -55,6 +55,7 @@ class FormController extends BaseAdminController
                 'title' => $formRecord['title'],
                 'description' => $formRecord['description'],
                 'is_active' => $formRecord['is_active'],
+                'purpose' => $formRecord['purpose'] ?? 'profile',
                 'role_ids' => $formRecord['role_ids'],
                 'fields' => FormField::forForm((int) $formRecord['id']),
             ],
@@ -105,11 +106,13 @@ class FormController extends BaseAdminController
             $fields = [];
         }
         $isActive = Request::post('is_active') === '1';
+        $purpose = Request::post('purpose') === 'course' ? 'course' : 'profile';
 
         $form = [
             'title' => $title,
             'description' => $description,
             'is_active' => $isActive ? 1 : 0,
+            'purpose' => $purpose,
             'role_ids' => array_map('intval', $roleIds),
             'fields' => $this->normalizePostedFields($fields),
         ];
@@ -165,6 +168,7 @@ class FormController extends BaseAdminController
             'title' => $title,
             'description' => $description,
             'is_active' => $isActive,
+            'purpose' => $purpose,
             'role_ids' => $form['role_ids'],
             'created_by_admin_id' => $this->admin['id'],
         ];
@@ -172,12 +176,16 @@ class FormController extends BaseAdminController
         if ($id) {
             Form::update($id, $payload);
             FormField::replaceForForm($id, $validFields);
-            flashSuccess('Form saved. Assigned users can fill and re-edit it from their profile.');
+            flashSuccess($purpose === 'course'
+                ? 'Course form saved. Approved trainers can use it to create courses.'
+                : 'Form saved. Assigned users can fill and re-edit it from their profile.');
         } else {
             $newId = Form::create($payload);
             FormField::replaceForForm($newId, $validFields);
             Form::syncRoles($newId, $form['role_ids']);
-            flashSuccess('Form created and saved. It now appears on the profile pages of the assigned roles.');
+            flashSuccess($purpose === 'course'
+                ? 'Course form created. Assign it to trainers so they can create courses after an organisation approves them.'
+                : 'Form created and saved. It now appears on the profile pages of the assigned roles.');
         }
         redirect('/admin/forms');
     }
@@ -227,6 +235,7 @@ class FormController extends BaseAdminController
             'title' => '',
             'description' => '',
             'is_active' => 1,
+            'purpose' => 'profile',
             'role_ids' => [],
             'fields' => [[
                 'label' => '',

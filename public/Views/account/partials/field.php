@@ -275,6 +275,15 @@ switch ($type) {
         echo '<input type="file" name="' . e($name) . '" accept="' . e($accept) . '" class="mt-2 block w-full text-sm" />';
         break;
 
+    case 'files':
+        $items = is_array($value) ? $value : ($value ? [$value] : []);
+        foreach ($items as $item) {
+            echo '<p class="mt-2 text-sm font-semibold"><a href="' . e(imageUrl((string) $item)) . '" target="_blank" style="color:var(--ke-green)">Current file</a></p>';
+        }
+        echo '<input type="file" name="' . e($name) . '[]" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.jpg,.jpeg,.png,.webp,.gif,application/pdf,image/*" class="mt-2 block w-full text-sm" />';
+        echo '<p class="field-hint">You can attach several PDFs, images, or Word documents.</p>';
+        break;
+
     case 'organisation':
         $orgs = \App\Models\Organisation::active();
         $multiple = ($field['org_mode'] ?? 'single') === 'multiple';
@@ -300,6 +309,27 @@ switch ($type) {
             echo '</select>';
             echo '<p class="field-hint">The organisation you pick must approve you before you appear on their dashboard.</p>';
         }
+        break;
+
+    case 'category':
+        $user = $currentUser ?? \App\Core\UserSession::current();
+        $groups = \App\Models\OrganisationCategory::groupedForUser($user ?: null);
+        $current = is_array($value) ? (string) ($value[0] ?? '') : (string) $value;
+        if (!$groups) {
+            echo '<p class="mt-2 text-sm font-bold" style="color:var(--ke-muted)">No categories are available yet. An organisation admin must list categories, and you must be an approved tutor for that organisation.</p>';
+            break;
+        }
+        echo '<select name="' . e($name) . '" ' . ($required ? 'required' : '') . ' class="' . $class . '"><option value="">Choose category</option>';
+        foreach ($groups as $orgName => $cats) {
+            echo '<optgroup label="' . e($orgName) . '">';
+            foreach ($cats as $cat) {
+                $isOn = $current === (string) $cat['id'] ? 'selected' : '';
+                echo '<option value="' . (int) $cat['id'] . '" ' . $isOn . '>' . e($cat['name']) . '</option>';
+            }
+            echo '</optgroup>';
+        }
+        echo '</select>';
+        echo '<p class="field-hint">Only categories from organisations that have approved you are shown.</p>';
         break;
 
     default:
