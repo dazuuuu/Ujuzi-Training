@@ -44,6 +44,7 @@ $canManageUsers = $canManageUsers ?? false;
           <a href="<?= url('/account/logout') ?>" class="btn-danger" style="padding:0.4rem 0.75rem;">Sign Out</a>
         <?php else: ?>
           <a href="<?= url('/account/register') ?>" class="btn-secondary" style="padding:0.4rem 0.75rem;">Student register</a>
+          <a href="<?= url('/account/register/trainer') ?>" class="btn-secondary" style="padding:0.4rem 0.75rem;">Trainer register</a>
           <a href="<?= url('/account/login') ?>" class="btn-primary" style="padding:0.4rem 0.75rem;">Sign in</a>
           <a href="<?= url('/admin/login') ?>" class="btn-danger" style="padding:0.4rem 0.75rem;">Super Admin</a>
         <?php endif; ?>

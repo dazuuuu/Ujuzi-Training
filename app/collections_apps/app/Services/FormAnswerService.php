@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Core\Request;
 use App\Models\FormFieldTypes;
+use App\Models\Organisation;
 use App\Services\UploadException;
 use App\Services\UploadService;
 
@@ -52,6 +53,48 @@ class FormAnswerService
                     $errors[] = $field['label'] . ' needs a first name.';
                 }
                 $answers[$key] = $value;
+                continue;
+            }
+
+            if ($type === 'address' || $type === 'county') {
+                $raw = $posted[$key] ?? '';
+                $value = is_array($raw)
+                    ? trim((string) ($raw['county'] ?? ''))
+                    : trim((string) $raw);
+                if ($field['is_required'] && $value === '') {
+                    $errors[] = $field['label'] . ' is required.';
+                }
+                if ($value !== '') {
+                    $typeError = self::typeError($field, $value);
+                    if ($typeError) {
+                        $errors[] = $typeError;
+                    }
+                }
+                $answers[$key] = $value;
+                continue;
+            }
+
+            if ($type === 'organisation') {
+                $raw = $posted[$key] ?? [];
+                if (!is_array($raw)) {
+                    $raw = $raw !== '' && $raw !== null ? [$raw] : [];
+                }
+                $allowed = Organisation::activeIds();
+                $ids = [];
+                foreach ($raw as $item) {
+                    $id = (int) $item;
+                    if ($id > 0 && in_array($id, $allowed, true) && !in_array($id, $ids, true)) {
+                        $ids[] = $id;
+                    }
+                }
+                $multiple = ($field['org_mode'] ?? 'single') === 'multiple';
+                if (!$multiple) {
+                    $ids = array_slice($ids, 0, 1);
+                }
+                if ($field['is_required'] && !$ids) {
+                    $errors[] = $field['label'] . ' is required.';
+                }
+                $answers[$key] = $multiple ? $ids : ($ids[0] ?? '');
                 continue;
             }
 

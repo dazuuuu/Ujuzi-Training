@@ -71,7 +71,7 @@ class AuthController
                     $error = 'Something went wrong. Please try again shortly.';
                 }
             } else {
-                $error = 'We could not find a user for that email. Students can register from the homepage. Organisation admins need a Super Admin invite link.';
+                $error = 'We could not find a user for that email. Students and trainers can register from the homepage. Organisation admins need a Super Admin invite link.';
             }
         }
 

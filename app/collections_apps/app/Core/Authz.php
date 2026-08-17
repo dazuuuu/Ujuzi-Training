@@ -2,6 +2,7 @@
 
 namespace App\Core;
 
+use App\Models\OrganisationMembership;
 use App\Models\Role;
 use App\Models\User;
 
@@ -34,7 +35,18 @@ class Authz
         if (!self::canManageUsers($actor)) {
             return false;
         }
-        if ((int) ($actor['organisation_id'] ?? 0) !== (int) ($target['organisation_id'] ?? 0)) {
+        $orgId = (int) ($actor['organisation_id'] ?? 0);
+        if ($orgId < 1) {
+            return false;
+        }
+        $sameOrg = (int) ($target['organisation_id'] ?? 0) === $orgId;
+        $approvedMember = false;
+        try {
+            $approvedMember = OrganisationMembership::isApproved((int) $target['id'], $orgId);
+        } catch (\Throwable $e) {
+            $approvedMember = false;
+        }
+        if (!$sameOrg && !$approvedMember) {
             return false;
         }
         return self::canManageRole($actor, $target['role_slug'] ?? '');
@@ -50,8 +62,13 @@ class Authz
             return [];
         }
         $allowed = $actor['managed_role_slugs'] ?? [];
+        try {
+            $users = User::allForOrganisation($orgId);
+        } catch (\Throwable $e) {
+            $users = User::all($orgId);
+        }
         return array_values(array_filter(
-            User::all($orgId),
+            $users,
             fn(array $user): bool => in_array($user['role_slug'], $allowed, true)
         ));
     }

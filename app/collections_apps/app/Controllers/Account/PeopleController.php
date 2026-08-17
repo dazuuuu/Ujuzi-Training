@@ -8,6 +8,7 @@ use App\Models\Form;
 use App\Models\FormField;
 use App\Models\FormResponse;
 use App\Models\Organisation;
+use App\Models\OrganisationMembership;
 use App\Models\Role;
 use App\Models\User;
 
@@ -150,12 +151,23 @@ class PeopleController extends BaseAccountController
 
         if ($id) {
             User::update($id, $form);
+            $this->markApprovedMember($id, (int) $form['organisation_id']);
             flashSuccess('Person updated. Their dashboard and profile stay in place.');
         } else {
-            User::create($form);
+            $newId = User::create($form);
+            $this->markApprovedMember($newId, (int) $form['organisation_id']);
             flashSuccess('Person created. Dashboard and profile pages were provisioned for their role.');
         }
         redirect('/account/people');
+    }
+
+    private function markApprovedMember(int $userId, int $organisationId): void
+    {
+        try {
+            OrganisationMembership::ensureApproved($userId, $organisationId, (int) $this->user['id']);
+        } catch (\Throwable $e) {
+            // Memberships table is created by Super Admin → Updates.
+        }
     }
 
     private function requireManager(): void

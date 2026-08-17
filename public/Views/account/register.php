@@ -5,7 +5,11 @@ require __DIR__ . '/layout-header.php';
 
 <div class="max-w-md mx-auto">
   <div class="text-center mb-8">
-    <span class="text-xs font-bold uppercase tracking-widest block mb-1" style="color:var(--ke-green)"><?= ($mode ?? '') === 'student' ? 'Student registration' : 'Organisation admin' ?></span>
+    <?php
+      $mode = $mode ?? '';
+      $badge = $mode === 'student' ? 'Student registration' : ($mode === 'trainer' ? 'Trainer / tutor / teacher' : 'Organisation admin');
+    ?>
+    <span class="text-xs font-bold uppercase tracking-widest block mb-1" style="color:var(--ke-green)"><?= e($badge) ?></span>
     <h1 class="font-serif-heading text-3xl font-bold"><?= e($heading) ?></h1>
     <p class="text-sm mt-2 font-medium" style="color:var(--ke-muted)"><?= e($blurb) ?></p>
   </div>

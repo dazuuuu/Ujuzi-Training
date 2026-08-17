@@ -43,6 +43,61 @@ require __DIR__ . '/layout-header.php';
     <?php endif; ?>
   </section>
 
+  <?php if (($currentUser['role_slug'] ?? '') === 'organisation_admin'): ?>
+    <section class="rounded-xl bg-white p-6 shadow-sm" style="border:2px solid var(--ke-red)">
+      <h2 class="font-serif-heading text-lg font-bold">Trainer requests</h2>
+      <p class="mt-1 text-xs font-semibold" style="color:var(--ke-muted)">Approve trainers, tutors, or teachers who selected your organisation. They are assigned to you only after you approve them.</p>
+      <div class="mt-4 divide-y divide-neutral-100">
+        <?php if (empty($pendingTrainerRequests)): ?>
+          <p class="py-4 text-sm font-bold text-neutral-600">No pending trainer requests.</p>
+        <?php endif; ?>
+        <?php foreach ($pendingTrainerRequests ?? [] as $request): ?>
+          <div class="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p class="text-sm font-black"><?= e(userDisplayName($request)) ?></p>
+              <p class="text-xs font-semibold text-neutral-600"><?= e($request['role_name'] ?? 'Trainer') ?> · <?= e($request['email'] ?: ($request['phone'] ?? '')) ?></p>
+            </div>
+            <div class="flex items-center gap-2">
+              <form method="post" action="<?= url('/account/trainer-requests/' . (int) $request['id'] . '/approve') ?>">
+                <?= csrfField() ?>
+                <button type="submit" class="btn-primary" style="padding:0.35rem 0.75rem;">Approve</button>
+              </form>
+              <form method="post" action="<?= url('/account/trainer-requests/' . (int) $request['id'] . '/reject') ?>">
+                <?= csrfField() ?>
+                <button type="submit" class="btn-danger" style="padding:0.35rem 0.75rem;">Reject</button>
+              </form>
+            </div>
+          </div>
+        <?php endforeach; ?>
+      </div>
+    </section>
+  <?php endif; ?>
+
+  <?php if (!empty($memberships)): ?>
+    <section class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+      <h2 class="font-serif-heading text-lg font-bold">Your organisations</h2>
+      <p class="mt-1 text-xs font-semibold" style="color:var(--ke-muted)">Organisation admins must approve you before you are assigned as their tutor.</p>
+      <div class="mt-4 divide-y divide-neutral-100">
+        <?php foreach ($memberships as $membership):
+          $status = $membership['status'] ?? 'pending';
+          $statusLabel = $status === 'approved' ? 'Approved' : ($status === 'rejected' ? 'Rejected' : 'Waiting for approval');
+          $statusColor = $status === 'approved' ? 'var(--ke-green)' : ($status === 'rejected' ? 'var(--ke-red)' : '#8a6d00');
+        ?>
+          <div class="flex items-center justify-between py-3">
+            <p class="text-sm font-black"><?= e($membership['organisation_name'] ?? 'Organisation') ?></p>
+            <span class="text-[11px] font-black uppercase tracking-widest" style="color:<?= $statusColor ?>"><?= e($statusLabel) ?></span>
+          </div>
+        <?php endforeach; ?>
+      </div>
+    </section>
+  <?php elseif (($currentUser['role_slug'] ?? '') === 'trainer'): ?>
+    <section class="rounded-xl border border-dashed p-6" style="border-color:var(--ke-line)">
+      <h2 class="font-serif-heading text-lg font-bold">Your organisations</h2>
+      <p class="mt-2 text-sm font-medium" style="color:var(--ke-muted)">Open your profile form, pick the organisation(s) you want to teach for, then wait for each organisation admin to approve you.</p>
+      <a href="<?= url('/account/profile') ?>" class="btn-primary mt-4 inline-flex">Open profile form</a>
+    </section>
+  <?php endif; ?>
+
   <section class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
     <div class="flex items-center justify-between gap-3">
       <h2 class="font-serif-heading text-lg font-bold">Assigned profile forms</h2>

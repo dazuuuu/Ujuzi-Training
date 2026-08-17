@@ -213,6 +213,9 @@ class FormController extends BaseAdminController
                 'min_select' => max(0, (int) ($field['min_select'] ?? 0)),
                 'max_select' => max(0, (int) ($field['max_select'] ?? 0)),
                 'select_all' => !empty($field['select_all']),
+                'org_mode' => (($field['field_type'] ?? '') === 'organisation' && ($field['org_mode'] ?? '') === 'multiple')
+                    ? 'multiple'
+                    : 'single',
             ];
         }
         return $normalized;
@@ -239,6 +242,7 @@ class FormController extends BaseAdminController
                 'min_select' => 0,
                 'max_select' => 0,
                 'select_all' => false,
+                'org_mode' => 'single',
             ]],
         ];
     }

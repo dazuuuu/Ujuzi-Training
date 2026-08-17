@@ -7,6 +7,8 @@ use App\Core\Request;
 use App\Models\Form;
 use App\Models\FormField;
 use App\Models\FormResponse;
+use App\Models\OrganisationMembership;
+use App\Models\User;
 use App\Services\FormAnswerService;
 
 class ProfileController extends BaseAccountController
@@ -56,6 +58,30 @@ class ProfileController extends BaseAccountController
         }
 
         FormResponse::save((int) $this->user['id'], $formId, $collected['answers']);
+        try {
+            OrganisationMembership::syncFromProfileAnswers(
+                (int) $this->user['id'],
+                (string) ($this->user['role_slug'] ?? ''),
+                $fields,
+                $collected['answers']
+            );
+        } catch (\Throwable $e) {
+            // Memberships table is created by Super Admin → Updates.
+        }
+        foreach ($fields as $field) {
+            if (($field['field_type'] ?? '') !== 'name') {
+                continue;
+            }
+            $raw = $collected['answers'][$field['field_key']] ?? [];
+            if (is_array($raw)) {
+                $first = trim((string) ($raw['first'] ?? ''));
+                $last = trim((string) ($raw['last'] ?? ''));
+                if ($first !== '' || $last !== '') {
+                    User::updateProfileNames((int) $this->user['id'], $first, $last);
+                }
+            }
+            break;
+        }
         $fresh = array_merge($this->user);
         if (!AccountRedirect::needsProfile($fresh)) {
             flashSuccess('Your details were saved. Welcome to your dashboard.');

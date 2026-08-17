@@ -108,6 +108,33 @@ button:disabled,
   margin-bottom: 0.4rem;
 }
 
+.field-drag-handle {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  margin-top: 0.15rem;
+  padding: 0.45rem 0.15rem;
+  border: 1px solid var(--ke-line);
+  border-radius: 0.5rem;
+  background: #f6f7f4;
+  color: var(--ke-muted);
+  font-size: 0.85rem;
+  line-height: 0.7;
+  letter-spacing: -0.12em;
+  cursor: grab;
+  user-select: none;
+}
+
+.field-drag-handle:active {
+  cursor: grabbing;
+}
+
+.field-row.is-dragging {
+  opacity: 0.45;
+}
+
 .choice-row input {
   flex: 1;
 }

@@ -5,6 +5,7 @@ namespace App\Controllers\Admin;
 use App\Core\Request;
 use App\Core\View;
 use App\Models\Organisation;
+use App\Models\OrganisationMembership;
 use App\Models\Role;
 use App\Models\User;
 
@@ -115,12 +116,23 @@ class UserController extends BaseAdminController
         $payload = $form;
         if ($id) {
             User::update($id, $payload);
+            $this->markApprovedMember($id, (int) $payload['organisation_id']);
             flashSuccess('User updated. Their dashboard and profile stay assigned to this role.');
         } else {
-            User::create($payload);
+            $newId = User::create($payload);
+            $this->markApprovedMember($newId, (int) $payload['organisation_id']);
             flashSuccess('User created. Dashboard and profile pages were provisioned, including any forms assigned to this role.');
         }
         redirect('/admin/users');
+    }
+
+    private function markApprovedMember(int $userId, int $organisationId): void
+    {
+        try {
+            OrganisationMembership::ensureApproved($userId, $organisationId);
+        } catch (\Throwable $e) {
+            // Memberships table is created by Super Admin → Updates.
+        }
     }
 
     private function validate(array $form, ?int $ignoreId): array

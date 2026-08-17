@@ -64,7 +64,7 @@ function fieldChoices(array $field): array
   <div class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm space-y-4">
     <div class="border-b border-neutral-100 pb-3">
       <h2 class="font-serif-heading text-lg font-bold">Fields</h2>
-      <p class="text-xs font-medium mt-1" style="color:var(--ke-muted)">Pick a type the way WordPress form builders do. Dropdowns, radios, and checkboxes need the choice values you want people to pick — you can change them later.</p>
+      <p class="text-xs font-medium mt-1" style="color:var(--ke-muted)">Pick a type the way WordPress form builders do. Drag a field by the handle (or use Up / Down) to reposition it. The Organisations field loads organisations from the database — choose whether people pick one or several.</p>
     </div>
     <div id="fields-list" class="space-y-4">
       <?php foreach ($fields as $index => $field):
@@ -86,9 +86,15 @@ function fieldChoices(array $field): array
             $rangeMax = '5';
         }
         $columns = max(1, min(3, (int) ($field['columns'] ?? 1)));
+        $orgMode = (($field['org_mode'] ?? '') === 'multiple') ? 'multiple' : 'single';
       ?>
         <div class="field-row rounded-lg border p-4 space-y-3" data-field style="border-color:var(--ke-line)">
           <input type="hidden" name="fields[<?= (int) $index ?>][field_key]" value="<?= e($field['field_key'] ?? '') ?>" data-name="field_key" />
+          <div class="flex items-start gap-3">
+            <button type="button" class="field-drag-handle" draggable="true" title="Drag to reorder" aria-label="Drag to reorder">
+              <span aria-hidden="true">⋮⋮</span>
+            </button>
+            <div class="min-w-0 flex-1 space-y-3">
           <div class="grid gap-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto]">
             <div>
               <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Field name</label>
@@ -106,7 +112,9 @@ function fieldChoices(array $field): array
                 <?php endforeach; ?>
               </select>
             </div>
-            <div class="flex items-end">
+            <div class="flex flex-wrap items-end gap-2">
+              <button type="button" class="move-field-up btn-secondary" style="padding:0.4rem 0.7rem;">Up</button>
+              <button type="button" class="move-field-down btn-secondary" style="padding:0.4rem 0.7rem;">Down</button>
               <button type="button" class="remove-field btn-danger">Remove</button>
             </div>
           </div>
@@ -176,6 +184,16 @@ function fieldChoices(array $field): array
               <input type="number" name="fields[<?= (int) $index ?>][range_max]" value="<?= e((string) $rangeMax) ?>" class="mt-1 w-full rounded-lg border border-neutral-300 bg-white p-2.5 text-sm" />
             </div>
           </div>
+          <div class="org-mode-wrap rounded-lg p-3 <?= $type === 'organisation' ? '' : 'hidden' ?>" style="background:#f6f7f4;border:1px solid var(--ke-line)">
+            <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Organisation selection</label>
+            <select name="fields[<?= (int) $index ?>][org_mode]" data-name="org_mode" class="mt-1 w-full rounded-lg border border-neutral-300 bg-white p-2.5 text-sm">
+              <option value="single" <?= $orgMode === 'single' ? 'selected' : '' ?>>One organisation</option>
+              <option value="multiple" <?= $orgMode === 'multiple' ? 'selected' : '' ?>>Multiple organisations</option>
+            </select>
+            <p class="field-hint">People pick from organisations saved in the database. For tutor registration, each selected organisation must approve them.</p>
+          </div>
+            </div>
+          </div>
         </div>
       <?php endforeach; ?>
     </div>
@@ -191,6 +209,11 @@ function fieldChoices(array $field): array
 <template id="field-template">
   <div class="field-row rounded-lg border p-4 space-y-3" data-field style="border-color:var(--ke-line)">
     <input type="hidden" data-name="field_key" value="" />
+    <div class="flex items-start gap-3">
+      <button type="button" class="field-drag-handle" draggable="true" title="Drag to reorder" aria-label="Drag to reorder">
+        <span aria-hidden="true">⋮⋮</span>
+      </button>
+      <div class="min-w-0 flex-1 space-y-3">
     <div class="grid gap-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto]">
       <div>
         <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Field name</label>
@@ -208,7 +231,9 @@ function fieldChoices(array $field): array
           <?php endforeach; ?>
         </select>
       </div>
-      <div class="flex items-end">
+      <div class="flex flex-wrap items-end gap-2">
+        <button type="button" class="move-field-up btn-secondary" style="padding:0.4rem 0.7rem;">Up</button>
+        <button type="button" class="move-field-down btn-secondary" style="padding:0.4rem 0.7rem;">Down</button>
         <button type="button" class="remove-field btn-danger">Remove</button>
       </div>
     </div>
@@ -280,6 +305,16 @@ function fieldChoices(array $field): array
         <input type="number" data-name="range_max" value="" class="mt-1 w-full rounded-lg border border-neutral-300 bg-white p-2.5 text-sm" />
       </div>
     </div>
+    <div class="org-mode-wrap hidden rounded-lg p-3" style="background:#f6f7f4;border:1px solid var(--ke-line)">
+      <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Organisation selection</label>
+      <select data-name="org_mode" class="mt-1 w-full rounded-lg border border-neutral-300 bg-white p-2.5 text-sm">
+        <option value="single">One organisation</option>
+        <option value="multiple">Multiple organisations</option>
+      </select>
+      <p class="field-hint">People pick from organisations saved in the database. For tutor registration, each selected organisation must approve them.</p>
+    </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -296,6 +331,7 @@ function fieldChoices(array $field): array
   var columnTypes = { radio: 1, checkboxes: 1 };
   var minmaxTypes = { checkboxes: 1, multiselect: 1 };
   var rangeDefaults = { range: ['0', '100'], rating: ['1', '5'], number: ['', ''] };
+  var dragEl = null;
 
   function reindex() {
     Array.prototype.forEach.call(list.querySelectorAll('[data-field]'), function (row, index) {
@@ -322,6 +358,7 @@ function fieldChoices(array $field): array
     var columns = row.querySelector('.columns-wrap');
     var minmax = row.querySelector('.minmax-wrap');
     var selectAll = row.querySelector('.select-all-wrap');
+    var orgMode = row.querySelector('.org-mode-wrap');
     if (choices) choices.classList.toggle('hidden', !choiceTypes[value]);
     if (range) range.classList.toggle('hidden', !rangeTypes[value]);
     if (placeholder) placeholder.classList.toggle('hidden', !placeholderTypes[value]);
@@ -330,6 +367,7 @@ function fieldChoices(array $field): array
     if (columns) columns.classList.toggle('hidden', !columnTypes[value]);
     if (minmax) minmax.classList.toggle('hidden', !minmaxTypes[value]);
     if (selectAll) selectAll.classList.toggle('hidden', value !== 'checkboxes');
+    if (orgMode) orgMode.classList.toggle('hidden', value !== 'organisation');
     if (range && rangeTypes[value] && rangeDefaults[value]) {
       var minInput = range.querySelector('[name$="[range_min]"], [data-name="range_min"]');
       var maxInput = range.querySelector('[name$="[range_max]"], [data-name="range_max"]');
@@ -338,10 +376,37 @@ function fieldChoices(array $field): array
     }
   }
 
+  function moveRow(row, direction) {
+    if (direction < 0 && row.previousElementSibling) {
+      list.insertBefore(row, row.previousElementSibling);
+    } else if (direction > 0 && row.nextElementSibling) {
+      list.insertBefore(row.nextElementSibling, row);
+    }
+    reindex();
+  }
+
+  function bindDrag(row) {
+    var handle = row.querySelector('.field-drag-handle');
+    if (!handle) return;
+    handle.addEventListener('dragstart', function (event) {
+      dragEl = row;
+      row.classList.add('is-dragging');
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', 'field');
+    });
+    handle.addEventListener('dragend', function () {
+      if (dragEl) dragEl.classList.remove('is-dragging');
+      list.querySelectorAll('.drag-over').forEach(function (el) { el.classList.remove('drag-over'); });
+      dragEl = null;
+      reindex();
+    });
+  }
+
   function bindRow(row) {
     var type = row.querySelector('.field-type');
     if (type) type.addEventListener('change', function () { syncRow(row); });
     syncRow(row);
+    bindDrag(row);
 
     var remove = row.querySelector('.remove-field');
     if (remove) {
@@ -351,6 +416,11 @@ function fieldChoices(array $field): array
         reindex();
       });
     }
+
+    var up = row.querySelector('.move-field-up');
+    if (up) up.addEventListener('click', function () { moveRow(row, -1); });
+    var down = row.querySelector('.move-field-down');
+    if (down) down.addEventListener('click', function () { moveRow(row, 1); });
 
     row.addEventListener('click', function (event) {
       if (event.target.classList.contains('add-choice')) {
@@ -370,6 +440,19 @@ function fieldChoices(array $field): array
       }
     });
   }
+
+  list.addEventListener('dragover', function (event) {
+    event.preventDefault();
+    if (!dragEl) return;
+    var row = event.target.closest('[data-field]');
+    if (!row || row === dragEl) return;
+    var rect = row.getBoundingClientRect();
+    var before = (event.clientY - rect.top) < rect.height / 2;
+    list.insertBefore(dragEl, before ? row : row.nextSibling);
+  });
+  list.addEventListener('drop', function (event) {
+    event.preventDefault();
+  });
 
   Array.prototype.forEach.call(list.querySelectorAll('[data-field]'), bindRow);
   addBtn.addEventListener('click', function () {

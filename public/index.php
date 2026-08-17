@@ -23,6 +23,7 @@ use App\Controllers\Account\DashboardController as AccountDashboardController;
 use App\Controllers\Account\ProfileController;
 use App\Controllers\Account\PeopleController;
 use App\Controllers\Account\RegisterController;
+use App\Controllers\Account\TrainerRequestController;
 
 $router = new Router();
 
@@ -82,6 +83,8 @@ $router->post('/admin/updates/run', [UpdateController::class, 'run']);
 // --- Public registration ---
 $router->get('/account/register', [RegisterController::class, 'showStudent']);
 $router->post('/account/register', [RegisterController::class, 'storeStudent']);
+$router->get('/account/register/trainer', [RegisterController::class, 'showTrainer']);
+$router->post('/account/register/trainer', [RegisterController::class, 'storeTrainer']);
 $router->get('/register/organisation-admin/{token}', [RegisterController::class, 'showOrganisationAdmin']);
 $router->post('/register/organisation-admin/{token}', [RegisterController::class, 'storeOrganisationAdmin']);
 
@@ -100,5 +103,7 @@ $router->post('/account/people', [PeopleController::class, 'store']);
 $router->get('/account/people/{id}', [PeopleController::class, 'show']);
 $router->get('/account/people/{id}/edit', [PeopleController::class, 'edit']);
 $router->post('/account/people/{id}', [PeopleController::class, 'update']);
+$router->post('/account/trainer-requests/{id}/approve', [TrainerRequestController::class, 'approve']);
+$router->post('/account/trainer-requests/{id}/reject', [TrainerRequestController::class, 'reject']);
 
 $router->dispatch();

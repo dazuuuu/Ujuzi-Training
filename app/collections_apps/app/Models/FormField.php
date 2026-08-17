@@ -81,6 +81,7 @@ class FormField
         $row['select_all'] = $meta['select_all'];
         $row['range_min'] = $meta['range_min'];
         $row['range_max'] = $meta['range_max'];
+        $row['org_mode'] = $meta['org_mode'];
         $row['is_required'] = (int) $row['is_required'] === 1;
         $row['placeholder'] = $row['placeholder'] ?? '';
         $row['help_text'] = $row['help_text'] ?? '';
@@ -94,6 +95,11 @@ class FormField
         }
         if ($value === null || $value === '' || $value === []) {
             return '—';
+        }
+        if (($field['field_type'] ?? '') === 'organisation') {
+            $ids = is_array($value) ? $value : [$value];
+            $names = Organisation::namesByIds($ids);
+            return $names ? implode(', ', array_values($names)) : '—';
         }
         if (is_array($value)) {
             if (isset($value['first']) || isset($value['last'])) {
@@ -131,6 +137,7 @@ class FormField
             'select_all' => false,
             'range_min' => '',
             'range_max' => '',
+            'org_mode' => 'single',
         ];
 
         if ($raw === []) {
@@ -141,7 +148,8 @@ class FormField
             || array_key_exists('allow_other', $raw)
             || array_key_exists('min', $raw)
             || array_key_exists('max', $raw)
-            || array_key_exists('columns', $raw);
+            || array_key_exists('columns', $raw)
+            || array_key_exists('org_mode', $raw);
 
         if ($structured) {
             $meta['choices'] = self::stringList($raw['choices'] ?? []);
@@ -152,6 +160,7 @@ class FormField
             $meta['select_all'] = !empty($raw['select_all']);
             $meta['range_min'] = trim((string) ($raw['min'] ?? ''));
             $meta['range_max'] = trim((string) ($raw['max'] ?? ''));
+            $meta['org_mode'] = (($raw['org_mode'] ?? '') === 'multiple') ? 'multiple' : 'single';
             return $meta;
         }
 
@@ -184,6 +193,11 @@ class FormField
                 $out['max'] = $max;
             }
             return $out;
+        }
+        if ($type === 'organisation') {
+            return [
+                'org_mode' => (($field['org_mode'] ?? '') === 'multiple') ? 'multiple' : 'single',
+            ];
         }
         if ($type === 'yesno' || $type === 'toggle') {
             return ['choices' => ['Yes', 'No']];

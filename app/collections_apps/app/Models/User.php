@@ -60,6 +60,41 @@ class User
         return array_map([self::class, 'hydrate'], $stmt->fetchAll());
     }
 
+    public static function allForOrganisation(int $organisationId): array
+    {
+        $stmt = Database::connection()->prepare(
+            'SELECT u.*, r.slug AS role_slug, r.name AS role_name, r.has_admin_features, r.is_under_organisation,
+                    r.can_manage_users, r.managed_role_slugs, o.name AS organisation_name
+             FROM users u
+             INNER JOIN roles r ON r.id = u.role_id
+             LEFT JOIN organisations o ON o.id = u.organisation_id
+             WHERE u.organisation_id = ?
+                OR EXISTS (
+                    SELECT 1 FROM organisation_memberships m
+                    WHERE m.user_id = u.id
+                      AND m.organisation_id = ?
+                      AND m.status = \'approved\'
+                )
+             ORDER BY u.created_at DESC'
+        );
+        $stmt->execute([$organisationId, $organisationId]);
+        return array_map([self::class, 'hydrate'], $stmt->fetchAll());
+    }
+
+    public static function setOrganisationId(int $id, int $organisationId): void
+    {
+        Database::connection()
+            ->prepare('UPDATE users SET organisation_id = ? WHERE id = ? AND organisation_id IS NULL')
+            ->execute([$organisationId, $id]);
+    }
+
+    public static function updateProfileNames(int $id, string $firstName, string $lastName): void
+    {
+        Database::connection()
+            ->prepare('UPDATE users SET first_name = ?, last_name = ? WHERE id = ?')
+            ->execute([$firstName !== '' ? $firstName : null, $lastName !== '' ? $lastName : null, $id]);
+    }
+
     public static function countByRole(): array
     {
         return Database::connection()->query(

@@ -13,6 +13,36 @@ class Organisation
             ->fetchAll();
     }
 
+    public static function active(): array
+    {
+        return Database::connection()
+            ->query('SELECT * FROM organisations WHERE is_active = 1 ORDER BY name ASC')
+            ->fetchAll();
+    }
+
+    public static function activeIds(): array
+    {
+        return array_map(fn(array $row): int => (int) $row['id'], self::active());
+    }
+
+    public static function namesByIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), fn(int $id): bool => $id > 0)));
+        if (!$ids) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = Database::connection()->prepare(
+            "SELECT id, name FROM organisations WHERE id IN ($placeholders)"
+        );
+        $stmt->execute($ids);
+        $names = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $names[(int) $row['id']] = (string) $row['name'];
+        }
+        return $names;
+    }
+
     public static function count(): int
     {
         return (int) Database::connection()->query('SELECT COUNT(*) FROM organisations')->fetchColumn();

@@ -52,6 +52,7 @@ require __DIR__ . '/layout-header.php';
   <div class="mt-6 bg-neutral-50 border border-neutral-200 rounded-xl p-5 text-xs text-neutral-600 space-y-2">
     <p class="font-bold text-neutral-800 uppercase tracking-wider text-[11px]">Need an account?</p>
     <p>Students can <a href="<?= url('/account/register') ?>" class="font-bold" style="color:var(--ke-green)">register here</a> with email and password.</p>
+    <p>Trainers, tutors, and teachers can <a href="<?= url('/account/register/trainer') ?>" class="font-bold" style="color:var(--ke-green)">register here</a>, then pick organisation(s) on their profile form for approval.</p>
     <p>Organisation admins register only through a Super Admin invite URL (valid for 5 minutes, one registration).</p>
     <p>Platform owner? <a href="<?= url('/admin/login') ?>" class="font-bold" style="color:var(--ke-red)">Super Admin login</a>.</p>
   </div>

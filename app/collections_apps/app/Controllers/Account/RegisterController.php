@@ -74,6 +74,62 @@ class RegisterController
         $this->loginAndLand($userId, 'Welcome. Complete the student registration form assigned to your role.');
     }
 
+    public function showTrainer(): void
+    {
+        if (UserSession::current()) {
+            redirect(AccountRedirect::home(UserSession::current()));
+        }
+        $this->renderTrainer('');
+    }
+
+    public function storeTrainer(): void
+    {
+        if (UserSession::current()) {
+            redirect(AccountRedirect::home(UserSession::current()));
+        }
+        if (!csrfVerify(Request::post('csrf_token'))) {
+            $this->renderTrainer('Your session expired. Please try again.');
+            return;
+        }
+
+        $email = strtolower(trim((string) Request::post('email', '')));
+        $password = (string) Request::post('password', '');
+        $confirm = (string) Request::post('password_confirmation', '');
+        $error = $this->validateCredentials($email, $password, $confirm);
+        if ($error) {
+            $this->renderTrainer($error, $email);
+            return;
+        }
+
+        $role = Role::findBySlug('trainer');
+        if (!$role) {
+            $this->renderTrainer('Trainer registration is not available yet. Ask Super Admin to finish setup.');
+            return;
+        }
+
+        try {
+            $userId = User::create([
+                'role_id' => (int) $role['id'],
+                'organisation_id' => null,
+                'email' => $email,
+                'phone' => '',
+                'first_name' => '',
+                'last_name' => '',
+                'password' => $password,
+                'is_active' => 1,
+                'email_verified_at' => date('Y-m-d H:i:s'),
+            ]);
+        } catch (\PDOException $e) {
+            if ((string) $e->getCode() === '23000') {
+                $this->renderTrainer('That email is already registered. Sign in instead.', $email);
+                return;
+            }
+            throw $e;
+        }
+
+        $this->loginAndLand($userId, 'Welcome. Complete the trainer registration form and pick the organisation(s) you want to teach for.');
+    }
+
     public function showOrganisationAdmin(string $token): void
     {
         if (UserSession::current()) {
@@ -222,6 +278,19 @@ class RegisterController
             'action' => url('/account/register'),
             'heading' => 'Create a student account',
             'blurb' => 'Register with email and password. After you sign in, the first page you see is the registration form Super Admin assigned to students.',
+        ]);
+    }
+
+    private function renderTrainer(string $error, string $email = ''): void
+    {
+        View::render('account.register', [
+            'pageTitle' => 'Trainer registration',
+            'error' => $error,
+            'email' => $email,
+            'mode' => 'trainer',
+            'action' => url('/account/register/trainer'),
+            'heading' => 'Create a trainer account',
+            'blurb' => 'Register as a trainer, tutor, or teacher. After you sign in, fill the assigned form and pick organisation(s). Each organisation must approve you before you appear on their dashboard.',
         ]);
     }
 

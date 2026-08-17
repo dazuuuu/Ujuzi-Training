@@ -275,6 +275,33 @@ switch ($type) {
         echo '<input type="file" name="' . e($name) . '" accept="' . e($accept) . '" class="mt-2 block w-full text-sm" />';
         break;
 
+    case 'organisation':
+        $orgs = \App\Models\Organisation::active();
+        $multiple = ($field['org_mode'] ?? 'single') === 'multiple';
+        $selected = is_array($value) ? array_map('strval', $value) : array_values(array_filter([(string) $value], fn($item) => $item !== ''));
+        if (!$orgs) {
+            echo '<p class="mt-2 text-sm font-bold" style="color:var(--ke-muted)">No organisations are available yet. Ask Super Admin to add them.</p>';
+            break;
+        }
+        if ($multiple) {
+            echo '<div class="choice-grid cols-1">';
+            foreach ($orgs as $org) {
+                $checked = in_array((string) $org['id'], $selected, true) ? 'checked' : '';
+                echo '<label class="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="' . e($name) . '[]" value="' . (int) $org['id'] . '" ' . $checked . ' class="h-4 w-4" />' . e($org['name']) . '</label>';
+            }
+            echo '</div>';
+            echo '<p class="field-hint">You can select more than one organisation. Each organisation admin must approve you before you are assigned.</p>';
+        } else {
+            echo '<select name="' . e($name) . '" ' . ($required ? 'required' : '') . ' class="' . $class . '"><option value="">Choose organisation</option>';
+            foreach ($orgs as $org) {
+                $isOn = in_array((string) $org['id'], $selected, true) ? 'selected' : '';
+                echo '<option value="' . (int) $org['id'] . '" ' . $isOn . '>' . e($org['name']) . '</option>';
+            }
+            echo '</select>';
+            echo '<p class="field-hint">The organisation you pick must approve you before you appear on their dashboard.</p>';
+        }
+        break;
+
     default:
         echo '<input type="text" name="' . e($name) . '" value="' . e((string) $value) . '" ' . ($required ? 'required' : '') . ' placeholder="' . e($placeholder) . '" class="' . $class . '" />';
 }

@@ -35,6 +35,7 @@ class FormFieldTypes
             'Location' => [
                 'county' => 'Kenya county',
                 'address' => 'Address (Kenya county)',
+                'organisation' => 'Organisations (from database)',
             ],
             'Files' => [
                 'file' => 'File upload',
