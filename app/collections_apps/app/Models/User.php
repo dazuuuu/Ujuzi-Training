@@ -88,6 +88,13 @@ class User
             ->execute([$organisationId, $id]);
     }
 
+    public static function assignOrganisation(int $id, ?int $organisationId): void
+    {
+        Database::connection()
+            ->prepare('UPDATE users SET organisation_id = ? WHERE id = ?')
+            ->execute([$organisationId && $organisationId > 0 ? $organisationId : null, $id]);
+    }
+
     public static function updateProfileNames(int $id, string $firstName, string $lastName): void
     {
         Database::connection()

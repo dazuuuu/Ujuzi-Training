@@ -37,8 +37,8 @@ require __DIR__ . '/layout-header.php';
     <?php elseif (!empty($canViewCourses)): ?>
       <a href="<?= url('/account/courses') ?>" class="rounded-xl bg-white p-5" style="border:2px solid var(--ke-green)">
         <p class="text-[11px] font-black uppercase tracking-widest" style="color:var(--ke-green)">Courses</p>
-        <p class="mt-3 text-lg font-black"><?= !empty($canCreateCourses) ? 'Create & teach' : 'Review catalogue' ?></p>
-        <p class="mt-1 text-xs font-bold text-neutral-600">Open courses</p>
+        <p class="mt-3 text-lg font-black"><?= !empty($isStudent) ? 'Your catalogue' : (!empty($canCreateCourses) ? 'Create & teach' : 'Review catalogue') ?></p>
+        <p class="mt-1 text-xs font-bold text-neutral-600"><?= !empty($isStudent) ? 'Organisation + global courses' : 'Open courses' ?></p>
       </a>
     <?php else: ?>
       <div class="rounded-xl border border-neutral-300 bg-white p-5">
@@ -89,15 +89,75 @@ require __DIR__ . '/layout-header.php';
         <a href="<?= url('/account/categories') ?>" class="btn-primary">Manage categories</a>
       </div>
     </section>
+    <section class="rounded-xl bg-white p-6 shadow-sm" style="border:2px solid var(--ke-green)">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <h2 class="font-serif-heading text-lg font-bold">Branches</h2>
+          <p class="mt-1 text-xs font-semibold" style="color:var(--ke-muted)">List your campuses or locations (title, location, optional cover image).</p>
+        </div>
+        <a href="<?= url('/account/branches') ?>" class="btn-primary">Manage branches</a>
+      </div>
+    </section>
   <?php endif; ?>
 
-  <?php if (!empty($canViewCourses)): ?>
+  <?php if (!empty($isStudent)): ?>
+    <section class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm space-y-4">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <h2 class="font-serif-heading text-lg font-bold">Your courses</h2>
+          <p class="mt-1 text-xs font-semibold" style="color:var(--ke-muted)">
+            <?= !empty($currentUser['organisation_name'])
+              ? 'Showing courses for ' . e($currentUser['organisation_name']) . ', plus any global courses.'
+              : 'Pick an organisation on your profile to see its courses. Global courses still appear here.' ?>
+          </p>
+        </div>
+        <a href="<?= url('/account/courses') ?>" class="btn-primary">All courses</a>
+      </div>
+      <?php if (empty($learnerCourses)): ?>
+        <p class="text-sm font-bold" style="color:var(--ke-muted)">No courses yet for your organisation.</p>
+      <?php else: ?>
+        <div class="course-grid">
+          <?php foreach ($learnerCourses as $course): ?>
+            <article class="course-card">
+              <?php if (!empty($course['cover_image'])): ?>
+                <img src="<?= e(imageUrl($course['cover_image'])) ?>" alt="">
+              <?php endif; ?>
+              <h3 class="font-serif-heading text-lg font-bold"><?= e($course['title']) ?></h3>
+              <p class="text-xs font-bold uppercase tracking-wider" style="color:var(--ke-muted)"><?= e($course['category_name'] ?? '') ?> · <?= e($course['organisation_name'] ?? '') ?></p>
+              <p class="text-[11px] font-black uppercase visibility-badge <?= ($course['visibility'] ?? 'strict') === 'global' ? 'is-global' : 'is-strict' ?>">
+                <?= ($course['visibility'] ?? 'strict') === 'global' ? 'Global' : 'Your organisation' ?>
+              </p>
+              <a href="<?= url('/account/courses/' . (int) $course['id']) ?>" class="btn-primary" style="padding:0.35rem 0.65rem;">Open</a>
+            </article>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
+    </section>
+    <?php if (!empty($learnerBranches)): ?>
+      <section class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm space-y-4">
+        <h2 class="font-serif-heading text-lg font-bold">Organisation branches</h2>
+        <div class="course-grid">
+          <?php foreach ($learnerBranches as $branch): ?>
+            <article class="course-card">
+              <?php if (!empty($branch['cover_image'])): ?>
+                <img src="<?= e(imageUrl($branch['cover_image'])) ?>" alt="">
+              <?php endif; ?>
+              <h3 class="font-serif-heading text-lg font-bold"><?= e($branch['title']) ?></h3>
+              <p class="text-sm font-medium text-neutral-700"><?= e($branch['location']) ?></p>
+            </article>
+          <?php endforeach; ?>
+        </div>
+      </section>
+    <?php endif; ?>
+  <?php endif; ?>
+
+  <?php if (!empty($canViewCourses) && empty($isStudent)): ?>
     <section class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
       <div class="flex items-center justify-between gap-3">
         <div>
           <h2 class="font-serif-heading text-lg font-bold">Courses</h2>
           <p class="mt-1 text-xs font-semibold" style="color:var(--ke-muted)"><?= !empty($canCreateCourses)
-            ? 'Create courses after an organisation approves you, then add one video module at a time.'
+            ? 'Create courses after an organisation approves you, then add topics with videos, materials, and a quiz that unlocks the next topic.'
             : 'Review courses tutors have created for your organisation.' ?></p>
         </div>
         <a href="<?= url(!empty($canCreateCourses) ? '/account/courses/create' : '/account/courses') ?>" class="btn-primary"><?= !empty($canCreateCourses) ? 'Create a course' : 'View courses' ?></a>

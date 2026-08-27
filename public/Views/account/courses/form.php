@@ -2,6 +2,7 @@
 $forms = $forms ?? [];
 $course = $course ?? null;
 $errors = $errors ?? [];
+$visibility = is_array($course) ? ($course['visibility'] ?? 'strict') : 'strict';
 $action = $course ? url('/account/courses/' . (int) $course['id']) : url('/account/courses');
 require __DIR__ . '/../layout-header.php';
 ?>
@@ -10,7 +11,7 @@ require __DIR__ . '/../layout-header.php';
   <div>
     <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">Courses</p>
     <h1 class="mt-2 font-serif-heading text-3xl font-bold"><?= $course ? 'Edit course' : 'Create a course' ?></h1>
-    <p class="mt-2 text-sm font-medium" style="color:var(--ke-muted)">Fill the form Super Admin assigned to tutors. Categories listed here belong only to organisations that have approved you.</p>
+    <p class="mt-2 text-sm font-medium" style="color:var(--ke-muted)">Fill the form Super Admin assigned to tutors. After you save, open the course and use Edit topics to add videos, materials, and a pass-to-unlock quiz.</p>
   </div>
 
   <?php foreach ($errors as $err): ?>
@@ -51,8 +52,19 @@ require __DIR__ . '/../layout-header.php';
       <input type="hidden" name="is_published" value="0" />
       <label class="flex items-center gap-2 text-sm font-bold">
         <input type="checkbox" name="is_published" value="1" <?= empty($course) || !empty($course['is_published']) ? 'checked' : '' ?> class="h-4 w-4" />
-        Published — visible to your organisation
+        Published
       </label>
+      <fieldset class="rounded-lg border p-4 space-y-2" style="border-color:var(--ke-line)">
+        <legend class="px-1 text-[11px] font-black uppercase" style="color:var(--ke-muted)">Who can see this course</legend>
+        <label class="flex items-start gap-2 text-sm font-semibold">
+          <input type="radio" name="visibility" value="strict" class="mt-1 h-4 w-4" <?= $visibility !== 'global' ? 'checked' : '' ?> />
+          <span><strong>Strict</strong> (default) — only students who selected this organisation see it.</span>
+        </label>
+        <label class="flex items-start gap-2 text-sm font-semibold">
+          <input type="radio" name="visibility" value="global" class="mt-1 h-4 w-4" <?= $visibility === 'global' ? 'checked' : '' ?> />
+          <span><strong>Global</strong> — every student can see it, regardless of organisation (for basic skills and similar courses).</span>
+        </label>
+      </fieldset>
       <button type="submit" class="btn-primary"><?= $course ? 'Save course' : 'Create course' ?></button>
     </form>
   <?php endforeach; ?>

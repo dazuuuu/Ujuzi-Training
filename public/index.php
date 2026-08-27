@@ -25,6 +25,7 @@ use App\Controllers\Account\PeopleController;
 use App\Controllers\Account\RegisterController;
 use App\Controllers\Account\TrainerRequestController;
 use App\Controllers\Account\CategoryController as AccountCategoryController;
+use App\Controllers\Account\BranchController as AccountBranchController;
 use App\Controllers\Account\CourseController;
 
 $router = new Router();
@@ -117,6 +118,13 @@ $router->get('/account/categories/{id}/edit', [AccountCategoryController::class,
 $router->post('/account/categories/{id}', [AccountCategoryController::class, 'update']);
 $router->post('/account/categories/{id}/delete', [AccountCategoryController::class, 'destroy']);
 
+$router->get('/account/branches', [AccountBranchController::class, 'index']);
+$router->get('/account/branches/create', [AccountBranchController::class, 'create']);
+$router->post('/account/branches', [AccountBranchController::class, 'store']);
+$router->get('/account/branches/{id}/edit', [AccountBranchController::class, 'edit']);
+$router->post('/account/branches/{id}', [AccountBranchController::class, 'update']);
+$router->post('/account/branches/{id}/delete', [AccountBranchController::class, 'destroy']);
+
 $router->get('/account/courses', [CourseController::class, 'index']);
 $router->get('/account/courses/create', [CourseController::class, 'create']);
 $router->post('/account/courses', [CourseController::class, 'store']);
@@ -127,5 +135,6 @@ $router->post('/account/courses/{id}/delete', [CourseController::class, 'destroy
 $router->post('/account/courses/{id}/modules', [CourseController::class, 'storeModule']);
 $router->post('/account/courses/{id}/modules/{moduleId}', [CourseController::class, 'updateModule']);
 $router->post('/account/courses/{id}/modules/{moduleId}/delete', [CourseController::class, 'destroyModule']);
+$router->post('/account/courses/{id}/modules/{moduleId}/quiz', [CourseController::class, 'submitQuiz']);
 
 $router->dispatch();

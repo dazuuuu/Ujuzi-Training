@@ -45,6 +45,7 @@ $canViewCourses = $canViewCourses ?? false;
           <?php endif; ?>
           <?php if ($isOrgAdmin): ?>
             <a href="<?= url('/account/categories') ?>" style="color: <?= ($activeNav ?? '') === 'categories' ? '#ffffff' : '#b8e0cc' ?>">Categories</a>
+            <a href="<?= url('/account/branches') ?>" style="color: <?= ($activeNav ?? '') === 'branches' ? '#ffffff' : '#b8e0cc' ?>">Branches</a>
           <?php endif; ?>
           <?php if ($canViewCourses): ?>
             <a href="<?= url('/account/courses') ?>" style="color: <?= ($activeNav ?? '') === 'courses' ? '#ffffff' : '#b8e0cc' ?>">Courses</a>
