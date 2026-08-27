@@ -255,6 +255,13 @@ class User
             ->execute([$id]);
     }
 
+    public static function setPassword(int $id, string $password): void
+    {
+        Database::connection()
+            ->prepare('UPDATE users SET password_hash = ? WHERE id = ?')
+            ->execute([password_hash($password, PASSWORD_DEFAULT), $id]);
+    }
+
     public static function verifyPassword(string $email, string $password): ?array
     {
         $user = self::findByIdentifier('email', strtolower(trim($email)));

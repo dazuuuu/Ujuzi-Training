@@ -27,6 +27,10 @@
 
     <form method="post" action="<?= url('/admin/login') ?>" class="rounded-xl p-6 space-y-4" style="background:#1a1a1a;border:1px solid var(--ke-green)">
       <?= csrfField() ?>
+      <?php if (!empty($_SESSION['flash_success'])): ?>
+        <div class="flash-success"><?= e($_SESSION['flash_success']) ?></div>
+        <?php unset($_SESSION['flash_success']); ?>
+      <?php endif; ?>
       <?php if ($error): ?>
         <div class="flash-error"><?= e($error) ?></div>
       <?php endif; ?>
@@ -39,6 +43,7 @@
         <input type="password" name="password" required class="w-full mt-1 text-sm rounded-lg px-3 py-2.5" style="background:#111;border:1px solid #6b7f74;color:#fff" />
       </div>
       <button type="submit" class="btn-primary btn-block">Sign In</button>
+      <p class="text-center text-xs font-semibold"><a href="<?= url('/admin/forgot-password') ?>" style="color:#b8e0cc">Forgot password?</a></p>
     </form>
 
     <p class="text-center text-[11px] mt-6" style="color:#b8e0cc">

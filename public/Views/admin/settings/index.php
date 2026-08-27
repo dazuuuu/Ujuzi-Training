@@ -60,7 +60,7 @@ $platformName = $settings['platform_name'] ?? appName();
       <div>
         <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">Email / SMTP</p>
         <h2 class="mt-2 text-2xl font-black text-black">Mail credentials</h2>
-        <p class="mt-1 text-sm font-medium text-neutral-700">Used to email organisation registration forms and login codes. Put your SMTP host, username, and password here.</p>
+        <p class="mt-1 text-sm font-medium text-neutral-700">Used to email organisation registration forms, login codes, and password-reset OTPs. Put your SMTP host, username, and password here.</p>
         <p class="mt-2 text-xs font-bold <?= !empty($smtpConfigured) ? '' : '' ?>" style="color: <?= !empty($smtpConfigured) ? 'var(--ke-green)' : 'var(--ke-red)' ?>">
           <?= !empty($smtpConfigured) ? 'SMTP looks configured.' : 'SMTP is not configured yet — emails will fail until you save credentials below.' ?>
         </p>

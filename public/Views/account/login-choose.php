@@ -27,6 +27,8 @@ require __DIR__ . '/layout-header.php';
     <?php endforeach; ?>
   </div>
 
+  <p class="mt-6 text-center text-sm font-semibold"><a href="<?= url('/account/forgot-password') ?>" style="color:var(--ke-green)">Forgot password?</a></p>
+
   <div class="mt-8 rounded-xl border border-neutral-200 bg-neutral-50 p-5 text-center">
     <p class="text-[11px] font-black uppercase tracking-widest text-neutral-600">Platform owner</p>
     <p class="mt-2 text-sm font-semibold text-neutral-700">Super Admin uses a separate login and dashboard.</p>
