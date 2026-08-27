@@ -20,6 +20,7 @@ use App\Controllers\Admin\SettingsController;
 use App\Controllers\Admin\CertificateController as AdminCertificateController;
 use App\Controllers\Admin\UpdateController;
 use App\Controllers\Account\AuthController as AccountAuthController;
+use App\Controllers\Account\PasswordResetController;
 use App\Controllers\Account\DashboardController as AccountDashboardController;
 use App\Controllers\Account\ProfileController;
 use App\Controllers\Account\PeopleController;
@@ -42,6 +43,12 @@ $router->get('/', [LmsController::class, 'home']);
 // --- Super admin: auth ---
 $router->get('/admin/login', [AdminAuthController::class, 'showLogin']);
 $router->post('/admin/login', [AdminAuthController::class, 'login']);
+$router->get('/admin/forgot-password', [AdminAuthController::class, 'showForgot']);
+$router->post('/admin/forgot-password', [AdminAuthController::class, 'sendReset']);
+$router->get('/admin/forgot-password/verify', [AdminAuthController::class, 'showResetVerify']);
+$router->post('/admin/forgot-password/verify', [AdminAuthController::class, 'verifyReset']);
+$router->get('/admin/forgot-password/new', [AdminAuthController::class, 'showNewPassword']);
+$router->post('/admin/forgot-password/new', [AdminAuthController::class, 'storeNewPassword']);
 $router->get('/admin/logout', [AdminAuthController::class, 'logout']);
 
 // --- Super admin: dashboard ---
@@ -103,6 +110,12 @@ $router->get('/account/login/{role}', [AccountAuthController::class, 'showLogin'
 $router->post('/account/login/{role}', [AccountAuthController::class, 'login']);
 $router->get('/account/verify', [AccountAuthController::class, 'showVerify']);
 $router->post('/account/verify', [AccountAuthController::class, 'verify']);
+$router->get('/account/forgot-password', [PasswordResetController::class, 'showRequest']);
+$router->post('/account/forgot-password', [PasswordResetController::class, 'send']);
+$router->get('/account/forgot-password/verify', [PasswordResetController::class, 'showVerify']);
+$router->post('/account/forgot-password/verify', [PasswordResetController::class, 'verify']);
+$router->get('/account/forgot-password/new', [PasswordResetController::class, 'showNew']);
+$router->post('/account/forgot-password/new', [PasswordResetController::class, 'storeNew']);
 $router->get('/account/logout', [AccountAuthController::class, 'logout']);
 $router->get('/account/dashboard', [AccountDashboardController::class, 'index']);
 $router->get('/account/profile', [ProfileController::class, 'index']);

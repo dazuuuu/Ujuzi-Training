@@ -36,6 +36,7 @@ $registerPath = $registerPath ?? LoginRoles::registerPath((string) ($roleSlug ??
       <div>
         <label class="text-[11px] font-bold text-neutral-600 uppercase">Password</label>
         <input type="password" name="password" autocomplete="current-password" class="w-full mt-1 bg-white border border-neutral-300 rounded-lg p-2.5 text-sm focus:outline-none focus:border-black" />
+        <p class="mt-2 text-xs font-semibold"><a href="<?= url('/account/forgot-password?role=' . rawurlencode((string) ($roleSlug ?? ''))) ?>" style="color:var(--ke-green)">Forgot password?</a></p>
         <p class="field-hint">Leave blank only if an admin created your account and you still use an email login code.</p>
       </div>
       <button type="submit" class="btn-primary btn-block">Sign in</button>
