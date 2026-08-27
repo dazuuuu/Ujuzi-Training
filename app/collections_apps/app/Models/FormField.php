@@ -101,6 +101,24 @@ class FormField
             $names = Organisation::namesByIds($ids);
             return $names ? implode(', ', array_values($names)) : '—';
         }
+        if (($field['field_type'] ?? '') === 'duration') {
+            if (!is_array($value)) {
+                return '—';
+            }
+            $start = trim((string) ($value['start'] ?? ''));
+            $end = trim((string) ($value['end'] ?? ''));
+            if ($start === '' && $end === '') {
+                return '—';
+            }
+            $pretty = static function (string $date): string {
+                $ts = strtotime($date);
+                return $ts ? date('j M Y', $ts) : $date;
+            };
+            if ($start !== '' && $end !== '') {
+                return $pretty($start) . ' – ' . $pretty($end);
+            }
+            return $pretty($start !== '' ? $start : $end);
+        }
         if (($field['field_type'] ?? '') === 'category') {
             $ids = is_array($value) ? $value : [$value];
             $names = OrganisationCategory::namesByIds($ids);

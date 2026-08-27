@@ -56,7 +56,7 @@ class LoginRoles
             'attachment_trainer' => [
                 'badge' => $name,
                 'heading' => 'Attachment trainer sign in',
-                'blurb' => 'Sign in to your attachment trainer dashboard. An organisation admin or Super Admin creates this account.',
+                'blurb' => 'Sign in to your attachment trainer dashboard. Organisation admins create this account. Students only see you after they finish a course, for the duration on your profile form.',
                 'need_account' => 'Ask your organisation admin to create your attachment trainer account.',
             ],
             'trainer' => [

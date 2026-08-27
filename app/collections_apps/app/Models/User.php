@@ -81,6 +81,60 @@ class User
         return array_map([self::class, 'hydrate'], $stmt->fetchAll());
     }
 
+    public static function attachmentTrainersForOrganisations(array $organisationIds): array
+    {
+        $organisationIds = array_values(array_unique(array_filter(array_map('intval', $organisationIds))));
+        if (!$organisationIds) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($organisationIds), '?'));
+        $stmt = Database::connection()->prepare(
+            "SELECT u.*, r.slug AS role_slug, r.name AS role_name, r.has_admin_features, r.is_under_organisation,
+                    r.can_manage_users, r.managed_role_slugs, o.name AS organisation_name
+             FROM users u
+             INNER JOIN roles r ON r.id = u.role_id
+             LEFT JOIN organisations o ON o.id = u.organisation_id
+             WHERE r.slug = 'attachment_trainer'
+               AND u.is_active = 1
+               AND (
+                    u.organisation_id IN ($placeholders)
+                    OR EXISTS (
+                        SELECT 1 FROM organisation_memberships m
+                        WHERE m.user_id = u.id
+                          AND m.organisation_id IN ($placeholders)
+                          AND m.status = 'approved'
+                    )
+               )
+             ORDER BY u.first_name ASC, u.last_name ASC, u.email ASC"
+        );
+        $stmt->execute(array_merge($organisationIds, $organisationIds));
+        return array_map([self::class, 'hydrate'], $stmt->fetchAll());
+    }
+
+    public static function attachmentDuration(array $user): string
+    {
+        try {
+            $forms = Form::forRole((int) $user['role_id'], true, 'profile');
+        } catch (\Throwable $e) {
+            return '';
+        }
+        foreach ($forms as $form) {
+            $fields = FormField::forForm((int) $form['id']);
+            $response = FormResponse::findForUserForm((int) $user['id'], (int) $form['id']);
+            $answers = is_array($response['answers'] ?? null) ? $response['answers'] : [];
+            foreach ($fields as $field) {
+                if (($field['field_type'] ?? '') !== 'duration') {
+                    continue;
+                }
+                $label = FormField::formatAnswer($field, $answers[$field['field_key']] ?? null);
+                if ($label !== '' && $label !== '—') {
+                    return $label;
+                }
+            }
+        }
+        return '';
+    }
+
     public static function setOrganisationId(int $id, int $organisationId): void
     {
         Database::connection()

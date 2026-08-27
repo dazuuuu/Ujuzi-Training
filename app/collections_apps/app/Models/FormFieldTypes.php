@@ -31,6 +31,7 @@ class FormFieldTypes
                 'date' => 'Date',
                 'time' => 'Time',
                 'datetime' => 'Date & time',
+                'duration' => 'Attachment duration (start & end)',
             ],
             'Location' => [
                 'county' => 'Kenya county',
@@ -106,7 +107,7 @@ class FormFieldTypes
 
     public static function isComposite(string $type): bool
     {
-        return in_array($type, ['name'], true);
+        return in_array($type, ['name', 'duration'], true);
     }
 
     public static function allowsOther(string $type): bool

@@ -8,6 +8,7 @@ use App\Models\FormResponse;
 use App\Models\Organisation;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\MigrationService;
 
 class DashboardController extends BaseAdminController
 {
@@ -27,12 +28,20 @@ class DashboardController extends BaseAdminController
                 : 0,
         ];
 
+        $pending = [];
+        try {
+            $pending = MigrationService::pending();
+        } catch (\Throwable $e) {
+            $pending = [];
+        }
+
         View::render('admin.dashboard', [
             'pageTitle' => 'Dashboard',
             'activeNav' => 'dashboard',
             'stats' => $stats,
             'roleCounts' => $roleCounts,
             'recentUsers' => User::recent(8),
+            'pendingMigrations' => $pending,
         ]);
     }
 }

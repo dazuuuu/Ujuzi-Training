@@ -119,6 +119,20 @@ class FormAnswerService
                 continue;
             }
 
+            if ($type === 'duration') {
+                $raw = is_array($posted[$key] ?? null) ? $posted[$key] : [];
+                $start = trim((string) ($raw['start'] ?? ''));
+                $end = trim((string) ($raw['end'] ?? ''));
+                if ($field['is_required'] && ($start === '' || $end === '')) {
+                    $errors[] = $field['label'] . ' needs a start and end date.';
+                }
+                if ($start !== '' && $end !== '' && strtotime($end) < strtotime($start)) {
+                    $errors[] = $field['label'] . ' end date must be on or after the start date.';
+                }
+                $answers[$key] = ['start' => $start, 'end' => $end];
+                continue;
+            }
+
             if ($type === 'category') {
                 $raw = $posted[$key] ?? [];
                 if (!is_array($raw)) {

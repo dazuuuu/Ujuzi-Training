@@ -16,6 +16,7 @@ $navItems = [
     ['id' => 'share', 'href' => url('/admin/share-registration'), 'label' => 'Share registration'],
     ['id' => 'users', 'href' => url('/admin/users'), 'label' => 'Users'],
     ['id' => 'forms', 'href' => url('/admin/forms'), 'label' => 'Forms'],
+    ['id' => 'certificate', 'href' => url('/admin/certificate'), 'label' => 'Certificate'],
     ['id' => 'settings', 'href' => url('/admin/settings'), 'label' => 'Settings'],
 ];
 $admin = AdminSession::current();

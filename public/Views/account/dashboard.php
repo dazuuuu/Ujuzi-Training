@@ -133,6 +133,38 @@ require __DIR__ . '/layout-header.php';
         </div>
       <?php endif; ?>
     </section>
+    <?php if (!empty($completedCourses)): ?>
+      <section class="rounded-xl border bg-white p-6 shadow-sm space-y-4" style="border:2px solid var(--ke-green)">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 class="font-serif-heading text-lg font-bold">Skills certificate</h2>
+            <p class="mt-1 text-xs font-semibold" style="color:var(--ke-muted)">One certificate lists every skill you have finished. Complete more courses and they are added to the same certificate.</p>
+          </div>
+          <a href="<?= url('/account/certificate') ?>" class="btn-primary">Open certificate</a>
+        </div>
+        <ul class="text-sm font-semibold space-y-1">
+          <?php foreach ($completedCourses as $course): ?>
+            <li><?= e($course['title']) ?><?= !empty($course['category_name']) ? ' · ' . e($course['category_name']) : '' ?></li>
+          <?php endforeach; ?>
+        </ul>
+      </section>
+      <section class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm space-y-4">
+        <h2 class="font-serif-heading text-lg font-bold">Attachment trainers</h2>
+        <p class="text-xs font-semibold" style="color:var(--ke-muted)">These hosts are available because you have finished a course. Duration comes from their profile form.</p>
+        <?php if (empty($attachmentTrainers)): ?>
+          <p class="text-sm font-bold" style="color:var(--ke-muted)">No attachment trainers are listed for your organisation yet.</p>
+        <?php else: ?>
+          <div class="divide-y divide-neutral-100">
+            <?php foreach ($attachmentTrainers as $trainer): ?>
+              <div class="py-3">
+                <p class="text-sm font-black"><?= e(userDisplayName($trainer)) ?></p>
+                <p class="text-xs font-semibold text-neutral-600"><?= e($trainer['organisation_name'] ?? '') ?><?= !empty($trainer['attachment_duration']) ? ' · ' . e($trainer['attachment_duration']) : '' ?></p>
+              </div>
+            <?php endforeach; ?>
+          </div>
+        <?php endif; ?>
+      </section>
+    <?php endif; ?>
     <?php if (!empty($learnerBranches)): ?>
       <section class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm space-y-4">
         <h2 class="font-serif-heading text-lg font-bold">Organisation branches</h2>

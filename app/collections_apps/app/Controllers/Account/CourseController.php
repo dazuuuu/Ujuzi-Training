@@ -215,7 +215,11 @@ class CourseController extends BaseAccountController
         ]);
 
         if ($result['passed']) {
-            flashSuccess('You scored ' . $result['score'] . '%. The next topic is now open.');
+            $message = 'You scored ' . $result['score'] . '%. The next topic is now open.';
+            if (Course::isCompletedByUser((int) $course['id'], (int) $this->user['id'])) {
+                $message = 'You scored ' . $result['score'] . '%. This course is complete. Your certificate now lists this skill, and attachment trainers for your organisation are available.';
+            }
+            flashSuccess($message);
         } else {
             flashError('You scored ' . $result['score'] . '%. You need ' . (int) $current['pass_percent'] . '% to unlock the next topic. Try again.');
         }

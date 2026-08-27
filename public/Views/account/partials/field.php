@@ -222,6 +222,16 @@ switch ($type) {
         echo '<input type="datetime-local" name="' . e($name) . '" value="' . e($dt) . '" ' . ($required ? 'required' : '') . ' class="' . $class . '" />';
         break;
 
+    case 'duration':
+        $start = is_array($value) ? (string) ($value['start'] ?? '') : '';
+        $end = is_array($value) ? (string) ($value['end'] ?? '') : '';
+        echo '<div class="name-grid">';
+        echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Start</label><input type="date" name="' . e($name) . '[start]" value="' . e($start) . '" ' . ($required ? 'required' : '') . ' class="' . $class . '" /></div>';
+        echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">End</label><input type="date" name="' . e($name) . '[end]" value="' . e($end) . '" ' . ($required ? 'required' : '') . ' class="' . $class . '" /></div>';
+        echo '</div>';
+        echo '<p class="field-hint">Attachment placements cover a specific period. Students see this after they finish their course.</p>';
+        break;
+
     case 'color':
         echo '<input type="color" name="' . e($name) . '" value="' . e((string) ($value ?: '#006b3f')) . '" class="mt-2 h-10 w-20 rounded border border-neutral-300" />';
         break;

@@ -209,6 +209,10 @@ function fieldChoices(array $field): array
             <p class="text-sm font-semibold">Organisation categories</p>
             <p class="field-hint">This field lists categories each organisation has added. Approved tutors only see categories for organisations they belong to. Use it on a course-creation form assigned to trainers.</p>
           </div>
+          <div class="duration-wrap rounded-lg p-3 <?= $type === 'duration' ? '' : 'hidden' ?>" style="background:#f6f7f4;border:1px solid var(--ke-line)">
+            <p class="text-sm font-semibold">Attachment duration</p>
+            <p class="field-hint">Use this on the Attachment Trainer profile form. They enter a start and end date for the placement period.</p>
+          </div>
             </div>
           </div>
         </div>
@@ -334,6 +338,10 @@ function fieldChoices(array $field): array
       <p class="text-sm font-semibold">Organisation categories</p>
       <p class="field-hint">This field lists categories each organisation has added. Approved tutors only see categories for organisations they belong to. Use it on a course-creation form assigned to trainers.</p>
     </div>
+    <div class="duration-wrap hidden rounded-lg p-3" style="background:#f6f7f4;border:1px solid var(--ke-line)">
+      <p class="text-sm font-semibold">Attachment duration</p>
+      <p class="field-hint">Use this on the Attachment Trainer profile form. They enter a start and end date for the placement period.</p>
+    </div>
       </div>
     </div>
   </div>
@@ -381,6 +389,7 @@ function fieldChoices(array $field): array
     var selectAll = row.querySelector('.select-all-wrap');
     var orgMode = row.querySelector('.org-mode-wrap');
     var categoryWrap = row.querySelector('.category-wrap');
+    var durationWrap = row.querySelector('.duration-wrap');
     if (choices) choices.classList.toggle('hidden', !choiceTypes[value]);
     if (range) range.classList.toggle('hidden', !rangeTypes[value]);
     if (placeholder) placeholder.classList.toggle('hidden', !placeholderTypes[value]);
@@ -391,6 +400,7 @@ function fieldChoices(array $field): array
     if (selectAll) selectAll.classList.toggle('hidden', value !== 'checkboxes');
     if (orgMode) orgMode.classList.toggle('hidden', value !== 'organisation');
     if (categoryWrap) categoryWrap.classList.toggle('hidden', value !== 'category');
+    if (durationWrap) durationWrap.classList.toggle('hidden', value !== 'duration');
     if (range && rangeTypes[value] && rangeDefaults[value]) {
       var minInput = range.querySelector('[name$="[range_min]"], [data-name="range_min"]');
       var maxInput = range.querySelector('[name$="[range_max]"], [data-name="range_max"]');

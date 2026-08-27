@@ -10,10 +10,15 @@ class UpdateController extends BaseAdminController
 {
     public function index(): void
     {
+        $pending = MigrationService::pending();
+        if (!$pending) {
+            redirect('/admin');
+        }
+
         View::render('admin.updates.index', [
             'pageTitle' => 'Updates',
             'activeNav' => 'updates',
-            'pendingMigrations' => MigrationService::pending(),
+            'pendingMigrations' => $pending,
         ]);
     }
 
@@ -26,11 +31,17 @@ class UpdateController extends BaseAdminController
 
         try {
             $ran = MigrationService::runPending();
+            $stillPending = MigrationService::pending();
+            if ($stillPending) {
+                flashSuccess($ran > 0 ? "Ran {$ran} migration(s). Some updates are still pending." : 'Some updates are still pending.');
+                redirect('/admin/updates');
+            }
             flashSuccess($ran > 0 ? "Updated successfully. Ran {$ran} migration(s)." : 'Everything is already up to date.');
         } catch (\Throwable $e) {
             flashError('Update failed: ' . $e->getMessage());
+            redirect('/admin/updates');
         }
 
-        redirect('/admin/updates');
+        redirect('/admin');
     }
 }
