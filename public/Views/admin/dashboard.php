@@ -25,7 +25,7 @@ $kpis = [
         'label' => 'Profile fills',
         'value' => number_format((int) $stats['profilesCompleted']),
         'meta' => $stats['profileRate'] . '% of assigned forms',
-        'href' => url('/admin/forms'),
+        'href' => url('/admin/responses'),
     ],
 ];
 $maxRole = max(1, ...array_map(fn($row) => (int) $row['total'], $roleCounts ?: [['total' => 1]]));

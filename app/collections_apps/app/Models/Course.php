@@ -193,6 +193,23 @@ class Course
         return ($course['visibility'] ?? self::VISIBILITY_STRICT) === self::VISIBILITY_GLOBAL;
     }
 
+    public static function forForm(int $formId): array
+    {
+        $stmt = Database::connection()->prepare(
+            'SELECT c.*, cat.name AS category_name, o.name AS organisation_name,
+                    u.first_name, u.last_name, u.email, u.phone, r.name AS role_name
+             FROM courses c
+             INNER JOIN organisation_categories cat ON cat.id = c.category_id
+             INNER JOIN organisations o ON o.id = c.organisation_id
+             INNER JOIN users u ON u.id = c.trainer_user_id
+             LEFT JOIN roles r ON r.id = u.role_id
+             WHERE c.form_id = ?
+             ORDER BY c.updated_at DESC, c.created_at DESC'
+        );
+        $stmt->execute([$formId]);
+        return array_map([self::class, 'hydrate'], $stmt->fetchAll());
+    }
+
     public static function hydrate(array $row): array
     {
         foreach (['materials', 'answers'] as $key) {

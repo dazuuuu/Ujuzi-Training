@@ -133,7 +133,36 @@ class FormField
                 if ($name === '' && $location === '') {
                     continue;
                 }
-                $parts[] = $location !== '' ? $name . ' (' . $location . ')' : $name;
+                $bits = [];
+                if ($name !== '') {
+                    $bits[] = $name;
+                }
+                if ($location !== '') {
+                    $bits[] = $location;
+                }
+                $details = trim((string) ($row['details'] ?? ''));
+                $phone = trim((string) ($row['phone'] ?? ''));
+                $contact = trim((string) ($row['contact'] ?? ''));
+                if ($details !== '') {
+                    $bits[] = $details;
+                }
+                if ($phone !== '') {
+                    $bits[] = 'Phone: ' . $phone;
+                }
+                if ($contact !== '') {
+                    $bits[] = 'Contact: ' . $contact;
+                }
+                $extra = is_array($row['extra'] ?? null) ? $row['extra'] : [];
+                foreach ($extra as $extraLabel => $extraValue) {
+                    $extraValue = trim((string) $extraValue);
+                    if ($extraValue === '') {
+                        continue;
+                    }
+                    $bits[] = trim((string) $extraLabel) . ': ' . $extraValue;
+                }
+                if ($bits) {
+                    $parts[] = implode(' — ', $bits);
+                }
             }
             return $parts ? implode('; ', $parts) : '—';
         }

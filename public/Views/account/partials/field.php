@@ -233,41 +233,58 @@ switch ($type) {
         break;
 
     case 'branches':
-        $rows = is_array($value) && $value ? array_values($value) : [['name' => '', 'location' => '', 'extra' => []]];
+        $rows = is_array($value) && $value ? array_values(array_filter($value, 'is_array')) : [];
+        if (!$rows) {
+            $rows = [['name' => '', 'location' => '', 'details' => '', 'phone' => '', 'contact' => '', 'extra' => []]];
+        }
         $extraLabels = FormFieldTypes::extraLabels($field);
-        echo '<p class="field-hint">Add every branch. Name and location are required on each row.</p>';
-        echo '<div class="branch-rows" data-branches="' . e($key) . '">';
-        foreach ($rows as $index => $row) {
-            if (!is_array($row)) {
-                continue;
-            }
+        $renderBranchRow = static function (array $row, $index, string $name, string $class, array $extraLabels) {
             $rowName = (string) ($row['name'] ?? $row['title'] ?? '');
             $rowLocation = (string) ($row['location'] ?? '');
+            $rowDetails = (string) ($row['details'] ?? '');
+            $rowPhone = (string) ($row['phone'] ?? '');
+            $rowContact = (string) ($row['contact'] ?? '');
             $rowId = (int) ($row['id'] ?? 0);
-            $rowExtra = is_array($row['extra'] ?? null) ? $row['extra'] : (is_array($row['details'] ?? null) ? $row['details'] : []);
+            $rowExtra = is_array($row['extra'] ?? null) ? $row['extra'] : [];
             $extraByKey = [];
             foreach ($rowExtra as $extraLabel => $extraValue) {
                 $extraByKey[FormFieldTypes::extraKey((string) $extraLabel)] = (string) $extraValue;
                 $extraByKey[(string) $extraLabel] = (string) $extraValue;
             }
+            $indexAttr = $index === '__INDEX__' ? '__INDEX__' : (string) (int) $index;
             echo '<div class="branch-row rounded-lg border border-neutral-200 p-3 space-y-3">';
-            if ($rowId > 0) {
-                echo '<input type="hidden" name="' . e($name) . '[' . (int) $index . '][id]" value="' . $rowId . '" />';
+            if ($rowId > 0 && $index !== '__INDEX__') {
+                echo '<input type="hidden" name="' . e($name) . '[' . $indexAttr . '][id]" value="' . $rowId . '" />';
             }
             echo '<div class="name-grid">';
-            echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Branch name</label><input type="text" name="' . e($name) . '[' . (int) $index . '][name]" value="' . e($rowName) . '" placeholder="e.g. Nairobi campus" class="' . $class . '" /></div>';
-            echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Location</label><input type="text" name="' . e($name) . '[' . (int) $index . '][location]" value="' . e($rowLocation) . '" placeholder="e.g. Westlands, Nairobi" class="' . $class . '" /></div>';
+            echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Branch name</label><input type="text" name="' . e($name) . '[' . $indexAttr . '][name]" value="' . e($rowName) . '" placeholder="e.g. Nairobi campus" class="' . $class . '" /></div>';
+            echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Location</label><input type="text" name="' . e($name) . '[' . $indexAttr . '][location]" value="' . e($rowLocation) . '" placeholder="e.g. Westlands, Nairobi" class="' . $class . '" /></div>';
+            echo '</div>';
+            echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Details</label><textarea name="' . e($name) . '[' . $indexAttr . '][details]" rows="3" placeholder="What this branch offers, hours, or other notes" class="' . $class . '">' . e($rowDetails) . '</textarea></div>';
+            echo '<div class="name-grid">';
+            echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Phone</label><input type="text" name="' . e($name) . '[' . $indexAttr . '][phone]" value="' . e($rowPhone) . '" placeholder="e.g. 0712 000 000" class="' . $class . '" /></div>';
+            echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Contact person</label><input type="text" name="' . e($name) . '[' . $indexAttr . '][contact]" value="' . e($rowContact) . '" placeholder="Who to ask for" class="' . $class . '" /></div>';
             echo '</div>';
             foreach ($extraLabels as $extraLabel) {
                 $slug = FormFieldTypes::extraKey($extraLabel);
                 $extraValue = (string) ($extraByKey[$slug] ?? $extraByKey[$extraLabel] ?? '');
-                echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">' . e($extraLabel) . '</label><input type="text" name="' . e($name) . '[' . (int) $index . '][extra][' . e($slug) . ']" value="' . e($extraValue) . '" class="' . $class . '" /></div>';
+                echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">' . e($extraLabel) . '</label><input type="text" name="' . e($name) . '[' . $indexAttr . '][extra][' . e($slug) . ']" value="' . e($extraValue) . '" class="' . $class . '" /></div>';
             }
             echo '<button type="button" class="remove-branch-row btn-danger" style="padding:0.4rem 0.7rem;">Remove branch</button>';
             echo '</div>';
+        };
+        echo '<div class="js-branch-field">';
+        echo '<p class="field-hint">Add each branch you run. Name and location are required. Details, phone, and contact person are optional, plus any extra fields Super Admin added on this form.</p>';
+        echo '<div class="branch-rows" data-branches="' . e($key) . '">';
+        foreach ($rows as $index => $row) {
+            $renderBranchRow($row, $index, $name, $class, $extraLabels);
         }
         echo '</div>';
+        echo '<template class="branch-row-template">';
+        $renderBranchRow(['name' => '', 'location' => '', 'details' => '', 'phone' => '', 'contact' => '', 'extra' => []], '__INDEX__', $name, $class, $extraLabels);
+        echo '</template>';
         echo '<button type="button" class="add-branch-row btn-secondary mt-2" style="padding:0.4rem 0.75rem;" data-branches-add="' . e($key) . '">Add another branch</button>';
+        echo '</div>';
         break;
 
     case 'color':

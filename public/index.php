@@ -16,6 +16,7 @@ use App\Controllers\Admin\RoleController;
 use App\Controllers\Admin\OrganisationController;
 use App\Controllers\Admin\UserController;
 use App\Controllers\Admin\FormController;
+use App\Controllers\Admin\FormResponseController;
 use App\Controllers\Admin\SettingsController;
 use App\Controllers\Admin\CertificateController as AdminCertificateController;
 use App\Controllers\Admin\UpdateController;
@@ -83,6 +84,8 @@ $router->post('/admin/forms', [FormController::class, 'store']);
 $router->get('/admin/forms/{id}/edit', [FormController::class, 'edit']);
 $router->post('/admin/forms/{id}', [FormController::class, 'update']);
 $router->post('/admin/forms/{id}/delete', [FormController::class, 'destroy']);
+$router->get('/admin/responses', [FormResponseController::class, 'index']);
+$router->get('/admin/responses/{id}', [FormResponseController::class, 'show']);
 
 // --- Super admin: settings ---
 $router->get('/admin/settings', [SettingsController::class, 'index']);

@@ -93,6 +93,48 @@ class FormResponse
         ];
     }
 
+    public static function submittedForForm(int $formId): array
+    {
+        $stmt = Database::connection()->prepare(
+            "SELECT fr.*, u.email, u.phone, u.first_name, u.last_name, u.role_id,
+                    r.name AS role_name, o.name AS organisation_name
+             FROM form_responses fr
+             INNER JOIN users u ON u.id = fr.user_id
+             LEFT JOIN roles r ON r.id = u.role_id
+             LEFT JOIN organisations o ON o.id = u.organisation_id
+             WHERE fr.form_id = ?
+               AND fr.submitted_at IS NOT NULL
+             ORDER BY fr.submitted_at DESC"
+        );
+        $stmt->execute([$formId]);
+        return array_map([self::class, 'hydrate'], $stmt->fetchAll());
+    }
+
+    public static function countsByForm(): array
+    {
+        try {
+            $rows = Database::connection()
+                ->query(
+                    "SELECT form_id,
+                            COUNT(*) AS assigned,
+                            SUM(CASE WHEN submitted_at IS NOT NULL THEN 1 ELSE 0 END) AS filled
+                     FROM form_responses
+                     GROUP BY form_id"
+                )
+                ->fetchAll();
+        } catch (\Throwable $e) {
+            return [];
+        }
+        $out = [];
+        foreach ($rows as $row) {
+            $out[(int) $row['form_id']] = [
+                'assigned' => (int) $row['assigned'],
+                'filled' => (int) $row['filled'],
+            ];
+        }
+        return $out;
+    }
+
     public static function hydrate(array $row): array
     {
         $answers = $row['answers'] ?? null;

@@ -26,28 +26,53 @@ class OrganisationBranch
     public static function create(array $fields): int
     {
         $pdo = Database::connection();
-        $pdo->prepare(
-            'INSERT INTO organisation_branches (organisation_id, title, location, details, cover_image, sort_order)
-             VALUES (?, ?, ?, ?, ?, ?)'
-        )->execute([
-            (int) $fields['organisation_id'],
-            $fields['title'],
-            $fields['location'],
-            self::encodeDetails($fields['details'] ?? []),
-            $fields['cover_image'] ?? null,
-            (int) ($fields['sort_order'] ?? 0),
-        ]);
+        if (self::hasDetailsColumn()) {
+            $pdo->prepare(
+                'INSERT INTO organisation_branches (organisation_id, title, location, details, cover_image, sort_order)
+                 VALUES (?, ?, ?, ?, ?, ?)'
+            )->execute([
+                (int) $fields['organisation_id'],
+                $fields['title'],
+                $fields['location'],
+                self::encodeDetails($fields['details'] ?? []),
+                $fields['cover_image'] ?? null,
+                (int) ($fields['sort_order'] ?? 0),
+            ]);
+        } else {
+            $pdo->prepare(
+                'INSERT INTO organisation_branches (organisation_id, title, location, cover_image, sort_order)
+                 VALUES (?, ?, ?, ?, ?)'
+            )->execute([
+                (int) $fields['organisation_id'],
+                $fields['title'],
+                $fields['location'],
+                $fields['cover_image'] ?? null,
+                (int) ($fields['sort_order'] ?? 0),
+            ]);
+        }
         return (int) $pdo->lastInsertId();
     }
 
     public static function update(int $id, array $fields): void
     {
+        if (self::hasDetailsColumn()) {
+            Database::connection()->prepare(
+                'UPDATE organisation_branches SET title = ?, location = ?, details = ?, cover_image = ?, sort_order = ? WHERE id = ?'
+            )->execute([
+                $fields['title'],
+                $fields['location'],
+                self::encodeDetails($fields['details'] ?? []),
+                $fields['cover_image'] ?? null,
+                (int) ($fields['sort_order'] ?? 0),
+                $id,
+            ]);
+            return;
+        }
         Database::connection()->prepare(
-            'UPDATE organisation_branches SET title = ?, location = ?, details = ?, cover_image = ?, sort_order = ? WHERE id = ?'
+            'UPDATE organisation_branches SET title = ?, location = ?, cover_image = ?, sort_order = ? WHERE id = ?'
         )->execute([
             $fields['title'],
             $fields['location'],
-            self::encodeDetails($fields['details'] ?? []),
             $fields['cover_image'] ?? null,
             (int) ($fields['sort_order'] ?? 0),
             $id,
@@ -84,11 +109,19 @@ class OrganisationBranch
     {
         $rows = [];
         foreach (self::forOrganisation($organisationId) as $branch) {
+            $extras = self::extras($branch);
+            $details = (string) ($extras['Details'] ?? '');
+            $phone = (string) ($extras['Phone'] ?? '');
+            $contact = (string) ($extras['Contact person'] ?? '');
+            unset($extras['Details'], $extras['Phone'], $extras['Contact person']);
             $rows[] = [
                 'id' => (int) $branch['id'],
                 'name' => (string) ($branch['title'] ?? ''),
                 'location' => (string) ($branch['location'] ?? ''),
-                'extra' => self::extras($branch),
+                'details' => $details,
+                'phone' => $phone,
+                'contact' => $contact,
+                'extra' => $extras,
             ];
         }
         return $rows;
@@ -97,17 +130,11 @@ class OrganisationBranch
     /**
      * Replace organisation branches from a profile form answer list.
      * Existing cover images are kept when a submitted row still has that branch id.
+     * An empty list is ignored so saving the rest of the profile cannot wipe branches.
      */
     public static function syncFromFormRows(int $organisationId, array $rows): void
     {
-        $existing = self::forOrganisation($organisationId);
-        $byId = [];
-        foreach ($existing as $branch) {
-            $byId[(int) $branch['id']] = $branch;
-        }
-
-        $keepIds = [];
-        $order = 0;
+        $incoming = [];
         foreach ($rows as $row) {
             if (!is_array($row)) {
                 continue;
@@ -117,22 +144,32 @@ class OrganisationBranch
             if ($title === '' || $location === '') {
                 continue;
             }
-            $details = $row['extra'] ?? $row['extras'] ?? $row['details'] ?? [];
-            if (!is_array($details)) {
-                $details = [];
-            }
+            $incoming[] = $row;
+        }
+        if (!$incoming) {
+            return;
+        }
+
+        $existing = self::forOrganisation($organisationId);
+        $byId = [];
+        foreach ($existing as $branch) {
+            $byId[(int) $branch['id']] = $branch;
+        }
+
+        $keepIds = [];
+        $order = 0;
+        foreach ($incoming as $row) {
+            $title = trim((string) ($row['name'] ?? $row['title'] ?? ''));
+            $location = trim((string) ($row['location'] ?? ''));
+            $details = self::detailsFromFormRow($row);
             $id = (int) ($row['id'] ?? 0);
-            $cover = null;
-            $sort = $order;
             if ($id > 0 && isset($byId[$id])) {
-                $cover = $byId[$id]['cover_image'] ?? null;
-                $sort = (int) ($byId[$id]['sort_order'] ?? $order);
                 self::update($id, [
                     'title' => $title,
                     'location' => $location,
                     'details' => $details,
-                    'cover_image' => $cover,
-                    'sort_order' => $sort,
+                    'cover_image' => $byId[$id]['cover_image'] ?? null,
+                    'sort_order' => (int) ($byId[$id]['sort_order'] ?? $order),
                 ]);
                 $keepIds[] = $id;
             } else {
@@ -156,10 +193,53 @@ class OrganisationBranch
         }
     }
 
+    public static function detailsFromFormRow(array $row): array
+    {
+        $details = [];
+        $text = is_array($row['details'] ?? null) ? '' : trim((string) ($row['details'] ?? ''));
+        $phone = trim((string) ($row['phone'] ?? ''));
+        $contact = trim((string) ($row['contact'] ?? ''));
+        if ($text !== '') {
+            $details['Details'] = $text;
+        }
+        if ($phone !== '') {
+            $details['Phone'] = $phone;
+        }
+        if ($contact !== '') {
+            $details['Contact person'] = $contact;
+        }
+        $extra = $row['extra'] ?? $row['extras'] ?? [];
+        if (is_array($extra)) {
+            foreach ($extra as $label => $value) {
+                $label = trim((string) $label);
+                $value = trim((string) $value);
+                if ($label === '' || $value === '') {
+                    continue;
+                }
+                $details[$label] = $value;
+            }
+        }
+        return $details;
+    }
+
     public static function hydrate(array $row): array
     {
         $row['details'] = self::extras($row);
         return $row;
+    }
+
+    private static function hasDetailsColumn(): bool
+    {
+        static $has = null;
+        if ($has !== null) {
+            return $has;
+        }
+        try {
+            $has = (bool) Database::connection()->query("SHOW COLUMNS FROM organisation_branches LIKE 'details'")->fetch();
+        } catch (\Throwable $e) {
+            $has = false;
+        }
+        return $has;
     }
 
     private static function encodeDetails($details): ?string

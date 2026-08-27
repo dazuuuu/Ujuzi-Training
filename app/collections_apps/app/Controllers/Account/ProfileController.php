@@ -90,15 +90,20 @@ class ProfileController extends BaseAccountController
         }
         $orgId = (int) ($this->user['organisation_id'] ?? 0);
         if ($orgId > 0 && Authz::isOrganisationAdmin($this->user)) {
-            foreach ($fields as $field) {
-                if (($field['field_type'] ?? '') !== 'branches') {
-                    continue;
+            try {
+                foreach ($fields as $field) {
+                    if (($field['field_type'] ?? '') !== 'branches') {
+                        continue;
+                    }
+                    $rows = $collected['answers'][$field['field_key']] ?? [];
+                    if (is_array($rows) && $rows) {
+                        OrganisationBranch::syncFromFormRows($orgId, $rows);
+                    }
+                    break;
                 }
-                $rows = $collected['answers'][$field['field_key']] ?? [];
-                if (is_array($rows)) {
-                    OrganisationBranch::syncFromFormRows($orgId, $rows);
-                }
-                break;
+            } catch (\Throwable $e) {
+                flashError('Your form was saved, but branches could not be updated. Run Super Admin → Update, then save this form again.');
+                redirect('/account/profile');
             }
         }
         foreach ($fields as $field) {

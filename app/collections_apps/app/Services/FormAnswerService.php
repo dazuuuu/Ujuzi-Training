@@ -144,52 +144,13 @@ class FormAnswerService
                     if (!is_array($row)) {
                         continue;
                     }
-                    $name = trim((string) ($row['name'] ?? $row['title'] ?? ''));
-                    $location = trim((string) ($row['location'] ?? ''));
-                    $postedExtra = is_array($row['extra'] ?? null) ? $row['extra'] : [];
-                    $extra = [];
-                    foreach ($labels as $label) {
-                        $slug = FormFieldTypes::extraKey($label);
-                        $text = trim((string) ($postedExtra[$slug] ?? $postedExtra[$label] ?? ''));
-                        if ($text !== '') {
-                            $extra[$label] = $text;
-                        }
-                    }
-                    foreach ($postedExtra as $extraLabel => $extraValue) {
-                        $extraLabel = trim((string) $extraLabel);
-                        $extraValue = trim((string) $extraValue);
-                        if ($extraLabel === '' || $extraValue === '' || isset($extra[$extraLabel])) {
-                            continue;
-                        }
-                        $matched = false;
-                        foreach ($labels as $label) {
-                            if (FormFieldTypes::extraKey($label) === FormFieldTypes::extraKey($extraLabel)) {
-                                $matched = true;
-                                break;
-                            }
-                        }
-                        if (!$matched && $labels) {
-                            continue;
-                        }
-                        if (!$labels) {
-                            $extra[$extraLabel] = $extraValue;
-                        }
-                    }
-                    if ($name === '' && $location === '' && !$extra) {
+                    $item = self::normalizeBranchRow($row, $labels);
+                    if ($item === null) {
                         continue;
                     }
-                    if ($name === '' || $location === '') {
-                        $errors[] = $field['label'] . ' needs a name and location on every branch.';
+                    if ($item['name'] === '' || $item['location'] === '') {
+                        $errors[] = $field['label'] . ' needs a name and location on every branch you add.';
                         continue;
-                    }
-                    $item = [
-                        'name' => $name,
-                        'location' => $location,
-                        'extra' => $extra,
-                    ];
-                    $id = (int) ($row['id'] ?? 0);
-                    if ($id > 0) {
-                        $item['id'] = $id;
                     }
                     $value[] = $item;
                 }
@@ -306,6 +267,40 @@ class FormAnswerService
         }
 
         return ['answers' => $answers, 'errors' => $errors];
+    }
+
+    private static function normalizeBranchRow(array $row, array $labels): ?array
+    {
+        $name = trim((string) ($row['name'] ?? $row['title'] ?? ''));
+        $location = trim((string) ($row['location'] ?? ''));
+        $details = trim((string) ($row['details'] ?? ''));
+        $phone = trim((string) ($row['phone'] ?? ''));
+        $contact = trim((string) ($row['contact'] ?? ''));
+        $postedExtra = is_array($row['extra'] ?? null) ? $row['extra'] : [];
+        $extra = [];
+        foreach ($labels as $label) {
+            $slug = FormFieldTypes::extraKey($label);
+            $text = trim((string) ($postedExtra[$slug] ?? $postedExtra[$label] ?? ''));
+            if ($text !== '') {
+                $extra[$label] = $text;
+            }
+        }
+        if ($name === '' && $location === '' && $details === '' && $phone === '' && $contact === '' && !$extra) {
+            return null;
+        }
+        $item = [
+            'name' => $name,
+            'location' => $location,
+            'details' => $details,
+            'phone' => $phone,
+            'contact' => $contact,
+            'extra' => $extra,
+        ];
+        $id = (int) ($row['id'] ?? 0);
+        if ($id > 0) {
+            $item['id'] = $id;
+        }
+        return $item;
     }
 
     private static function resolveOtherList(array $raw, array $posted, string $key, bool $allowOther): array

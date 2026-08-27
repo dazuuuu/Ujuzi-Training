@@ -152,7 +152,7 @@ function fieldChoices(array $field): array
             </div>
             <div class="choices-copy-branches <?= $type === 'branches' ? '' : 'hidden' ?>">
               <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Extra details on each branch</label>
-              <p class="field-hint">Name and location are always included. Add extra values here (phone, contact person, hours, and anything else). Organisation admins fill them in on the original profile form.</p>
+            <p class="field-hint">Each branch already has name, location, details, phone, and contact person. Add more extra values here if you need them (opening hours, email, and so on). Organisation admins fill them on the original profile form.</p>
             </div>
             <div class="choices-list mt-2">
               <?php foreach ($choices as $choice): ?>
@@ -221,7 +221,7 @@ function fieldChoices(array $field): array
           </div>
           <div class="branch-wrap rounded-lg p-3 <?= $type === 'branches' ? '' : 'hidden' ?>" style="background:#f6f7f4;border:1px solid var(--ke-line)">
             <p class="text-sm font-semibold">Organisation branches</p>
-            <p class="field-hint">Put this on the organisation admin profile form. They list each branch (name and location) plus the extra details you add above. Saving the profile also updates the Branches page.</p>
+            <p class="field-hint">Put this on the organisation admin profile form. They create each branch on that form: name, location, details, phone, contact person, and any extra fields you add above. Saving the profile also updates the Branches page.</p>
           </div>
             </div>
           </div>
@@ -289,7 +289,7 @@ function fieldChoices(array $field): array
       </div>
       <div class="choices-copy-branches hidden">
         <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Extra details on each branch</label>
-        <p class="field-hint">Name and location are always included. Add extra values here (phone, contact person, hours, and anything else). Organisation admins fill them in on the original profile form.</p>
+        <p class="field-hint">Each branch already has name, location, details, phone, and contact person. Add more extra values here if you need them (opening hours, email, and so on). Organisation admins fill them on the original profile form.</p>
       </div>
       <div class="choices-list mt-2">
         <div class="choice-row">
@@ -360,7 +360,7 @@ function fieldChoices(array $field): array
     </div>
     <div class="branch-wrap hidden rounded-lg p-3" style="background:#f6f7f4;border:1px solid var(--ke-line)">
       <p class="text-sm font-semibold">Organisation branches</p>
-      <p class="field-hint">Put this on the organisation admin profile form. They list each branch (name and location) plus the extra details you add above. Saving the profile also updates the Branches page.</p>
+      <p class="field-hint">Put this on the organisation admin profile form. They create each branch on that form: name, location, details, phone, contact person, and any extra fields you add above. Saving the profile also updates the Branches page.</p>
     </div>
       </div>
     </div>
