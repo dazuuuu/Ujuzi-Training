@@ -8,6 +8,7 @@ use App\Models\Form;
 use App\Models\FormResponse;
 use App\Models\OrganisationBranch;
 use App\Models\OrganisationMembership;
+use App\Models\User;
 
 class DashboardController extends BaseAccountController
 {
@@ -30,6 +31,8 @@ class DashboardController extends BaseAccountController
         $memberships = [];
         $learnerCourses = [];
         $learnerBranches = [];
+        $completedCourses = [];
+        $attachmentTrainers = [];
         try {
             if (($this->user['role_slug'] ?? '') === 'organisation_admin' && !empty($this->user['organisation_id'])) {
                 $pendingTrainerRequests = OrganisationMembership::pendingTrainersForOrganisation((int) $this->user['organisation_id']);
@@ -43,12 +46,22 @@ class DashboardController extends BaseAccountController
                 foreach ($orgIds as $orgId) {
                     $learnerBranches = array_merge($learnerBranches, OrganisationBranch::forOrganisation($orgId));
                 }
+                $completedCourses = Course::completedByLearner($this->user);
+                if ($completedCourses) {
+                    $attachmentTrainers = User::attachmentTrainersForOrganisations($orgIds);
+                    foreach ($attachmentTrainers as &$trainer) {
+                        $trainer['attachment_duration'] = User::attachmentDuration($trainer);
+                    }
+                    unset($trainer);
+                }
             }
         } catch (\Throwable $e) {
             $pendingTrainerRequests = [];
             $memberships = [];
             $learnerCourses = [];
             $learnerBranches = [];
+            $completedCourses = [];
+            $attachmentTrainers = [];
         }
 
         $this->render('account.dashboard', [
@@ -63,6 +76,8 @@ class DashboardController extends BaseAccountController
             'memberships' => $memberships,
             'learnerCourses' => $learnerCourses,
             'learnerBranches' => $learnerBranches,
+            'completedCourses' => $completedCourses,
+            'attachmentTrainers' => $attachmentTrainers,
             'isStudent' => Authz::isStudent($this->user),
         ]);
     }

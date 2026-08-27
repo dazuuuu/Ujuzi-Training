@@ -28,6 +28,9 @@
         </span>
       </a>
       <nav class="flex items-center gap-3 text-xs font-black uppercase tracking-widest">
+        <?php if (!empty($pendingMigrations)): ?>
+          <a href="<?= url('/admin/updates') ?>" class="btn-danger">Update<?= count($pendingMigrations) > 1 ? ' (' . count($pendingMigrations) . ')' : '' ?></a>
+        <?php endif; ?>
         <a href="<?= url('/account/register') ?>" class="btn-secondary">Student register</a>
         <a href="<?= url('/account/register/trainer') ?>" class="btn-secondary">Trainer register</a>
         <a href="<?= url('/account/login') ?>" class="btn-primary">Sign in</a>
@@ -42,7 +45,7 @@
         <div>
           <p class="text-xs font-black uppercase tracking-[0.28em]" style="color:#b8e0cc">Learning management system</p>
           <h1 class="mt-4 text-4xl font-black leading-tight sm:text-5xl">Training, people, and profiles — organised by role.</h1>
-          <p class="mt-5 max-w-xl text-sm font-medium leading-6" style="color:#e8f5ee">Super Admin builds roles and forms. Organisation admins and attachment trainers get admin-like tools. Trainers and students work under their organisation and complete assigned profile forms.</p>
+          <p class="mt-5 max-w-xl text-sm font-medium leading-6" style="color:#e8f5ee">Super Admin builds roles and forms. Organisation admins manage people. Trainers teach courses. Attachment trainers appear after a student finishes a course. Students complete profile forms and earn a skills certificate.</p>
           <div class="mt-8 flex flex-wrap gap-3">
             <a href="<?= url('/account/register') ?>" class="btn-primary">Student register</a>
             <a href="<?= url('/account/register/trainer') ?>" class="btn-secondary">Trainer register</a>
@@ -60,7 +63,7 @@
             <li class="rounded-lg p-4" style="border:1px solid rgba(187,0,0,.45);background:rgba(187,0,0,.18)"><span class="block text-xs uppercase tracking-widest" style="color:#ffd0d0">Platform owner</span>Super Admin login — separate dashboard</li>
             <li class="rounded-lg p-4" style="border:1px solid rgba(184,224,204,.35);background:rgba(0,107,63,.22)"><span class="block text-xs uppercase tracking-widest" style="color:#b8e0cc">Students</span>Student login, then the student dashboard</li>
             <li class="rounded-lg p-4" style="border:1px solid rgba(184,224,204,.35);background:rgba(0,107,63,.22)"><span class="block text-xs uppercase tracking-widest" style="color:#b8e0cc">Trainers / tutors / teachers</span>Trainer login, then the trainer dashboard</li>
-            <li class="rounded-lg p-4" style="border:1px solid rgba(184,224,204,.35);background:rgba(0,107,63,.22)"><span class="block text-xs uppercase tracking-widest" style="color:#b8e0cc">Attachment trainers</span>Attachment trainer login, then that dashboard</li>
+            <li class="rounded-lg p-4" style="border:1px solid rgba(184,224,204,.35);background:rgba(0,107,63,.22)"><span class="block text-xs uppercase tracking-widest" style="color:#b8e0cc">Attachment trainers</span>Created by the organisation. Students see them only after finishing a course, for the attachment duration on their form.</li>
             <li class="rounded-lg p-4" style="border:1px solid rgba(184,224,204,.35);background:rgba(0,107,63,.22)"><span class="block text-xs uppercase tracking-widest" style="color:#b8e0cc">Organisation admins</span>Organisation admin login, then the organisation dashboard</li>
           </ul>
         </div>
@@ -74,7 +77,7 @@
         <?php
         $fallbackRoles = [
             ['slug' => 'organisation_admin', 'name' => 'Organisation Admin', 'description' => 'Admin-like tools inside an organisation.', 'has_admin_features' => true],
-            ['slug' => 'attachment_trainer', 'name' => 'Attachment Trainer', 'description' => 'Admin-like tools for students in the organisation.', 'has_admin_features' => true],
+            ['slug' => 'attachment_trainer', 'name' => 'Attachment Trainer', 'description' => 'Shown to students after they finish a course, for a set attachment period.', 'has_admin_features' => false],
             ['slug' => 'trainer', 'name' => 'Trainer / Tutor / Teacher', 'description' => 'Under organisation power. Dashboard and profile only.', 'has_admin_features' => false],
             ['slug' => 'student', 'name' => 'Student', 'description' => 'Under organisation power. Completes assigned profile forms.', 'has_admin_features' => false],
         ];

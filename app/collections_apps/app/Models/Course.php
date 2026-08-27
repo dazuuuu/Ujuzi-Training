@@ -79,6 +79,63 @@ class Course
         return array_map([self::class, 'hydrate'], $stmt->fetchAll());
     }
 
+    public static function completedByLearner(array $user): array
+    {
+        $courses = [];
+        try {
+            $courses = self::forLearner(\App\Core\Authz::learnerOrganisationIds($user));
+        } catch (\Throwable $e) {
+            return [];
+        }
+        $completed = [];
+        foreach ($courses as $course) {
+            if (self::isCompletedByUser((int) $course['id'], (int) $user['id'])) {
+                $completed[] = $course;
+            }
+        }
+        return $completed;
+    }
+
+    public static function isCompletedByUser(int $courseId, int $userId): bool
+    {
+        $modules = CourseModule::forCourse($courseId);
+        if (!$modules) {
+            return false;
+        }
+        try {
+            $progress = CourseModuleProgress::forUserCourse($userId, $courseId);
+        } catch (\Throwable $e) {
+            $progress = [];
+        }
+        $state = CourseModule::withUnlockState($modules, $progress);
+        foreach ($state as $module) {
+            if (empty($module['is_unlocked']) || empty($module['is_passed'])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static function skillNames(array $courses): array
+    {
+        $skills = [];
+        foreach ($courses as $course) {
+            $skill = trim((string) ($course['title'] ?? ''));
+            $category = trim((string) ($course['category_name'] ?? ''));
+            $label = $skill !== '' ? $skill : $category;
+            if ($label === '') {
+                continue;
+            }
+            if ($category !== '' && strcasecmp($skill, $category) !== 0) {
+                $label = $skill . ' (' . $category . ')';
+            }
+            if (!in_array($label, $skills, true)) {
+                $skills[] = $label;
+            }
+        }
+        return $skills;
+    }
+
     public static function create(array $fields): int
     {
         $pdo = Database::connection();

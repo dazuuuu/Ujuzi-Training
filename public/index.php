@@ -17,6 +17,7 @@ use App\Controllers\Admin\OrganisationController;
 use App\Controllers\Admin\UserController;
 use App\Controllers\Admin\FormController;
 use App\Controllers\Admin\SettingsController;
+use App\Controllers\Admin\CertificateController as AdminCertificateController;
 use App\Controllers\Admin\UpdateController;
 use App\Controllers\Account\AuthController as AccountAuthController;
 use App\Controllers\Account\DashboardController as AccountDashboardController;
@@ -27,6 +28,7 @@ use App\Controllers\Account\TrainerRequestController;
 use App\Controllers\Account\CategoryController as AccountCategoryController;
 use App\Controllers\Account\BranchController as AccountBranchController;
 use App\Controllers\Account\CourseController;
+use App\Controllers\Account\CertificateController as AccountCertificateController;
 
 $router = new Router();
 
@@ -78,6 +80,9 @@ $router->post('/admin/forms/{id}/delete', [FormController::class, 'destroy']);
 // --- Super admin: settings ---
 $router->get('/admin/settings', [SettingsController::class, 'index']);
 $router->post('/admin/settings', [SettingsController::class, 'update']);
+
+$router->get('/admin/certificate', [AdminCertificateController::class, 'index']);
+$router->post('/admin/certificate', [AdminCertificateController::class, 'update']);
 
 // --- Super admin: updates ---
 $router->get('/admin/updates', [UpdateController::class, 'index']);
@@ -136,5 +141,6 @@ $router->post('/account/courses/{id}/modules', [CourseController::class, 'storeM
 $router->post('/account/courses/{id}/modules/{moduleId}', [CourseController::class, 'updateModule']);
 $router->post('/account/courses/{id}/modules/{moduleId}/delete', [CourseController::class, 'destroyModule']);
 $router->post('/account/courses/{id}/modules/{moduleId}/quiz', [CourseController::class, 'submitQuiz']);
+$router->get('/account/certificate', [AccountCertificateController::class, 'show']);
 
 $router->dispatch();

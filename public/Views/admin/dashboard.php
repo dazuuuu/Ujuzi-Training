@@ -32,6 +32,21 @@ $maxRole = max(1, ...array_map(fn($row) => (int) $row['total'], $roleCounts ?: [
 ?>
 
 <div class="space-y-6">
+  <?php if (!empty($pendingMigrations)): ?>
+    <section class="rounded-xl p-5 text-white" style="background:var(--ke-red)">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p class="text-xs font-black uppercase tracking-widest">System update</p>
+          <h2 class="mt-1 text-xl font-black"><?= count($pendingMigrations) ?> pending update<?= count($pendingMigrations) === 1 ? '' : 's' ?></h2>
+          <p class="mt-1 text-sm font-medium" style="color:#ffd0d0">Run this once. The button disappears automatically when everything is up to date.</p>
+        </div>
+        <form method="post" action="<?= url('/admin/updates/run') ?>">
+          <?= csrfField() ?>
+          <button type="submit" class="btn-primary" style="background:#fff;color:var(--ke-red)">Update now</button>
+        </form>
+      </div>
+    </section>
+  <?php endif; ?>
   <section class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
     <div>
       <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">Dashboard / LMS</p>
