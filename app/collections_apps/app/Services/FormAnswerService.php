@@ -133,6 +133,73 @@ class FormAnswerService
                 continue;
             }
 
+            if ($type === 'branches') {
+                $raw = $posted[$key] ?? [];
+                if (!is_array($raw)) {
+                    $raw = [];
+                }
+                $labels = FormFieldTypes::extraLabels($field);
+                $value = [];
+                foreach ($raw as $row) {
+                    if (!is_array($row)) {
+                        continue;
+                    }
+                    $name = trim((string) ($row['name'] ?? $row['title'] ?? ''));
+                    $location = trim((string) ($row['location'] ?? ''));
+                    $postedExtra = is_array($row['extra'] ?? null) ? $row['extra'] : [];
+                    $extra = [];
+                    foreach ($labels as $label) {
+                        $slug = FormFieldTypes::extraKey($label);
+                        $text = trim((string) ($postedExtra[$slug] ?? $postedExtra[$label] ?? ''));
+                        if ($text !== '') {
+                            $extra[$label] = $text;
+                        }
+                    }
+                    foreach ($postedExtra as $extraLabel => $extraValue) {
+                        $extraLabel = trim((string) $extraLabel);
+                        $extraValue = trim((string) $extraValue);
+                        if ($extraLabel === '' || $extraValue === '' || isset($extra[$extraLabel])) {
+                            continue;
+                        }
+                        $matched = false;
+                        foreach ($labels as $label) {
+                            if (FormFieldTypes::extraKey($label) === FormFieldTypes::extraKey($extraLabel)) {
+                                $matched = true;
+                                break;
+                            }
+                        }
+                        if (!$matched && $labels) {
+                            continue;
+                        }
+                        if (!$labels) {
+                            $extra[$extraLabel] = $extraValue;
+                        }
+                    }
+                    if ($name === '' && $location === '' && !$extra) {
+                        continue;
+                    }
+                    if ($name === '' || $location === '') {
+                        $errors[] = $field['label'] . ' needs a name and location on every branch.';
+                        continue;
+                    }
+                    $item = [
+                        'name' => $name,
+                        'location' => $location,
+                        'extra' => $extra,
+                    ];
+                    $id = (int) ($row['id'] ?? 0);
+                    if ($id > 0) {
+                        $item['id'] = $id;
+                    }
+                    $value[] = $item;
+                }
+                if ($field['is_required'] && !$value) {
+                    $errors[] = $field['label'] . ' needs at least one branch with a name and location.';
+                }
+                $answers[$key] = $value;
+                continue;
+            }
+
             if ($type === 'category') {
                 $raw = $posted[$key] ?? [];
                 if (!is_array($raw)) {

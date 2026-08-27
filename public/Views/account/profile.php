@@ -104,6 +104,38 @@ require __DIR__ . '/layout-header.php';
       if (!holder || holder.querySelectorAll('.list-row').length === 1) return;
       event.target.closest('.list-row').remove();
     }
+    if (event.target.classList.contains('add-branch-row')) {
+      var key = event.target.getAttribute('data-branches-add');
+      var holder = document.querySelector('[data-branches="' + key + '"]');
+      if (!holder) return;
+      var first = holder.querySelector('.branch-row');
+      if (!first) return;
+      var copy = first.cloneNode(true);
+      copy.querySelectorAll('input').forEach(function (input) {
+        if (input.type === 'hidden') {
+          input.remove();
+          return;
+        }
+        input.value = '';
+      });
+      holder.appendChild(copy);
+      holder.querySelectorAll('.branch-row').forEach(function (row, index) {
+        row.querySelectorAll('input[name]').forEach(function (input) {
+          input.name = input.name.replace(/answers\[[^\]]+\]\[\d+\]/, 'answers[' + key + '][' + index + ']');
+        });
+      });
+    }
+    if (event.target.classList.contains('remove-branch-row')) {
+      var holder = event.target.closest('[data-branches]');
+      if (!holder || holder.querySelectorAll('.branch-row').length === 1) return;
+      event.target.closest('.branch-row').remove();
+      var key = holder.getAttribute('data-branches');
+      holder.querySelectorAll('.branch-row').forEach(function (row, index) {
+        row.querySelectorAll('input[name]').forEach(function (input) {
+          input.name = input.name.replace(/answers\[[^\]]+\]\[\d+\]/, 'answers[' + key + '][' + index + ']');
+        });
+      });
+    }
   });
 })();
 </script>

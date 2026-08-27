@@ -119,6 +119,24 @@ class FormField
             }
             return $pretty($start !== '' ? $start : $end);
         }
+        if (($field['field_type'] ?? '') === 'branches') {
+            if (!is_array($value) || $value === []) {
+                return '—';
+            }
+            $parts = [];
+            foreach ($value as $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $name = trim((string) ($row['name'] ?? $row['title'] ?? ''));
+                $location = trim((string) ($row['location'] ?? ''));
+                if ($name === '' && $location === '') {
+                    continue;
+                }
+                $parts[] = $location !== '' ? $name . ' (' . $location . ')' : $name;
+            }
+            return $parts ? implode('; ', $parts) : '—';
+        }
         if (($field['field_type'] ?? '') === 'category') {
             $ids = is_array($value) ? $value : [$value];
             $names = OrganisationCategory::namesByIds($ids);
@@ -220,6 +238,11 @@ class FormField
         if ($type === 'organisation') {
             return [
                 'org_mode' => (($field['org_mode'] ?? '') === 'multiple') ? 'multiple' : 'single',
+            ];
+        }
+        if ($type === 'branches') {
+            return [
+                'choices' => self::stringList($field['choices'] ?? $field['options'] ?? []),
             ];
         }
         if ($type === 'yesno' || $type === 'toggle') {

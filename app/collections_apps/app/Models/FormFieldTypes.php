@@ -38,6 +38,7 @@ class FormFieldTypes
                 'address' => 'Address (Kenya county)',
                 'organisation' => 'Organisations (from database)',
                 'category' => 'Organisation category',
+                'branches' => 'Organisation branches (name, location, extras)',
             ],
             'Files' => [
                 'file' => 'File upload',
@@ -107,7 +108,7 @@ class FormFieldTypes
 
     public static function isComposite(string $type): bool
     {
-        return in_array($type, ['name', 'duration'], true);
+        return in_array($type, ['name', 'duration', 'branches'], true);
     }
 
     public static function allowsOther(string $type): bool
@@ -133,6 +134,21 @@ class FormFieldTypes
     public static function needsRange(string $type): bool
     {
         return in_array($type, ['range', 'number', 'rating'], true);
+    }
+
+    public static function extraKey(string $label): string
+    {
+        $key = strtolower(trim(preg_replace('/[^a-zA-Z0-9]+/', '_', $label), '_'));
+        return $key !== '' ? $key : 'detail';
+    }
+
+    public static function extraLabels(array $field): array
+    {
+        $labels = $field['choices'] ?? $field['options'] ?? [];
+        if (!is_array($labels)) {
+            return [];
+        }
+        return array_values(array_filter(array_map(static fn($item) => trim((string) $item), $labels), static fn($item) => $item !== ''));
     }
 
     public static function countries(): array

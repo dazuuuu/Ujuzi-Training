@@ -81,6 +81,23 @@ class BranchController extends BaseAccountController
         $title = trim((string) Request::post('title', ''));
         $location = trim((string) Request::post('location', ''));
         $sortOrder = (int) Request::post('sort_order', 0);
+        $labels = Request::post('details_labels', []);
+        $values = Request::post('details_values', []);
+        if (!is_array($labels)) {
+            $labels = [];
+        }
+        if (!is_array($values)) {
+            $values = [];
+        }
+        $details = [];
+        foreach ($labels as $index => $label) {
+            $label = trim((string) $label);
+            $value = trim((string) ($values[$index] ?? ''));
+            if ($label === '' || $value === '') {
+                continue;
+            }
+            $details[$label] = $value;
+        }
         $errors = [];
         if ($title === '') {
             $errors[] = 'Branch title is required.';
@@ -104,6 +121,7 @@ class BranchController extends BaseAccountController
             'location' => $location,
             'cover_image' => $cover,
             'sort_order' => $sortOrder,
+            'details' => $details,
         ];
 
         if ($errors) {
@@ -123,6 +141,7 @@ class BranchController extends BaseAccountController
             'location' => $location,
             'cover_image' => $cover,
             'sort_order' => $sortOrder,
+            'details' => $details,
         ];
 
         if ($id) {
@@ -160,6 +179,7 @@ class BranchController extends BaseAccountController
             'location' => '',
             'cover_image' => '',
             'sort_order' => 0,
+            'details' => [],
         ];
     }
 }
