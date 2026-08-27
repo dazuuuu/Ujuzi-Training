@@ -24,6 +24,24 @@ require __DIR__ . '/../layout-header.php';
       <label class="text-[11px] font-bold uppercase text-neutral-600">Location</label>
       <input type="text" name="location" required value="<?= e($form['location'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" placeholder="e.g. Westlands, Nairobi" />
     </div>
+    <div class="space-y-3 rounded-lg border border-neutral-200 p-3">
+      <p class="text-[11px] font-bold uppercase text-neutral-600">Extra details</p>
+      <p class="field-hint">These match extra values Super Admin adds on the Organisation branches form field. You can also add more labels here.</p>
+      <?php
+        $details = \App\Models\OrganisationBranch::extras($form);
+        if (!$details) {
+            $details = ['' => ''];
+        } else {
+            $details[''] = '';
+        }
+      ?>
+      <?php foreach ($details as $detailLabel => $detailValue): ?>
+        <div class="grid gap-2 sm:grid-cols-2">
+          <input type="text" name="details_labels[]" value="<?= e((string) $detailLabel) ?>" placeholder="Label (e.g. Phone)" class="w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
+          <input type="text" name="details_values[]" value="<?= e((string) $detailValue) ?>" placeholder="Value" class="w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
+        </div>
+      <?php endforeach; ?>
+    </div>
     <div>
       <label class="text-[11px] font-bold uppercase text-neutral-600">Cover image (optional)</label>
       <?php if (!empty($form['cover_image'])): ?>

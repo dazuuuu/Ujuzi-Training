@@ -77,7 +77,7 @@ function fieldChoices(array $field): array
   <div class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm space-y-4">
     <div class="border-b border-neutral-100 pb-3">
       <h2 class="font-serif-heading text-lg font-bold">Fields</h2>
-      <p class="text-xs font-medium mt-1" style="color:var(--ke-muted)">Pick a type the way WordPress form builders do. Drag a field to reposition it. Organisation category loads categories each organisation lists — approved tutors only see categories for organisations they belong to. Documents accepts PDFs, images, and Word files.</p>
+      <p class="text-xs font-medium mt-1" style="color:var(--ke-muted)">Pick a type the way WordPress form builders do. Drag a field to reposition it. Organisation branches lets organisation admins list name, location, and extra details you add, on their original profile form. Organisation category loads categories each organisation lists — approved tutors only see categories for organisations they belong to. Documents accepts PDFs, images, and Word files.</p>
     </div>
     <div id="fields-list" class="space-y-4">
       <?php foreach ($fields as $index => $field):
@@ -145,9 +145,15 @@ function fieldChoices(array $field): array
             <input type="checkbox" name="fields[<?= (int) $index ?>][is_required]" value="1" <?= !empty($field['is_required']) ? 'checked' : '' ?> class="h-4 w-4" />
             Required
           </label>
-          <div class="choices-wrap <?= $needsChoices ? '' : 'hidden' ?>">
-            <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Choice values (what the user can pick)</label>
-            <p class="field-hint">Add each option. You can change these later from this same form.</p>
+          <div class="choices-wrap <?= $needsChoices || $type === 'branches' ? '' : 'hidden' ?>">
+            <div class="choices-copy-default <?= $type === 'branches' ? 'hidden' : '' ?>">
+              <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Choice values (what the user can pick)</label>
+              <p class="field-hint">Add each option. You can change these later from this same form.</p>
+            </div>
+            <div class="choices-copy-branches <?= $type === 'branches' ? '' : 'hidden' ?>">
+              <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Extra details on each branch</label>
+            <p class="field-hint">Each branch already has name, location, details, phone, and contact person. Add more extra values here if you need them (opening hours, email, and so on). Organisation admins fill them on the original profile form.</p>
+            </div>
             <div class="choices-list mt-2">
               <?php foreach ($choices as $choice): ?>
                 <div class="choice-row">
@@ -157,7 +163,7 @@ function fieldChoices(array $field): array
               <?php endforeach; ?>
             </div>
             <button type="button" class="add-choice btn-secondary mt-2" style="padding:0.4rem 0.75rem;">Add choice</button>
-            <div class="choice-settings mt-3 space-y-3 rounded-lg p-3" style="background:#f6f7f4;border:1px solid var(--ke-line)">
+            <div class="choice-settings mt-3 space-y-3 rounded-lg p-3 <?= $type === 'branches' ? 'hidden' : '' ?>" style="background:#f6f7f4;border:1px solid var(--ke-line)">
               <label class="allow-other-wrap flex items-center gap-2 text-sm font-bold <?= FormFieldTypes::allowsOther($type) ? '' : 'hidden' ?>">
                 <input type="checkbox" name="fields[<?= (int) $index ?>][allow_other]" value="1" <?= !empty($field['allow_other']) ? 'checked' : '' ?> class="h-4 w-4" data-name="allow_other" />
                 Allow “Other” with a write-in box
@@ -212,6 +218,10 @@ function fieldChoices(array $field): array
           <div class="duration-wrap rounded-lg p-3 <?= $type === 'duration' ? '' : 'hidden' ?>" style="background:#f6f7f4;border:1px solid var(--ke-line)">
             <p class="text-sm font-semibold">Attachment duration</p>
             <p class="field-hint">Use this on the Attachment Trainer profile form. They enter a start and end date for the placement period.</p>
+          </div>
+          <div class="branch-wrap rounded-lg p-3 <?= $type === 'branches' ? '' : 'hidden' ?>" style="background:#f6f7f4;border:1px solid var(--ke-line)">
+            <p class="text-sm font-semibold">Organisation branches</p>
+            <p class="field-hint">Put this on the organisation admin profile form. They create each branch on that form: name, location, details, phone, contact person, and any extra fields you add above. Saving the profile also updates the Branches page.</p>
           </div>
             </div>
           </div>
@@ -273,8 +283,14 @@ function fieldChoices(array $field): array
       Required
     </label>
     <div class="choices-wrap hidden">
-      <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Choice values (what the user can pick)</label>
-      <p class="field-hint">Add each option. You can change these later from this same form.</p>
+      <div class="choices-copy-default">
+        <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Choice values (what the user can pick)</label>
+        <p class="field-hint">Add each option. You can change these later from this same form.</p>
+      </div>
+      <div class="choices-copy-branches hidden">
+        <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Extra details on each branch</label>
+        <p class="field-hint">Each branch already has name, location, details, phone, and contact person. Add more extra values here if you need them (opening hours, email, and so on). Organisation admins fill them on the original profile form.</p>
+      </div>
       <div class="choices-list mt-2">
         <div class="choice-row">
           <input type="text" data-choice="1" class="rounded-lg border border-neutral-300 bg-white p-2.5 text-sm" placeholder="e.g. Nairobi" />
@@ -342,6 +358,10 @@ function fieldChoices(array $field): array
       <p class="text-sm font-semibold">Attachment duration</p>
       <p class="field-hint">Use this on the Attachment Trainer profile form. They enter a start and end date for the placement period.</p>
     </div>
+    <div class="branch-wrap hidden rounded-lg p-3" style="background:#f6f7f4;border:1px solid var(--ke-line)">
+      <p class="text-sm font-semibold">Organisation branches</p>
+      <p class="field-hint">Put this on the organisation admin profile form. They create each branch on that form: name, location, details, phone, contact person, and any extra fields you add above. Saving the profile also updates the Branches page.</p>
+    </div>
       </div>
     </div>
   </div>
@@ -390,7 +410,11 @@ function fieldChoices(array $field): array
     var orgMode = row.querySelector('.org-mode-wrap');
     var categoryWrap = row.querySelector('.category-wrap');
     var durationWrap = row.querySelector('.duration-wrap');
-    if (choices) choices.classList.toggle('hidden', !choiceTypes[value]);
+    var branchWrap = row.querySelector('.branch-wrap');
+    var choiceSettings = row.querySelector('.choice-settings');
+    var choicesDefault = row.querySelector('.choices-copy-default');
+    var choicesBranches = row.querySelector('.choices-copy-branches');
+    if (choices) choices.classList.toggle('hidden', !choiceTypes[value] && value !== 'branches');
     if (range) range.classList.toggle('hidden', !rangeTypes[value]);
     if (placeholder) placeholder.classList.toggle('hidden', !placeholderTypes[value]);
     if (required) required.classList.toggle('hidden', !!layoutTypes[value]);
@@ -401,6 +425,10 @@ function fieldChoices(array $field): array
     if (orgMode) orgMode.classList.toggle('hidden', value !== 'organisation');
     if (categoryWrap) categoryWrap.classList.toggle('hidden', value !== 'category');
     if (durationWrap) durationWrap.classList.toggle('hidden', value !== 'duration');
+    if (branchWrap) branchWrap.classList.toggle('hidden', value !== 'branches');
+    if (choiceSettings) choiceSettings.classList.toggle('hidden', !choiceTypes[value]);
+    if (choicesDefault) choicesDefault.classList.toggle('hidden', value === 'branches');
+    if (choicesBranches) choicesBranches.classList.toggle('hidden', value !== 'branches');
     if (range && rangeTypes[value] && rangeDefaults[value]) {
       var minInput = range.querySelector('[name$="[range_min]"], [data-name="range_min"]');
       var maxInput = range.querySelector('[name$="[range_max]"], [data-name="range_max"]');

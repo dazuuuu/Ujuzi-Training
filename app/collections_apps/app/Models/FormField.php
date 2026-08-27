@@ -119,6 +119,53 @@ class FormField
             }
             return $pretty($start !== '' ? $start : $end);
         }
+        if (($field['field_type'] ?? '') === 'branches') {
+            if (!is_array($value) || $value === []) {
+                return '—';
+            }
+            $parts = [];
+            foreach ($value as $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $name = trim((string) ($row['name'] ?? $row['title'] ?? ''));
+                $location = trim((string) ($row['location'] ?? ''));
+                if ($name === '' && $location === '') {
+                    continue;
+                }
+                $bits = [];
+                if ($name !== '') {
+                    $bits[] = $name;
+                }
+                if ($location !== '') {
+                    $bits[] = $location;
+                }
+                $details = trim((string) ($row['details'] ?? ''));
+                $phone = trim((string) ($row['phone'] ?? ''));
+                $contact = trim((string) ($row['contact'] ?? ''));
+                if ($details !== '') {
+                    $bits[] = $details;
+                }
+                if ($phone !== '') {
+                    $bits[] = 'Phone: ' . $phone;
+                }
+                if ($contact !== '') {
+                    $bits[] = 'Contact: ' . $contact;
+                }
+                $extra = is_array($row['extra'] ?? null) ? $row['extra'] : [];
+                foreach ($extra as $extraLabel => $extraValue) {
+                    $extraValue = trim((string) $extraValue);
+                    if ($extraValue === '') {
+                        continue;
+                    }
+                    $bits[] = trim((string) $extraLabel) . ': ' . $extraValue;
+                }
+                if ($bits) {
+                    $parts[] = implode(' — ', $bits);
+                }
+            }
+            return $parts ? implode('; ', $parts) : '—';
+        }
         if (($field['field_type'] ?? '') === 'category') {
             $ids = is_array($value) ? $value : [$value];
             $names = OrganisationCategory::namesByIds($ids);
@@ -220,6 +267,11 @@ class FormField
         if ($type === 'organisation') {
             return [
                 'org_mode' => (($field['org_mode'] ?? '') === 'multiple') ? 'multiple' : 'single',
+            ];
+        }
+        if ($type === 'branches') {
+            return [
+                'choices' => self::stringList($field['choices'] ?? $field['options'] ?? []),
             ];
         }
         if ($type === 'yesno' || $type === 'toggle') {

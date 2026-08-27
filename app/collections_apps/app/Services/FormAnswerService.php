@@ -133,6 +133,34 @@ class FormAnswerService
                 continue;
             }
 
+            if ($type === 'branches') {
+                $raw = $posted[$key] ?? [];
+                if (!is_array($raw)) {
+                    $raw = [];
+                }
+                $labels = FormFieldTypes::extraLabels($field);
+                $value = [];
+                foreach ($raw as $row) {
+                    if (!is_array($row)) {
+                        continue;
+                    }
+                    $item = self::normalizeBranchRow($row, $labels);
+                    if ($item === null) {
+                        continue;
+                    }
+                    if ($item['name'] === '' || $item['location'] === '') {
+                        $errors[] = $field['label'] . ' needs a name and location on every branch you add.';
+                        continue;
+                    }
+                    $value[] = $item;
+                }
+                if ($field['is_required'] && !$value) {
+                    $errors[] = $field['label'] . ' needs at least one branch with a name and location.';
+                }
+                $answers[$key] = $value;
+                continue;
+            }
+
             if ($type === 'category') {
                 $raw = $posted[$key] ?? [];
                 if (!is_array($raw)) {
@@ -239,6 +267,40 @@ class FormAnswerService
         }
 
         return ['answers' => $answers, 'errors' => $errors];
+    }
+
+    private static function normalizeBranchRow(array $row, array $labels): ?array
+    {
+        $name = trim((string) ($row['name'] ?? $row['title'] ?? ''));
+        $location = trim((string) ($row['location'] ?? ''));
+        $details = trim((string) ($row['details'] ?? ''));
+        $phone = trim((string) ($row['phone'] ?? ''));
+        $contact = trim((string) ($row['contact'] ?? ''));
+        $postedExtra = is_array($row['extra'] ?? null) ? $row['extra'] : [];
+        $extra = [];
+        foreach ($labels as $label) {
+            $slug = FormFieldTypes::extraKey($label);
+            $text = trim((string) ($postedExtra[$slug] ?? $postedExtra[$label] ?? ''));
+            if ($text !== '') {
+                $extra[$label] = $text;
+            }
+        }
+        if ($name === '' && $location === '' && $details === '' && $phone === '' && $contact === '' && !$extra) {
+            return null;
+        }
+        $item = [
+            'name' => $name,
+            'location' => $location,
+            'details' => $details,
+            'phone' => $phone,
+            'contact' => $contact,
+            'extra' => $extra,
+        ];
+        $id = (int) ($row['id'] ?? 0);
+        if ($id > 0) {
+            $item['id'] = $id;
+        }
+        return $item;
     }
 
     private static function resolveOtherList(array $raw, array $posted, string $key, bool $allowOther): array

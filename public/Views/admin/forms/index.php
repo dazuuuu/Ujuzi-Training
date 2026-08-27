@@ -47,6 +47,7 @@ require __DIR__ . '/../layout-header.php';
             <td class="px-5 py-4 font-bold"><?= !empty($form['is_active']) ? 'Active' : 'Inactive' ?></td>
             <td class="px-5 py-4">
               <div class="flex items-center gap-3">
+                <a href="<?= url('/admin/responses/' . (int) $form['id']) ?>" class="btn-primary" style="padding:0.4rem 0.7rem;">Replies</a>
                 <a href="<?= url('/admin/forms/' . (int) $form['id'] . '/edit') ?>" class="btn-secondary" style="padding:0.4rem 0.7rem;">Edit</a>
                 <form method="post" action="<?= url('/admin/forms/' . (int) $form['id'] . '/delete') ?>" onsubmit="return confirm('Delete this form and its saved answers?');">
                   <?= csrfField() ?>

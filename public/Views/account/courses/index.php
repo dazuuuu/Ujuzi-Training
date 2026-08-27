@@ -32,11 +32,7 @@ require __DIR__ . '/../layout-header.php';
       <div class="course-grid">
         <?php foreach ($branches as $branch): ?>
           <article class="course-card">
-            <?php if (!empty($branch['cover_image'])): ?>
-              <img src="<?= e(imageUrl($branch['cover_image'])) ?>" alt="">
-            <?php endif; ?>
-            <h3 class="font-serif-heading text-lg font-bold"><?= e($branch['title']) ?></h3>
-            <p class="text-sm font-medium text-neutral-700"><?= e($branch['location']) ?></p>
+            <?php $headingTag = 'h3'; require __DIR__ . '/../partials/branch-card.php'; ?>
           </article>
         <?php endforeach; ?>
       </div>

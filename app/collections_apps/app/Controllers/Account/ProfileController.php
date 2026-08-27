@@ -3,10 +3,12 @@
 namespace App\Controllers\Account;
 
 use App\Core\AccountRedirect;
+use App\Core\Authz;
 use App\Core\Request;
 use App\Models\Form;
 use App\Models\FormField;
 use App\Models\FormResponse;
+use App\Models\OrganisationBranch;
 use App\Models\OrganisationMembership;
 use App\Models\User;
 use App\Services\FormAnswerService;
@@ -20,6 +22,24 @@ class ProfileController extends BaseAccountController
         foreach ($forms as $form) {
             $form['fields'] = FormField::forForm((int) $form['id']);
             $form['response'] = FormResponse::findForUserForm((int) $this->user['id'], (int) $form['id']);
+            $answers = is_array($form['response']['answers'] ?? null) ? $form['response']['answers'] : [];
+            $orgId = (int) ($this->user['organisation_id'] ?? 0);
+            if ($orgId > 0 && Authz::isOrganisationAdmin($this->user)) {
+                foreach ($form['fields'] as $field) {
+                    if (($field['field_type'] ?? '') !== 'branches') {
+                        continue;
+                    }
+                    $current = $answers[$field['field_key']] ?? null;
+                    if (!is_array($current) || $current === []) {
+                        $answers[$field['field_key']] = OrganisationBranch::asFormRows($orgId);
+                    }
+                }
+                if ($form['response']) {
+                    $form['response']['answers'] = $answers;
+                } elseif ($answers) {
+                    $form['response'] = ['answers' => $answers, 'submitted_at' => null];
+                }
+            }
             $withFields[] = $form;
         }
 
@@ -67,6 +87,24 @@ class ProfileController extends BaseAccountController
             );
         } catch (\Throwable $e) {
             // Memberships table is created by Super Admin → Updates.
+        }
+        $orgId = (int) ($this->user['organisation_id'] ?? 0);
+        if ($orgId > 0 && Authz::isOrganisationAdmin($this->user)) {
+            try {
+                foreach ($fields as $field) {
+                    if (($field['field_type'] ?? '') !== 'branches') {
+                        continue;
+                    }
+                    $rows = $collected['answers'][$field['field_key']] ?? [];
+                    if (is_array($rows) && $rows) {
+                        OrganisationBranch::syncFromFormRows($orgId, $rows);
+                    }
+                    break;
+                }
+            } catch (\Throwable $e) {
+                flashError('Your form was saved, but branches could not be updated. Run Super Admin → Update, then save this form again.');
+                redirect('/account/profile');
+            }
         }
         foreach ($fields as $field) {
             if (($field['field_type'] ?? '') !== 'name') {
