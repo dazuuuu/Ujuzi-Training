@@ -3,8 +3,10 @@
 namespace App\Controllers\Account;
 
 use App\Core\Authz;
+use App\Models\Course;
 use App\Models\Form;
 use App\Models\FormResponse;
+use App\Models\OrganisationBranch;
 use App\Models\OrganisationMembership;
 
 class DashboardController extends BaseAccountController
@@ -26,6 +28,8 @@ class DashboardController extends BaseAccountController
 
         $pendingTrainerRequests = [];
         $memberships = [];
+        $learnerCourses = [];
+        $learnerBranches = [];
         try {
             if (($this->user['role_slug'] ?? '') === 'organisation_admin' && !empty($this->user['organisation_id'])) {
                 $pendingTrainerRequests = OrganisationMembership::pendingTrainersForOrganisation((int) $this->user['organisation_id']);
@@ -33,9 +37,18 @@ class DashboardController extends BaseAccountController
             if (OrganisationMembership::isTrainerRole((string) ($this->user['role_slug'] ?? ''))) {
                 $memberships = OrganisationMembership::forUser((int) $this->user['id']);
             }
+            if (Authz::isStudent($this->user)) {
+                $orgIds = Authz::learnerOrganisationIds($this->user);
+                $learnerCourses = Course::forLearner($orgIds);
+                foreach ($orgIds as $orgId) {
+                    $learnerBranches = array_merge($learnerBranches, OrganisationBranch::forOrganisation($orgId));
+                }
+            }
         } catch (\Throwable $e) {
             $pendingTrainerRequests = [];
             $memberships = [];
+            $learnerCourses = [];
+            $learnerBranches = [];
         }
 
         $this->render('account.dashboard', [
@@ -48,6 +61,9 @@ class DashboardController extends BaseAccountController
             'recentManaged' => array_slice($managedUsers, 0, 6),
             'pendingTrainerRequests' => $pendingTrainerRequests,
             'memberships' => $memberships,
+            'learnerCourses' => $learnerCourses,
+            'learnerBranches' => $learnerBranches,
+            'isStudent' => Authz::isStudent($this->user),
         ]);
     }
 }

@@ -92,6 +92,25 @@ class Authz
         return array_values(array_unique(array_filter($ids)));
     }
 
+    public static function isStudent(array $actor): bool
+    {
+        return ($actor['role_slug'] ?? '') === 'student';
+    }
+
+    public static function learnerOrganisationIds(array $actor): array
+    {
+        $ids = [];
+        try {
+            $ids = OrganisationMembership::selectedOrganisationIds((int) $actor['id']);
+        } catch (\Throwable $e) {
+            $ids = [];
+        }
+        if (!$ids && !empty($actor['organisation_id'])) {
+            $ids[] = (int) $actor['organisation_id'];
+        }
+        return array_values(array_unique(array_filter($ids)));
+    }
+
     public static function canCreateCourses(array $actor): bool
     {
         return OrganisationMembership::isTrainerRole((string) ($actor['role_slug'] ?? ''))
@@ -100,7 +119,7 @@ class Authz
 
     public static function canViewCourses(array $actor): bool
     {
-        return self::isOrganisationAdmin($actor) || self::canCreateCourses($actor);
+        return self::isOrganisationAdmin($actor) || self::canCreateCourses($actor) || self::isStudent($actor);
     }
 
     public static function canAccessCourse(array $actor, array $course): bool
@@ -108,7 +127,16 @@ class Authz
         if (self::isOrganisationAdmin($actor) && (int) $course['organisation_id'] === (int) $actor['organisation_id']) {
             return true;
         }
-        return (int) ($course['trainer_user_id'] ?? 0) === (int) $actor['id'] && self::canCreateCourses($actor);
+        if ((int) ($course['trainer_user_id'] ?? 0) === (int) $actor['id'] && self::canCreateCourses($actor)) {
+            return true;
+        }
+        if (!self::isStudent($actor) || empty($course['is_published'])) {
+            return false;
+        }
+        if (($course['visibility'] ?? 'strict') === 'global') {
+            return true;
+        }
+        return in_array((int) $course['organisation_id'], self::learnerOrganisationIds($actor), true);
     }
 
     public static function canEditCourse(array $actor, array $course): bool

@@ -20,6 +20,21 @@ class OrganisationMembership
         return in_array($slug, self::trainerRoleSlugs(), true);
     }
 
+    public static function isStudentRole(string $slug): bool
+    {
+        return $slug === 'student';
+    }
+
+    public static function selectedOrganisationIds(int $userId): array
+    {
+        $stmt = Database::connection()->prepare(
+            "SELECT organisation_id FROM organisation_memberships
+             WHERE user_id = ? AND status IN ('approved', 'pending')"
+        );
+        $stmt->execute([$userId]);
+        return array_map('intval', $stmt->fetchAll(\PDO::FETCH_COLUMN));
+    }
+
     public static function find(int $id): ?array
     {
         $stmt = Database::connection()->prepare(
@@ -156,10 +171,6 @@ class OrganisationMembership
 
     public static function syncFromProfileAnswers(int $userId, string $roleSlug, array $fields, array $answers): void
     {
-        if (!self::isTrainerRole($roleSlug)) {
-            return;
-        }
-
         $orgIds = [];
         foreach ($fields as $field) {
             if (($field['field_type'] ?? '') !== 'organisation') {
@@ -176,8 +187,57 @@ class OrganisationMembership
                 }
             }
         }
+        $orgIds = array_values($orgIds);
 
-        self::syncSelections($userId, array_values($orgIds));
+        if (self::isTrainerRole($roleSlug)) {
+            self::syncSelections($userId, $orgIds);
+            return;
+        }
+
+        if (self::isStudentRole($roleSlug)) {
+            self::syncStudentSelections($userId, $orgIds);
+        }
+    }
+
+    private static function syncStudentSelections(int $userId, array $selectedOrgIds): void
+    {
+        $selected = [];
+        foreach ($selectedOrgIds as $id) {
+            $id = (int) $id;
+            if ($id > 0) {
+                $selected[$id] = true;
+            }
+        }
+
+        $existing = self::forUser($userId);
+        $pdo = Database::connection();
+
+        foreach ($existing as $row) {
+            $orgId = (int) $row['organisation_id'];
+            if (!empty($selected[$orgId])) {
+                if ($row['status'] !== self::STATUS_APPROVED) {
+                    $pdo->prepare(
+                        "UPDATE organisation_memberships
+                         SET status = 'approved', reviewed_at = NOW(), reviewed_by_user_id = NULL
+                         WHERE id = ?"
+                    )->execute([(int) $row['id']]);
+                }
+                unset($selected[$orgId]);
+                continue;
+            }
+            $pdo->prepare('DELETE FROM organisation_memberships WHERE id = ?')->execute([(int) $row['id']]);
+        }
+
+        $insert = $pdo->prepare(
+            "INSERT INTO organisation_memberships (user_id, organisation_id, status, reviewed_at)
+             VALUES (?, ?, 'approved', NOW())"
+        );
+        foreach (array_keys($selected) as $orgId) {
+            $insert->execute([$userId, $orgId]);
+        }
+
+        $primary = (int) ($selectedOrgIds[0] ?? 0);
+        User::assignOrganisation($userId, $primary > 0 ? $primary : null);
     }
 
     private static function syncSelections(int $userId, array $selectedOrgIds): void

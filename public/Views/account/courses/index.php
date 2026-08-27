@@ -1,6 +1,8 @@
 <?php
 $courses = $courses ?? [];
+$branches = $branches ?? [];
 $canCreate = !empty($canCreate);
+$isStudent = !empty($isStudent);
 require __DIR__ . '/../layout-header.php';
 ?>
 
@@ -9,17 +11,42 @@ require __DIR__ . '/../layout-header.php';
     <div>
       <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">Learning</p>
       <h1 class="mt-2 font-serif-heading text-3xl font-bold">Courses</h1>
-      <p class="mt-1 max-w-2xl text-sm font-medium text-neutral-600"><?= $canCreate
-        ? 'Create a course from the form Super Admin assigned to tutors. Organisation admins can review the same catalogue.'
-        : 'Courses created by tutors approved in your organisation.' ?></p>
+      <p class="mt-1 max-w-2xl text-sm font-medium text-neutral-600"><?php
+        if ($isStudent) {
+            echo 'These are published courses for the organisation you selected, plus any global courses available to every student.';
+        } elseif ($canCreate) {
+            echo 'Create a course from the form Super Admin assigned to tutors. After saving, use Edit topics to add videos, materials, and a quiz.';
+        } else {
+            echo 'Courses created by tutors approved in your organisation.';
+        }
+      ?></p>
     </div>
     <?php if ($canCreate): ?>
       <a href="<?= url('/account/courses/create') ?>" class="btn-primary">Create a course</a>
     <?php endif; ?>
   </section>
 
+  <?php if ($isStudent && $branches): ?>
+    <section class="space-y-3">
+      <h2 class="font-serif-heading text-lg font-bold">Branches</h2>
+      <div class="course-grid">
+        <?php foreach ($branches as $branch): ?>
+          <article class="course-card">
+            <?php if (!empty($branch['cover_image'])): ?>
+              <img src="<?= e(imageUrl($branch['cover_image'])) ?>" alt="">
+            <?php endif; ?>
+            <h3 class="font-serif-heading text-lg font-bold"><?= e($branch['title']) ?></h3>
+            <p class="text-sm font-medium text-neutral-700"><?= e($branch['location']) ?></p>
+          </article>
+        <?php endforeach; ?>
+      </div>
+    </section>
+  <?php endif; ?>
+
   <?php if (!$courses): ?>
-    <div class="rounded-xl border border-dashed p-8 text-sm font-bold" style="border-color:var(--ke-line);color:var(--ke-muted)">No courses yet.</div>
+    <div class="rounded-xl border border-dashed p-8 text-sm font-bold" style="border-color:var(--ke-line);color:var(--ke-muted)">
+      <?= $isStudent ? 'No courses for your organisation yet. Global courses will appear here when tutors publish them.' : 'No courses yet.' ?>
+    </div>
   <?php else: ?>
     <div class="course-grid">
       <?php foreach ($courses as $course): ?>
@@ -29,14 +56,25 @@ require __DIR__ . '/../layout-header.php';
           <?php endif; ?>
           <h2 class="font-serif-heading text-xl font-bold"><?= e($course['title']) ?></h2>
           <p class="text-xs font-bold uppercase tracking-wider" style="color:var(--ke-muted)"><?= e($course['category_name'] ?? 'Uncategorised') ?> · <?= e($course['organisation_name'] ?? '') ?></p>
+          <p class="text-[11px] font-black uppercase visibility-badge <?= ($course['visibility'] ?? 'strict') === 'global' ? 'is-global' : 'is-strict' ?>">
+            <?= ($course['visibility'] ?? 'strict') === 'global' ? 'Global — all students' : 'Strict — this organisation' ?>
+          </p>
           <?php if (!empty($course['first_name']) || !empty($course['email'])): ?>
             <p class="text-xs font-semibold text-neutral-600">Tutor: <?= e(trim(($course['first_name'] ?? '') . ' ' . ($course['last_name'] ?? '')) ?: ($course['email'] ?? '')) ?></p>
           <?php endif; ?>
           <?php if (!empty($course['description'])): ?>
             <p class="text-sm font-medium text-neutral-700"><?= e($course['description']) ?></p>
           <?php endif; ?>
-          <p class="text-[11px] font-black uppercase" style="color: <?= !empty($course['is_published']) ? 'var(--ke-green)' : 'var(--ke-muted)' ?>"><?= !empty($course['is_published']) ? 'Published' : 'Draft' ?></p>
-          <a href="<?= url('/account/courses/' . (int) $course['id']) ?>" class="btn-primary" style="padding:0.4rem 0.75rem;">Open</a>
+          <?php if (!$isStudent): ?>
+            <p class="text-[11px] font-black uppercase" style="color: <?= !empty($course['is_published']) ? 'var(--ke-green)' : 'var(--ke-muted)' ?>"><?= !empty($course['is_published']) ? 'Published' : 'Draft' ?></p>
+          <?php endif; ?>
+          <div class="flex flex-wrap gap-2">
+            <a href="<?= url('/account/courses/' . (int) $course['id']) ?>" class="btn-primary" style="padding:0.4rem 0.75rem;"><?= $isStudent ? 'Open' : 'View' ?></a>
+            <?php if ($canCreate && (int) ($course['trainer_user_id'] ?? 0) === (int) ($currentUser['id'] ?? 0)): ?>
+              <a href="<?= url('/account/courses/' . (int) $course['id']) ?>" class="btn-secondary" style="padding:0.4rem 0.75rem;">Edit topics</a>
+              <a href="<?= url('/account/courses/' . (int) $course['id'] . '/edit') ?>" class="btn-secondary" style="padding:0.4rem 0.75rem;">Edit details</a>
+            <?php endif; ?>
+          </div>
         </article>
       <?php endforeach; ?>
     </div>
