@@ -24,14 +24,18 @@ class ProfileController extends BaseAccountController
             $form['response'] = FormResponse::findForUserForm((int) $this->user['id'], (int) $form['id']);
             $answers = is_array($form['response']['answers'] ?? null) ? $form['response']['answers'] : [];
             $orgId = (int) ($this->user['organisation_id'] ?? 0);
-            if ($orgId > 0 && Authz::isOrganisationAdmin($this->user)) {
+            $canManageOwnBranches = Authz::isOrganisationAdmin($this->user)
+                || (($this->user['role_slug'] ?? '') === 'attachment_trainer');
+            if ($canManageOwnBranches) {
                 foreach ($form['fields'] as $field) {
                     if (($field['field_type'] ?? '') !== 'branches') {
                         continue;
                     }
                     $current = $answers[$field['field_key']] ?? null;
                     if (!is_array($current) || $current === []) {
-                        $answers[$field['field_key']] = OrganisationBranch::asFormRows($orgId);
+                        $answers[$field['field_key']] = Authz::isOrganisationAdmin($this->user)
+                            ? OrganisationBranch::asFormRows($orgId)
+                            : OrganisationBranch::asProviderFormRows((int) $this->user['id']);
                     }
                 }
                 if ($form['response']) {
@@ -54,6 +58,37 @@ class ProfileController extends BaseAccountController
     {
         if (!csrfVerify(Request::post('csrf_token'))) {
             flashError('Your session expired. Please resubmit the form.');
+            redirect('/account/profile');
+        }
+
+        if (Request::post('account_update') === '1') {
+            $email = strtolower(trim((string) Request::post('email', '')));
+            $phone = User::normalizePhone((string) Request::post('phone', ''));
+            $errors = [];
+            if ($email === '' && $phone === '') {
+                $errors[] = 'Keep at least an email address or phone number for sign-in.';
+            }
+            if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $errors[] = 'Enter a valid email address.';
+            }
+            if ($email !== '') {
+                $existingEmail = User::findByIdentifier('email', $email);
+                if ($existingEmail && (int) $existingEmail['id'] !== (int) $this->user['id']) {
+                    $errors[] = 'That email is already used by another account.';
+                }
+            }
+            if ($phone !== '') {
+                $existingPhone = User::findByIdentifier('phone', $phone);
+                if ($existingPhone && (int) $existingPhone['id'] !== (int) $this->user['id']) {
+                    $errors[] = 'That phone number is already used by another account.';
+                }
+            }
+            if ($errors) {
+                flashError(implode(' ', $errors));
+                redirect('/account/profile');
+            }
+            User::updateCredentials((int) $this->user['id'], $email, $phone);
+            flashSuccess('Your sign-in details were updated.');
             redirect('/account/profile');
         }
 
@@ -89,14 +124,18 @@ class ProfileController extends BaseAccountController
             // Memberships table is created by Super Admin → Updates.
         }
         $orgId = (int) ($this->user['organisation_id'] ?? 0);
-        if ($orgId > 0 && Authz::isOrganisationAdmin($this->user)) {
+        if (Authz::isOrganisationAdmin($this->user) || (($this->user['role_slug'] ?? '') === 'attachment_trainer')) {
             foreach ($fields as $field) {
                 if (($field['field_type'] ?? '') !== 'branches') {
                     continue;
                 }
                 $rows = $collected['answers'][$field['field_key']] ?? [];
                 if (is_array($rows)) {
-                    OrganisationBranch::syncFromFormRows($orgId, $rows);
+                    if (Authz::isOrganisationAdmin($this->user) && $orgId > 0) {
+                        OrganisationBranch::syncFromFormRows($orgId, $rows);
+                    } elseif (($this->user['role_slug'] ?? '') === 'attachment_trainer') {
+                        OrganisationBranch::syncProviderFormRows((int) $this->user['id'], $rows);
+                    }
                 }
                 break;
             }

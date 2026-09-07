@@ -7,7 +7,12 @@ require __DIR__ . '/layout-header.php';
   <div class="text-center mb-8">
     <?php
       $mode = $mode ?? '';
-      $badge = $mode === 'student' ? 'Student registration' : ($mode === 'trainer' ? 'Trainer / tutor / teacher' : 'Organisation admin');
+      $badge = match ($mode) {
+        'student' => 'Student registration',
+        'trainer' => 'Trainer / tutor / teacher',
+        'attachment_trainer' => 'Attachment trainer registration',
+        default => 'Organisation admin',
+      };
     ?>
     <span class="text-xs font-bold uppercase tracking-widest block mb-1" style="color:var(--ke-green)"><?= e($badge) ?></span>
     <h1 class="font-serif-heading text-3xl font-bold"><?= e($heading) ?></h1>

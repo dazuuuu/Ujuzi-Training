@@ -37,10 +37,10 @@ class FormField
             if (!FormFieldTypes::isValid($type)) {
                 $type = 'text';
             }
-            if ($label === '' && !FormFieldTypes::isLayout($type)) {
-                continue;
-            }
             if ($label === '') {
+                if ($type === 'text') {
+                    continue;
+                }
                 $label = FormFieldTypes::label($type);
             }
 
@@ -101,9 +101,29 @@ class FormField
             $names = Organisation::namesByIds($ids);
             return $names ? implode(', ', array_values($names)) : '—';
         }
+        if (($field['field_type'] ?? '') === 'attachment_provider') {
+            $names = User::namesByIds([(int) $value]);
+            return $names ? (string) reset($names) : '—';
+        }
+        if (($field['field_type'] ?? '') === 'branch_select') {
+            $branch = OrganisationBranch::findWithOrganisation((int) $value);
+            if (!$branch) {
+                return '—';
+            }
+            $title = trim((string) ($branch['title'] ?? ''));
+            $location = trim((string) ($branch['location'] ?? ''));
+            $org = trim((string) ($branch['organisation_name'] ?? ''));
+            $label = $location !== '' ? $title . ' (' . $location . ')' : $title;
+            return $org !== '' ? $label . ' - ' . $org : $label;
+        }
         if (($field['field_type'] ?? '') === 'duration') {
             if (!is_array($value)) {
                 return '—';
+            }
+            $amount = (int) ($value['amount'] ?? 0);
+            $unit = strtolower(trim((string) ($value['unit'] ?? '')));
+            if ($amount > 0 && in_array($unit, ['day', 'week', 'month', 'year'], true)) {
+                return $amount . ' ' . $unit . ($amount === 1 ? '' : 's');
             }
             $start = trim((string) ($value['start'] ?? ''));
             $end = trim((string) ($value['end'] ?? ''));

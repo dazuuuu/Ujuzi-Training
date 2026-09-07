@@ -10,15 +10,17 @@ class UpdateController extends BaseAdminController
 {
     public function index(): void
     {
-        $pending = MigrationService::pending();
-        if (!$pending) {
-            redirect('/admin');
-        }
+        $status = MigrationService::status();
+        $pending = array_values(array_map(
+            fn(array $row): string => $row['name'],
+            array_filter($status, fn(array $row): bool => !$row['applied'])
+        ));
 
         View::render('admin.updates.index', [
             'pageTitle' => 'Updates',
             'activeNav' => 'updates',
             'pendingMigrations' => $pending,
+            'migrationStatus' => $status,
         ]);
     }
 

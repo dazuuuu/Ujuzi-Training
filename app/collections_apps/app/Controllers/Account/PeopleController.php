@@ -7,6 +7,7 @@ use App\Core\Request;
 use App\Models\Form;
 use App\Models\FormField;
 use App\Models\FormResponse;
+use App\Models\Course;
 use App\Models\Organisation;
 use App\Models\OrganisationMembership;
 use App\Models\Role;
@@ -17,11 +18,19 @@ class PeopleController extends BaseAccountController
     public function index(): void
     {
         $this->requireManager();
+        $roleSlug = (string) ($this->user['role_slug'] ?? '');
+        $users = Authz::scopedUsers($this->user);
+        if ($roleSlug === 'attachment_trainer') {
+            $users = User::studentsForAttachmentProvider((int) $this->user['id']);
+        } elseif ($roleSlug === 'trainer') {
+            $users = Course::studentsForTrainer((int) $this->user['id']);
+        }
         $this->render('account.people.index', [
             'pageTitle' => 'People',
             'activeNav' => 'people',
-            'users' => Authz::scopedUsers($this->user),
+            'users' => $users,
             'manageableRoles' => Authz::manageableRoles($this->user),
+            'directoryMode' => $roleSlug,
         ]);
     }
 

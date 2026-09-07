@@ -223,13 +223,17 @@ switch ($type) {
         break;
 
     case 'duration':
-        $start = is_array($value) ? (string) ($value['start'] ?? '') : '';
-        $end = is_array($value) ? (string) ($value['end'] ?? '') : '';
+        $amount = is_array($value) ? (string) ($value['amount'] ?? '') : '';
+        $unit = is_array($value) ? (string) ($value['unit'] ?? '') : '';
         echo '<div class="name-grid">';
-        echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Start</label><input type="date" name="' . e($name) . '[start]" value="' . e($start) . '" ' . ($required ? 'required' : '') . ' class="' . $class . '" /></div>';
-        echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">End</label><input type="date" name="' . e($name) . '[end]" value="' . e($end) . '" ' . ($required ? 'required' : '') . ' class="' . $class . '" /></div>';
+        echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Amount</label><input type="number" min="1" max="3650" step="1" name="' . e($name) . '[amount]" value="' . e($amount) . '" ' . ($required ? 'required' : '') . ' class="' . $class . '" placeholder="e.g. 2" /></div>';
+        echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Unit</label><select name="' . e($name) . '[unit]" ' . ($required ? 'required' : '') . ' class="' . $class . '"><option value="">Choose unit</option>';
+        foreach (['day' => 'Day(s)', 'week' => 'Week(s)', 'month' => 'Month(s)', 'year' => 'Year(s)'] as $option => $label) {
+            echo '<option value="' . e($option) . '" ' . ($unit === $option ? 'selected' : '') . '>' . e($label) . '</option>';
+        }
+        echo '</select></div>';
         echo '</div>';
-        echo '<p class="field-hint">Attachment placements cover a specific period. Students see this after they finish their course.</p>';
+        echo '<p class="field-hint">Enter how long the attachment lasts, such as 1 week, 2 weeks, 1 month, or 1 year.</p>';
         break;
 
     case 'branches':
@@ -333,35 +337,64 @@ switch ($type) {
         break;
 
     case 'organisation':
-        $orgs = \App\Models\Organisation::active();
         $multiple = ($field['org_mode'] ?? 'single') === 'multiple';
         $selected = is_array($value) ? array_map('strval', $value) : array_values(array_filter([(string) $value], fn($item) => $item !== ''));
+        $selectedNames = \App\Models\Organisation::namesByIds(array_map('intval', $selected));
         $roleSlug = is_array($viewer = ($currentUser ?? \App\Core\UserSession::current())) ? ($viewer['role_slug'] ?? '') : '';
-        if (!$orgs) {
-            echo '<p class="mt-2 text-sm font-bold" style="color:var(--ke-muted)">No organisations are available yet. Ask Super Admin to add them.</p>';
-            break;
-        }
+        echo '<div class="js-org-search" data-multiple="' . ($multiple ? '1' : '0') . '" data-name="' . e($name) . '" data-search-url="' . e(url('/api/form/organisations')) . '">';
+        echo '<div class="js-org-values">';
         if ($multiple) {
-            echo '<div class="choice-grid cols-1">';
-            foreach ($orgs as $org) {
-                $checked = in_array((string) $org['id'], $selected, true) ? 'checked' : '';
-                echo '<label class="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="' . e($name) . '[]" value="' . (int) $org['id'] . '" ' . $checked . ' class="h-4 w-4" />' . e($org['name']) . '</label>';
+            foreach ($selected as $orgId) {
+                if ((int) $orgId > 0) {
+                    echo '<input type="hidden" name="' . e($name) . '[]" value="' . (int) $orgId . '" class="js-organisation-field js-organisation-value" data-label="' . e($selectedNames[(int) $orgId] ?? '') . '" />';
+                }
             }
-            echo '</div>';
-            echo $roleSlug === 'student'
-                ? '<p class="field-hint">Your dashboard only lists courses for the organisation(s) you pick, plus any global courses.</p>'
-                : '<p class="field-hint">You can select more than one organisation. Each organisation admin must approve you before you are assigned.</p>';
         } else {
-            echo '<select name="' . e($name) . '" ' . ($required ? 'required' : '') . ' class="' . $class . '"><option value="">Choose organisation</option>';
-            foreach ($orgs as $org) {
-                $isOn = in_array((string) $org['id'], $selected, true) ? 'selected' : '';
-                echo '<option value="' . (int) $org['id'] . '" ' . $isOn . '>' . e($org['name']) . '</option>';
-            }
-            echo '</select>';
-            echo $roleSlug === 'student'
-                ? '<p class="field-hint">Your dashboard then shows courses for this organisation, plus global courses such as basic skills.</p>'
-                : '<p class="field-hint">The organisation you pick must approve you before you appear on their dashboard.</p>';
+            $orgId = (int) ($selected[0] ?? 0);
+            echo '<input type="hidden" name="' . e($name) . '" value="' . ($orgId > 0 ? $orgId : '') . '" class="js-organisation-field js-organisation-value" data-label="' . e($selectedNames[$orgId] ?? '') . '" />';
         }
+        echo '</div>';
+        echo '<input type="search" autocomplete="off" class="' . $class . ' js-org-search-input" placeholder="' . e($placeholder ?: 'Search organisation') . '" ' . ($required ? 'data-required="1"' : '') . ' />';
+        echo '<div class="js-org-selected mt-2 flex flex-wrap gap-2"></div>';
+        echo '<div class="js-org-results mt-2 hidden rounded-lg border border-neutral-200 bg-white shadow-sm"></div>';
+        echo '</div>';
+        echo $roleSlug === 'student'
+            ? '<p class="field-hint">Search and choose your organisation. Your dashboard will show courses for that organisation, plus global courses.</p>'
+            : '<p class="field-hint">Search and choose from organisations saved in the database.</p>';
+        break;
+
+    case 'attachment_provider':
+        $selected = is_array($value) ? array_map('strval', $value) : array_values(array_filter([(string) $value], fn($item) => $item !== ''));
+        $selectedIds = array_values(array_filter(array_map('intval', $selected), fn($id) => $id > 0));
+        $selectedNames = \App\Models\User::namesByIds($selectedIds);
+        echo '<div class="js-provider-search" data-name="' . e($name) . '" data-search-url="' . e(url('/api/form/attachment-providers')) . '">';
+        echo '<div class="js-provider-values"><input type="hidden" name="' . e($name) . '" value="' . ($selectedIds[0] ?? '') . '" class="js-attachment-provider-value" data-label="' . e($selectedNames[$selectedIds[0] ?? 0] ?? '') . '" /></div>';
+        echo '<input type="search" autocomplete="off" class="' . $class . ' js-provider-search-input" placeholder="' . e($placeholder ?: 'Search attachment provider') . '" />';
+        echo '<div class="js-provider-selected mt-2 flex flex-wrap gap-2"></div><div class="js-provider-results mt-2 hidden rounded-lg border border-neutral-200 bg-white shadow-sm"></div></div>';
+        echo '<p class="field-hint">Choose the attachment provider whose saved branches should be available.</p>';
+        break;
+
+    case 'branch_select':
+        $current = (string) $value;
+        $viewer = $currentUser ?? \App\Core\UserSession::current();
+        $defaultOrgId = is_array($viewer) ? (int) ($viewer['organisation_id'] ?? 0) : 0;
+        $defaultProviderId = is_array($viewer) && (($viewer['role_slug'] ?? '') === 'attachment_trainer') ? (int) ($viewer['id'] ?? 0) : 0;
+        $branch = (int) $current > 0 ? \App\Models\OrganisationBranch::findWithOrganisation((int) $current) : null;
+        $label = '';
+        if ($branch) {
+            $label = trim((string) ($branch['title'] ?? ''));
+            $location = trim((string) ($branch['location'] ?? ''));
+            if ($location !== '') {
+                $label .= ' - ' . $location;
+            }
+        }
+        echo '<select name="' . e($name) . '" ' . ($required ? 'required' : '') . ' class="' . $class . ' js-branch-select" data-branches-url="' . e(url('/api/form/branches')) . '" data-default-org-id="' . ($defaultOrgId > 0 ? $defaultOrgId : '') . '" data-default-provider-id="' . ($defaultProviderId > 0 ? $defaultProviderId : '') . '">';
+        echo '<option value="">Choose organisation or attachment provider first</option>';
+        if ($branch) {
+            echo '<option value="' . (int) $branch['id'] . '" data-org-id="' . (int) $branch['organisation_id'] . '" selected>' . e($label) . '</option>';
+        }
+        echo '</select>';
+        echo '<p class="field-hint">This uses branches already created and saved in the database.</p>';
         break;
 
     case 'category':

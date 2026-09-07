@@ -12,17 +12,17 @@ class BranchController extends BaseAccountController
 {
     public function index(): void
     {
-        $this->requireOrgAdmin();
+        $this->requireBranchManager();
         $this->render('account.branches.index', [
             'pageTitle' => 'Branches',
             'activeNav' => 'branches',
-            'branches' => OrganisationBranch::forOrganisation((int) $this->user['organisation_id']),
+            'branches' => $this->branchesForCurrentUser(),
         ]);
     }
 
     public function create(): void
     {
-        $this->requireOrgAdmin();
+        $this->requireBranchManager();
         $this->render('account.branches.form', [
             'pageTitle' => 'Add branch',
             'activeNav' => 'branches',
@@ -34,13 +34,13 @@ class BranchController extends BaseAccountController
 
     public function store(): void
     {
-        $this->requireOrgAdmin();
+        $this->requireBranchManager();
         $this->persist(null);
     }
 
     public function edit(string $id): void
     {
-        $this->requireOrgAdmin();
+        $this->requireBranchManager();
         $branch = $this->ownedBranch((int) $id);
         $this->render('account.branches.form', [
             'pageTitle' => 'Edit branch',
@@ -53,14 +53,14 @@ class BranchController extends BaseAccountController
 
     public function update(string $id): void
     {
-        $this->requireOrgAdmin();
+        $this->requireBranchManager();
         $this->ownedBranch((int) $id);
         $this->persist((int) $id);
     }
 
     public function destroy(string $id): void
     {
-        $this->requireOrgAdmin();
+        $this->requireBranchManager();
         if (!csrfVerify(Request::post('csrf_token'))) {
             flashError('Your session expired. Please try again.');
             redirect('/account/branches');
@@ -136,7 +136,9 @@ class BranchController extends BaseAccountController
         }
 
         $payload = [
-            'organisation_id' => (int) $this->user['organisation_id'],
+            'organisation_id' => $this->branchOrganisationId(),
+            'owner_type' => $this->branchOwnerType(),
+            'owner_user_id' => $this->branchOwnerType() === 'attachment_provider' ? (int) $this->user['id'] : null,
             'title' => $title,
             'location' => $location,
             'cover_image' => $cover,
@@ -154,10 +156,10 @@ class BranchController extends BaseAccountController
         redirect('/account/branches');
     }
 
-    private function requireOrgAdmin(): void
+    private function requireBranchManager(): void
     {
-        if (!Authz::isOrganisationAdmin($this->user)) {
-            flashError('Only organisation admins can manage branches.');
+        if (!Authz::isOrganisationAdmin($this->user) && ($this->user['role_slug'] ?? '') !== 'attachment_trainer') {
+            flashError('Only organisation admins and attachment providers can manage branches.');
             redirect('/account/dashboard');
         }
     }
@@ -165,11 +167,40 @@ class BranchController extends BaseAccountController
     private function ownedBranch(int $id): array
     {
         $branch = OrganisationBranch::find($id);
-        if (!$branch || (int) $branch['organisation_id'] !== (int) $this->user['organisation_id']) {
+        if (!$branch) {
+            flashError('That branch could not be found.');
+            redirect('/account/branches');
+        }
+        $ownsOrganisationBranch = Authz::isOrganisationAdmin($this->user)
+            && (int) ($branch['organisation_id'] ?? 0) === (int) $this->user['organisation_id']
+            && ($branch['owner_type'] ?? 'organisation') === 'organisation';
+        $ownsProviderBranch = ($this->user['role_slug'] ?? '') === 'attachment_trainer'
+            && ($branch['owner_type'] ?? '') === 'attachment_provider'
+            && (int) ($branch['owner_user_id'] ?? 0) === (int) $this->user['id'];
+        if (!$ownsOrganisationBranch && !$ownsProviderBranch) {
             flashError('That branch could not be found.');
             redirect('/account/branches');
         }
         return $branch;
+    }
+
+    private function branchesForCurrentUser(): array
+    {
+        if (($this->user['role_slug'] ?? '') === 'attachment_trainer') {
+            return OrganisationBranch::forAttachmentProvider((int) $this->user['id']);
+        }
+        return OrganisationBranch::forOrganisation((int) $this->user['organisation_id']);
+    }
+
+    private function branchOwnerType(): string
+    {
+        return ($this->user['role_slug'] ?? '') === 'attachment_trainer' ? 'attachment_provider' : 'organisation';
+    }
+
+    private function branchOrganisationId(): ?int
+    {
+        $orgId = (int) ($this->user['organisation_id'] ?? 0);
+        return $orgId > 0 ? $orgId : null;
     }
 
     private function blankForm(): array

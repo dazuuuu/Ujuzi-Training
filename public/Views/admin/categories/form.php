@@ -11,7 +11,7 @@ $actionUrl = $category ? url('/admin/categories/' . (int) $category['id']) : url
     <div class="bg-rose-50 border border-rose-300 text-rose-800 text-sm font-semibold rounded-lg p-3"><?= e($err) ?></div>
   <?php endforeach; ?>
 
-  <div class="grid grid-cols-2 gap-4">
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
     <div>
       <label class="text-[11px] font-bold text-neutral-600 uppercase">Category Key <span class="text-neutral-400 font-normal normal-case">(used for filtering; can't change later)</span></label>
       <input type="text" name="category_key" value="<?= e($form['category_key']) ?>" <?= $category ? 'readonly' : 'placeholder="auto-generated from name if left blank"' ?> class="w-full mt-1 border border-neutral-300 rounded-lg p-2.5 text-sm <?= $category ? 'bg-neutral-100 text-neutral-500' : 'bg-white' ?> focus:outline-none focus:border-black" />

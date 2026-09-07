@@ -45,7 +45,11 @@ foreach ($files as $file) {
     }
     $migration = require $file;
     echo "Migrating: {$name}\n";
-    $pdo->exec($migration['up']);
+    if (is_callable($migration['up'] ?? null)) {
+        $migration['up']($pdo);
+    } else {
+        $pdo->exec($migration['up']);
+    }
     $pdo->prepare('INSERT INTO migrations (migration) VALUES (?)')->execute([$name]);
     $ran++;
 }

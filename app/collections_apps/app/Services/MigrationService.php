@@ -7,6 +7,22 @@ use PDO;
 
 class MigrationService
 {
+    public static function status(): array
+    {
+        $applied = self::applied();
+        $rows = [];
+
+        foreach (self::migrationFiles() as $file) {
+            $name = basename($file, '.php');
+            $rows[] = [
+                'name' => $name,
+                'applied' => in_array($name, $applied, true),
+            ];
+        }
+
+        return $rows;
+    }
+
     public static function pending(): array
     {
         $applied = self::applied();

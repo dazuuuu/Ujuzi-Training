@@ -169,7 +169,10 @@ class AuthController
         }
 
         if (empty($user['is_active'])) {
-            return 'This account is inactive. Contact your organisation admin.';
+            $message = ($user['account_status'] ?? '') === 'suspended'
+                ? 'This account is suspended. Contact your organisation admin.'
+                : 'This account is blocked. Contact your organisation admin.';
+            return $message;
         }
 
         $method = Request::post('method', 'email');

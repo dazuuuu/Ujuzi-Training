@@ -81,6 +81,41 @@ class User
         return array_map([self::class, 'hydrate'], $stmt->fetchAll());
     }
 
+    public static function studentsForAttachmentProvider(int $providerUserId): array
+    {
+        $studentRole = Role::findBySlug('student');
+        if (!$studentRole) {
+            return [];
+        }
+        $students = self::all(null, (int) $studentRole['id']);
+        $forms = Form::forRole((int) $studentRole['id'], true, 'profile');
+        $fields = [];
+        foreach ($forms as $form) {
+            foreach (FormField::forForm((int) $form['id']) as $field) {
+                if (($field['field_type'] ?? '') === 'attachment_provider') {
+                    $fields[] = $field['field_key'];
+                }
+            }
+        }
+        if (!$fields) {
+            return [];
+        }
+        $matched = [];
+        foreach ($students as $student) {
+            foreach (FormResponse::forUser((int) $student['id']) as $response) {
+                foreach ($fields as $key) {
+                    $value = $response['answers'][$key] ?? '';
+                    $values = is_array($value) ? $value : [$value];
+                    if (in_array($providerUserId, array_map('intval', $values), true)) {
+                        $matched[] = $student;
+                        continue 3;
+                    }
+                }
+            }
+        }
+        return $matched;
+    }
+
     public static function attachmentTrainersForOrganisations(array $organisationIds): array
     {
         $organisationIds = array_values(array_unique(array_filter(array_map('intval', $organisationIds))));
@@ -109,6 +144,63 @@ class User
         );
         $stmt->execute(array_merge($organisationIds, $organisationIds));
         return array_map([self::class, 'hydrate'], $stmt->fetchAll());
+    }
+
+    public static function searchAttachmentProviders(string $query = '', int $limit = 20): array
+    {
+        $limit = max(1, min(50, $limit));
+        $query = trim($query);
+        $sql = "SELECT u.*, r.slug AS role_slug, r.name AS role_name, o.name AS organisation_name
+                FROM users u
+                INNER JOIN roles r ON r.id = u.role_id
+                LEFT JOIN organisations o ON o.id = u.organisation_id
+                WHERE r.slug = 'attachment_trainer' AND u.is_active = 1";
+        $params = [];
+        if ($query !== '') {
+            $sql .= " AND (u.first_name LIKE ? OR u.last_name LIKE ? OR u.email LIKE ? OR o.name LIKE ?)";
+            $like = '%' . $query . '%';
+            $params = [$like, $like, $like, $like];
+        }
+        $sql .= ' ORDER BY u.first_name ASC, u.last_name ASC, u.email ASC LIMIT ' . $limit;
+        $stmt = Database::connection()->prepare($sql);
+        $stmt->execute($params);
+        return array_map([self::class, 'hydrate'], $stmt->fetchAll());
+    }
+
+    public static function validActiveAttachmentProviderIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), fn(int $id): bool => $id > 0)));
+        if (!$ids) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = Database::connection()->prepare(
+            "SELECT u.id
+             FROM users u
+             INNER JOIN roles r ON r.id = u.role_id
+             WHERE u.is_active = 1 AND r.slug = 'attachment_trainer' AND u.id IN ($placeholders)"
+        );
+        $stmt->execute($ids);
+        return array_map('intval', $stmt->fetchAll(\PDO::FETCH_COLUMN));
+    }
+
+    public static function namesByIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), fn(int $id): bool => $id > 0)));
+        if (!$ids) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = Database::connection()->prepare(
+            "SELECT id, first_name, last_name, email FROM users WHERE id IN ($placeholders)"
+        );
+        $stmt->execute($ids);
+        $names = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $label = trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? ''));
+            $names[(int) $row['id']] = $label !== '' ? $label : (string) ($row['email'] ?? ('User #' . $row['id']));
+        }
+        return $names;
     }
 
     public static function attachmentDuration(array $user): string
@@ -226,8 +318,12 @@ class User
 
     public static function update(int $id, array $fields): void
     {
+        $status = (string) ($fields['account_status'] ?? (!empty($fields['is_active']) ? 'active' : 'blocked'));
+        if (!in_array($status, ['active', 'blocked', 'suspended'], true)) {
+            $status = !empty($fields['is_active']) ? 'active' : 'blocked';
+        }
         Database::connection()->prepare(
-            'UPDATE users SET role_id = ?, organisation_id = ?, email = ?, phone = ?, first_name = ?, last_name = ?, is_active = ? WHERE id = ?'
+            'UPDATE users SET role_id = ?, organisation_id = ?, email = ?, phone = ?, first_name = ?, last_name = ?, is_active = ?, account_status = ? WHERE id = ?'
         )->execute([
             (int) $fields['role_id'],
             !empty($fields['organisation_id']) ? (int) $fields['organisation_id'] : null,
@@ -236,9 +332,43 @@ class User
             $fields['first_name'] ?? null,
             $fields['last_name'] ?? null,
             !empty($fields['is_active']) ? 1 : 0,
+            $status,
             $id,
         ]);
         FormResponse::provisionForUser($id, (int) $fields['role_id']);
+    }
+
+    public static function setStatus(int $id, string $status): void
+    {
+        if (!in_array($status, ['active', 'blocked', 'suspended'], true)) {
+            throw new \InvalidArgumentException('Invalid user status.');
+        }
+        Database::connection()->prepare(
+            'UPDATE users SET account_status = ?, is_active = ? WHERE id = ?'
+        )->execute([$status, $status === 'active' ? 1 : 0, $id]);
+    }
+
+    public static function updateCredentials(int $id, ?string $email, ?string $phone): void
+    {
+        Database::connection()->prepare(
+            'UPDATE users SET email = ?, phone = ? WHERE id = ?'
+        )->execute([
+            $email !== null && $email !== '' ? strtolower(trim($email)) : null,
+            $phone !== null && $phone !== '' ? self::normalizePhone($phone) : null,
+            $id,
+        ]);
+    }
+
+    public static function delete(int $id): void
+    {
+        try {
+            Database::connection()->prepare(
+                "DELETE FROM organisation_branches WHERE owner_type = 'attachment_provider' AND owner_user_id = ?"
+            )->execute([$id]);
+        } catch (\Throwable $e) {
+            // Branch ownership is added by the branch ownership migration.
+        }
+        Database::connection()->prepare('DELETE FROM users WHERE id = ?')->execute([$id]);
     }
 
     public static function markEmailVerified(int $id): void
@@ -304,6 +434,7 @@ class User
         $row['is_under_organisation'] = !empty($row['is_under_organisation']);
         $row['can_manage_users'] = !empty($row['can_manage_users']);
         $row['has_password'] = !empty($row['password_hash']);
+        $row['account_status'] = (string) ($row['account_status'] ?? (!empty($row['is_active']) ? 'active' : 'blocked'));
         unset($row['password_hash']);
         return $row;
     }

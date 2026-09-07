@@ -77,7 +77,7 @@ function fieldChoices(array $field): array
   <div class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm space-y-4">
     <div class="border-b border-neutral-100 pb-3">
       <h2 class="font-serif-heading text-lg font-bold">Fields</h2>
-      <p class="text-xs font-medium mt-1" style="color:var(--ke-muted)">Pick a type the way WordPress form builders do. Drag a field to reposition it. Organisation branches lets organisation admins list name, location, and extra details you add, on their original profile form. Organisation category loads categories each organisation lists — approved tutors only see categories for organisations they belong to. Documents accepts PDFs, images, and Word files.</p>
+      <p class="text-xs font-medium mt-1" style="color:var(--ke-muted)">Pick a type the way WordPress form builders do. Drag a field to reposition it. Create branches saves branches for the organisation or attachment provider completing the form. Branch dropdown lets users select saved branches after choosing the relevant owner. Documents accepts PDFs, images, and Word files.</p>
     </div>
     <div id="fields-list" class="space-y-4">
       <?php foreach ($fields as $index => $field):
@@ -209,7 +209,11 @@ function fieldChoices(array $field): array
               <option value="single" <?= $orgMode === 'single' ? 'selected' : '' ?>>One organisation</option>
               <option value="multiple" <?= $orgMode === 'multiple' ? 'selected' : '' ?>>Multiple organisations</option>
             </select>
-            <p class="field-hint">People pick from organisations saved in the database. For tutor registration, each selected organisation must approve them.</p>
+          <p class="field-hint">People pick from organisations saved in the database. A branch selector can show branches for the selected organisation.</p>
+          </div>
+          <div class="branch-select-wrap rounded-lg p-3 <?= $type === 'branch_select' ? '' : 'hidden' ?>" style="background:#f6f7f4;border:1px solid var(--ke-line)">
+            <p class="text-sm font-semibold">Organisation branch selector</p>
+          <p class="field-hint">This field appears on the created form as a dropdown. It stays empty until the user picks an organisation or attachment provider.</p>
           </div>
           <div class="category-wrap rounded-lg p-3 <?= $type === 'category' ? '' : 'hidden' ?>" style="background:#f6f7f4;border:1px solid var(--ke-line)">
             <p class="text-sm font-semibold">Organisation categories</p>
@@ -217,10 +221,10 @@ function fieldChoices(array $field): array
           </div>
           <div class="duration-wrap rounded-lg p-3 <?= $type === 'duration' ? '' : 'hidden' ?>" style="background:#f6f7f4;border:1px solid var(--ke-line)">
             <p class="text-sm font-semibold">Attachment duration</p>
-            <p class="field-hint">Use this on the Attachment Trainer profile form. They enter a start and end date for the placement period.</p>
+            <p class="field-hint">Enter a reusable amount and unit, such as 1 week, 2 weeks, 1 month, or 1 year.</p>
           </div>
           <div class="branch-wrap rounded-lg p-3 <?= $type === 'branches' ? '' : 'hidden' ?>" style="background:#f6f7f4;border:1px solid var(--ke-line)">
-            <p class="text-sm font-semibold">Organisation branches</p>
+            <p class="text-sm font-semibold">Create branches</p>
             <p class="field-hint">Put this on the organisation admin profile form. They list each branch (name and location) plus the extra details you add above. Saving the profile also updates the Branches page.</p>
           </div>
             </div>
@@ -348,7 +352,11 @@ function fieldChoices(array $field): array
         <option value="single">One organisation</option>
         <option value="multiple">Multiple organisations</option>
       </select>
-      <p class="field-hint">People pick from organisations saved in the database. For tutor registration, each selected organisation must approve them.</p>
+      <p class="field-hint">People pick from organisations saved in the database. A branch selector can show branches for the selected organisation.</p>
+    </div>
+    <div class="branch-select-wrap hidden rounded-lg p-3" style="background:#f6f7f4;border:1px solid var(--ke-line)">
+      <p class="text-sm font-semibold">Organisation branch selector</p>
+      <p class="field-hint">This field appears on the created form as a dropdown. It stays empty until the user picks an organisation or attachment provider.</p>
     </div>
     <div class="category-wrap hidden rounded-lg p-3" style="background:#f6f7f4;border:1px solid var(--ke-line)">
       <p class="text-sm font-semibold">Organisation categories</p>
@@ -356,10 +364,10 @@ function fieldChoices(array $field): array
     </div>
     <div class="duration-wrap hidden rounded-lg p-3" style="background:#f6f7f4;border:1px solid var(--ke-line)">
       <p class="text-sm font-semibold">Attachment duration</p>
-      <p class="field-hint">Use this on the Attachment Trainer profile form. They enter a start and end date for the placement period.</p>
+      <p class="field-hint">Enter a reusable amount and unit, such as 1 week, 2 weeks, 1 month, or 1 year.</p>
     </div>
     <div class="branch-wrap hidden rounded-lg p-3" style="background:#f6f7f4;border:1px solid var(--ke-line)">
-      <p class="text-sm font-semibold">Organisation branches</p>
+      <p class="text-sm font-semibold">Create branches</p>
       <p class="field-hint">Put this on the organisation admin profile form. They list each branch (name and location) plus the extra details you add above. Saving the profile also updates the Branches page.</p>
     </div>
       </div>
@@ -380,6 +388,7 @@ function fieldChoices(array $field): array
   var columnTypes = { radio: 1, checkboxes: 1 };
   var minmaxTypes = { checkboxes: 1, multiselect: 1 };
   var rangeDefaults = { range: ['0', '100'], rating: ['1', '5'], number: ['', ''] };
+  var defaultLabels = <?= json_encode(FormFieldTypes::labels(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   var dragEl = null;
 
   function reindex() {
@@ -408,6 +417,7 @@ function fieldChoices(array $field): array
     var minmax = row.querySelector('.minmax-wrap');
     var selectAll = row.querySelector('.select-all-wrap');
     var orgMode = row.querySelector('.org-mode-wrap');
+    var branchSelectWrap = row.querySelector('.branch-select-wrap');
     var categoryWrap = row.querySelector('.category-wrap');
     var durationWrap = row.querySelector('.duration-wrap');
     var branchWrap = row.querySelector('.branch-wrap');
@@ -423,6 +433,7 @@ function fieldChoices(array $field): array
     if (minmax) minmax.classList.toggle('hidden', !minmaxTypes[value]);
     if (selectAll) selectAll.classList.toggle('hidden', value !== 'checkboxes');
     if (orgMode) orgMode.classList.toggle('hidden', value !== 'organisation');
+    if (branchSelectWrap) branchSelectWrap.classList.toggle('hidden', value !== 'branch_select');
     if (categoryWrap) categoryWrap.classList.toggle('hidden', value !== 'category');
     if (durationWrap) durationWrap.classList.toggle('hidden', value !== 'duration');
     if (branchWrap) branchWrap.classList.toggle('hidden', value !== 'branches');
@@ -435,6 +446,14 @@ function fieldChoices(array $field): array
       if (minInput && minInput.value === '' && rangeDefaults[value][0] !== '') minInput.value = rangeDefaults[value][0];
       if (maxInput && maxInput.value === '' && rangeDefaults[value][1] !== '') maxInput.value = rangeDefaults[value][1];
     }
+  }
+
+  function fillDefaultLabel(row) {
+    var type = row.querySelector('.field-type');
+    var label = row.querySelector('[data-name="label"], input[name$="[label]"]');
+    if (!type || !label || label.value.trim() !== '') return;
+    if (type.value === 'text') return;
+    label.value = defaultLabels[type.value] || type.value.replace(/_/g, ' ');
   }
 
   function moveRow(row, direction) {
@@ -465,7 +484,11 @@ function fieldChoices(array $field): array
 
   function bindRow(row) {
     var type = row.querySelector('.field-type');
-    if (type) type.addEventListener('change', function () { syncRow(row); });
+    if (type) type.addEventListener('change', function () {
+      fillDefaultLabel(row);
+      syncRow(row);
+      if (type.value === 'organisation' || type.value === 'attachment_provider') ensureBranchSelectorAfter(row);
+    });
     syncRow(row);
     bindDrag(row);
 
@@ -502,6 +525,21 @@ function fieldChoices(array $field): array
     });
   }
 
+  function ensureBranchSelectorAfter(row) {
+    var next = row.nextElementSibling;
+    if (next && next.querySelector('.field-type') && next.querySelector('.field-type').value === 'branch_select') return;
+    var node = template.content.firstElementChild.cloneNode(true);
+    var label = node.querySelector('[data-name="label"]');
+    var type = node.querySelector('.field-type');
+    var required = node.querySelector('[data-name="is_required"]');
+    if (label) label.value = 'Organisation branch';
+    if (type) type.value = 'branch_select';
+    if (required) required.checked = true;
+    list.insertBefore(node, row.nextElementSibling);
+    bindRow(node);
+    reindex();
+  }
+
   list.addEventListener('dragover', function (event) {
     event.preventDefault();
     if (!dragEl) return;
@@ -516,6 +554,10 @@ function fieldChoices(array $field): array
   });
 
   Array.prototype.forEach.call(list.querySelectorAll('[data-field]'), bindRow);
+  document.getElementById('form-builder').addEventListener('submit', function () {
+    Array.prototype.forEach.call(list.querySelectorAll('[data-field]'), fillDefaultLabel);
+    reindex();
+  });
   addBtn.addEventListener('click', function () {
     var node = template.content.firstElementChild.cloneNode(true);
     list.appendChild(node);

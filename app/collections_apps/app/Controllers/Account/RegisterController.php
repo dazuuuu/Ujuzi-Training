@@ -130,6 +130,62 @@ class RegisterController
         $this->loginAndLand($userId, 'Welcome. Complete the trainer registration form and pick the organisation(s) you want to teach for.');
     }
 
+    public function showAttachmentTrainer(): void
+    {
+        if (UserSession::current()) {
+            redirect(AccountRedirect::home(UserSession::current()));
+        }
+        $this->renderAttachmentTrainer('');
+    }
+
+    public function storeAttachmentTrainer(): void
+    {
+        if (UserSession::current()) {
+            redirect(AccountRedirect::home(UserSession::current()));
+        }
+        if (!csrfVerify(Request::post('csrf_token'))) {
+            $this->renderAttachmentTrainer('Your session expired. Please try again.');
+            return;
+        }
+
+        $email = strtolower(trim((string) Request::post('email', '')));
+        $password = (string) Request::post('password', '');
+        $confirm = (string) Request::post('password_confirmation', '');
+        $error = $this->validateCredentials($email, $password, $confirm);
+        if ($error) {
+            $this->renderAttachmentTrainer($error, $email);
+            return;
+        }
+
+        $role = Role::findBySlug('attachment_trainer');
+        if (!$role) {
+            $this->renderAttachmentTrainer('Attachment trainer registration is not available yet. Ask Super Admin to finish setup.');
+            return;
+        }
+
+        try {
+            $userId = User::create([
+                'role_id' => (int) $role['id'],
+                'organisation_id' => null,
+                'email' => $email,
+                'phone' => '',
+                'first_name' => '',
+                'last_name' => '',
+                'password' => $password,
+                'is_active' => 1,
+                'email_verified_at' => date('Y-m-d H:i:s'),
+            ]);
+        } catch (\PDOException $e) {
+            if ((string) $e->getCode() === '23000') {
+                $this->renderAttachmentTrainer('That email is already registered. Sign in instead.', $email);
+                return;
+            }
+            throw $e;
+        }
+
+        $this->loginAndLand($userId, 'Welcome. Complete the attachment trainer registration form assigned to your role.');
+    }
+
     public function showOrganisationAdmin(string $token): void
     {
         if (UserSession::current()) {
@@ -293,6 +349,20 @@ class RegisterController
             'heading' => 'Create a trainer account',
             'blurb' => 'Register as a trainer, tutor, or teacher. After you sign in, fill the assigned form and pick organisation(s). Each organisation must approve you before you appear on their dashboard.',
             'loginUrl' => '/account/login/trainer',
+        ]);
+    }
+
+    private function renderAttachmentTrainer(string $error, string $email = ''): void
+    {
+        View::render('account.register', [
+            'pageTitle' => 'Attachment trainer registration',
+            'error' => $error,
+            'email' => $email,
+            'mode' => 'attachment_trainer',
+            'action' => url('/account/register/attachment-trainer'),
+            'heading' => 'Create an attachment trainer account',
+            'blurb' => 'Register with email and password. After you sign in, you will complete the profile form assigned specifically to attachment trainers.',
+            'loginUrl' => '/account/login/attachment-trainer',
         ]);
     }
 

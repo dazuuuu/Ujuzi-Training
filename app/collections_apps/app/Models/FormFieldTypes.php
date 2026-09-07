@@ -31,14 +31,16 @@ class FormFieldTypes
                 'date' => 'Date',
                 'time' => 'Time',
                 'datetime' => 'Date & time',
-                'duration' => 'Attachment duration (start & end)',
+                'duration' => 'Duration (amount and unit)',
             ],
             'Location' => [
                 'county' => 'Kenya county',
                 'address' => 'Address (Kenya county)',
                 'organisation' => 'Organisations (from database)',
+                'attachment_provider' => 'Attachment provider (from database)',
+                'branch_select' => 'Branch dropdown (saved branches)',
                 'category' => 'Organisation category',
-                'branches' => 'Organisation branches (name, location, extras)',
+                'branches' => 'Create branches (save to database)',
             ],
             'Files' => [
                 'file' => 'File upload',

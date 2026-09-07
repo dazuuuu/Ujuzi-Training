@@ -1,16 +1,18 @@
 <?php
-/** Requires $users, $manageableRoles in scope. */
+/** Requires $users, $manageableRoles, $directoryMode in scope. */
 require __DIR__ . '/../layout-header.php';
 ?>
 
 <div class="space-y-6">
   <section class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
     <div>
-      <p class="text-xs font-black uppercase tracking-widest text-neutral-600">Organisation tools</p>
-      <h1 class="mt-2 font-serif-heading text-3xl font-bold">People</h1>
-      <p class="mt-1 text-sm font-medium text-neutral-600">You can create <?= e(implode(', ', array_column($manageableRoles, 'name')) ?: 'no roles') ?> in <?= e($currentUser['organisation_name'] ?? 'your organisation') ?>.</p>
+      <p class="text-xs font-black uppercase tracking-widest text-neutral-600">People directory</p>
+      <h1 class="mt-2 font-serif-heading text-3xl font-bold"><?= $directoryMode === 'trainer' ? 'Enrolled students' : ($directoryMode === 'attachment_trainer' ? 'Selected students' : 'People') ?></h1>
+      <p class="mt-1 text-sm font-medium text-neutral-600"><?= $directoryMode === 'trainer' ? 'Students who have started one of your courses.' : ($directoryMode === 'attachment_trainer' ? 'Students who selected you as their attachment provider.' : 'People connected to ' . ($currentUser['organisation_name'] ?? 'your organisation') . '.') ?></p>
     </div>
-    <a href="<?= url('/account/people/create') ?>" class="btn-primary">Add person</a>
+    <?php if ($directoryMode !== 'trainer' && $directoryMode !== 'attachment_trainer'): ?>
+      <a href="<?= url('/account/people/create') ?>" class="btn-primary">Add person</a>
+    <?php endif; ?>
   </section>
 
   <div class="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">

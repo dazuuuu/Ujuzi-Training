@@ -205,10 +205,18 @@ class FormController extends BaseAdminController
             } else {
                 $choices = array_values(array_filter(array_map('trim', $choices), fn($item) => $item !== ''));
             }
+            $type = (string) ($field['field_type'] ?? 'text');
+            if (!FormFieldTypes::isValid($type)) {
+                $type = 'text';
+            }
+            $label = trim((string) ($field['label'] ?? ''));
+            if ($label === '' && $type !== 'text') {
+                $label = FormFieldTypes::label($type);
+            }
             $normalized[] = [
-                'label' => trim((string) ($field['label'] ?? '')),
+                'label' => $label,
                 'field_key' => trim((string) ($field['field_key'] ?? '')),
-                'field_type' => (string) ($field['field_type'] ?? 'text'),
+                'field_type' => $type,
                 'is_required' => !empty($field['is_required']),
                 'placeholder' => trim((string) ($field['placeholder'] ?? '')),
                 'help_text' => trim((string) ($field['help_text'] ?? '')),

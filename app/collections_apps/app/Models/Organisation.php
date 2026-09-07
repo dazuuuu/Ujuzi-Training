@@ -20,9 +20,45 @@ class Organisation
             ->fetchAll();
     }
 
+    public static function searchActive(string $query = '', int $limit = 20): array
+    {
+        $limit = max(1, min(50, $limit));
+        $query = trim($query);
+        if ($query === '') {
+            $stmt = Database::connection()->prepare(
+                'SELECT id, name FROM organisations WHERE is_active = 1 ORDER BY name ASC LIMIT ' . $limit
+            );
+            $stmt->execute();
+            return $stmt->fetchAll();
+        }
+
+        $stmt = Database::connection()->prepare(
+            'SELECT id, name FROM organisations
+             WHERE is_active = 1 AND name LIKE ?
+             ORDER BY name ASC
+             LIMIT ' . $limit
+        );
+        $stmt->execute(['%' . $query . '%']);
+        return $stmt->fetchAll();
+    }
+
     public static function activeIds(): array
     {
         return array_map(fn(array $row): int => (int) $row['id'], self::active());
+    }
+
+    public static function validActiveIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), fn(int $id): bool => $id > 0)));
+        if (!$ids) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = Database::connection()->prepare(
+            "SELECT id FROM organisations WHERE is_active = 1 AND id IN ($placeholders)"
+        );
+        $stmt->execute($ids);
+        return array_map('intval', $stmt->fetchAll(\PDO::FETCH_COLUMN));
     }
 
     public static function namesByIds(array $ids): array

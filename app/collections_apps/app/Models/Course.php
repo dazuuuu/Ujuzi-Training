@@ -41,6 +41,23 @@ class Course
         return array_map([self::class, 'hydrate'], $stmt->fetchAll());
     }
 
+    public static function studentsForTrainer(int $trainerUserId): array
+    {
+        $stmt = Database::connection()->prepare(
+            "SELECT DISTINCT u.*, r.slug AS role_slug, r.name AS role_name,
+                    o.name AS organisation_name, GROUP_CONCAT(DISTINCT c.title ORDER BY c.title SEPARATOR ', ') AS enrolled_courses
+             FROM course_module_progress p
+             INNER JOIN courses c ON c.id = p.course_id AND c.trainer_user_id = ?
+             INNER JOIN users u ON u.id = p.user_id
+             INNER JOIN roles r ON r.id = u.role_id AND r.slug = 'student'
+             LEFT JOIN organisations o ON o.id = u.organisation_id
+             GROUP BY u.id
+             ORDER BY u.first_name ASC, u.last_name ASC, u.email ASC"
+        );
+        $stmt->execute([$trainerUserId]);
+        return array_map([User::class, 'hydrate'], $stmt->fetchAll());
+    }
+
     public static function forOrganisation(int $organisationId): array
     {
         $stmt = Database::connection()->prepare(

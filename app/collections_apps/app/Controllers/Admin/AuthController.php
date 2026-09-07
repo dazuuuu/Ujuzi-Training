@@ -8,7 +8,6 @@ use App\Core\View;
 use App\Models\Admin;
 use App\Services\MailerException;
 use App\Services\MailerService;
-use App\Services\MigrationService;
 
 class AuthController
 {
@@ -19,7 +18,6 @@ class AuthController
 
     public function showLogin(): void
     {
-        MigrationService::runPending();
         if (Admin::count() === 0) {
             redirect('/setup');
         }
@@ -31,7 +29,6 @@ class AuthController
 
     public function login(): void
     {
-        MigrationService::runPending();
         if (Admin::count() === 0) {
             redirect('/setup');
         }
@@ -204,7 +201,6 @@ class AuthController
 
     private function guardGuest(): void
     {
-        MigrationService::runPending();
         if (Admin::count() === 0) {
             redirect('/setup');
         }

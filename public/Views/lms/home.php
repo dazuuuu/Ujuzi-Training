@@ -33,6 +33,7 @@
         <?php endif; ?>
         <a href="<?= url('/account/register') ?>" class="btn-secondary">Student register</a>
         <a href="<?= url('/account/register/trainer') ?>" class="btn-secondary">Trainer register</a>
+        <a href="<?= url('/account/register/attachment-trainer') ?>" class="btn-secondary">Attachment trainer register</a>
         <a href="<?= url('/account/login') ?>" class="btn-primary">Sign in</a>
         <a href="<?= url('/admin/login') ?>" class="btn-danger">Super Admin</a>
       </nav>
@@ -49,6 +50,7 @@
           <div class="mt-8 flex flex-wrap gap-3">
             <a href="<?= url('/account/register') ?>" class="btn-primary">Student register</a>
             <a href="<?= url('/account/register/trainer') ?>" class="btn-secondary">Trainer register</a>
+            <a href="<?= url('/account/register/attachment-trainer') ?>" class="btn-secondary">Attachment trainer register</a>
             <a href="<?= url('/account/login') ?>" class="btn-secondary">Sign in</a>
             <?php if (!empty($needsSetup)): ?>
               <a href="<?= url('/setup') ?>" class="btn-danger">Run first-time setup</a>

@@ -4,6 +4,9 @@ namespace App\Controllers\Admin;
 
 use App\Core\Request;
 use App\Core\View;
+use App\Models\Form;
+use App\Models\FormField;
+use App\Models\FormResponse;
 use App\Models\Organisation;
 use App\Models\OrganisationMembership;
 use App\Models\Role;
@@ -13,12 +16,75 @@ class UserController extends BaseAdminController
 {
     public function index(): void
     {
+        $allUsers = User::all();
+        $filters = [
+            'q' => trim((string) Request::query('q', '')),
+            'role_id' => (int) Request::query('role_id', 0),
+            'organisation_id' => (int) Request::query('organisation_id', 0),
+            'status' => trim((string) Request::query('status', '')),
+        ];
+        $users = array_values(array_filter($allUsers, function (array $user) use ($filters): bool {
+            if ($filters['role_id'] > 0 && (int) ($user['role_id'] ?? 0) !== $filters['role_id']) {
+                return false;
+            }
+            if ($filters['organisation_id'] > 0 && (int) ($user['organisation_id'] ?? 0) !== $filters['organisation_id']) {
+                return false;
+            }
+            $status = (string) ($user['account_status'] ?? (!empty($user['is_active']) ? 'active' : 'blocked'));
+            if ($filters['status'] !== '' && $status !== $filters['status']) {
+                return false;
+            }
+            if ($filters['q'] !== '') {
+                $haystack = strtolower(implode(' ', [
+                    (string) ($user['first_name'] ?? ''),
+                    (string) ($user['last_name'] ?? ''),
+                    (string) ($user['email'] ?? ''),
+                    (string) ($user['phone'] ?? ''),
+                    (string) ($user['organisation_name'] ?? ''),
+                ]));
+                if (strpos($haystack, strtolower($filters['q'])) === false) {
+                    return false;
+                }
+            }
+            return true;
+        }));
+        $groupedUsers = [];
+        foreach ($users as $user) {
+            $key = (string) ($user['role_slug'] ?? 'other');
+            $groupedUsers[$key]['name'] = (string) ($user['role_name'] ?? 'Other');
+            $groupedUsers[$key]['users'][] = $user;
+        }
         View::render('admin.users.index', [
-            'pageTitle' => 'Users',
-            'activeNav' => 'users',
-            'users' => User::all(),
+            'pageTitle' => 'Registered users',
+            'activeNav' => 'registered-users',
+            'users' => $users,
+            'groupedUsers' => $groupedUsers,
+            'filters' => $filters,
+            'resultCount' => count($users),
             'roles' => Role::all(),
             'organisations' => Organisation::all(),
+        ]);
+    }
+
+    public function show(string $id): void
+    {
+        $user = User::find((int) $id);
+        if (!$user) {
+            flashError('That user could not be found.');
+            redirect('/admin/users');
+        }
+        $forms = Form::forRole((int) $user['role_id'], false, 'profile');
+        $withResponses = [];
+        foreach ($forms as $form) {
+            $form['fields'] = FormField::forForm((int) $form['id']);
+            $form['response'] = FormResponse::findForUserForm((int) $user['id'], (int) $form['id']);
+            $withResponses[] = $form;
+        }
+        View::render('admin.users.show', [
+            'pageTitle' => userDisplayName($user),
+            'activeNav' => 'registered-users',
+            'user' => $user,
+            'forms' => $withResponses,
         ]);
     }
 
@@ -74,6 +140,39 @@ class UserController extends BaseAdminController
         $this->persist((int) $id);
     }
 
+    public function status(string $id): void
+    {
+        if (!csrfVerify(Request::post('csrf_token'))) {
+            flashError('Your session expired. Please try again.');
+            redirect('/admin/registered-users');
+        }
+        $user = User::find((int) $id);
+        $status = (string) Request::post('status', '');
+        if (!$user || !in_array($status, ['active', 'blocked', 'suspended'], true)) {
+            flashError('That user status change could not be applied.');
+            redirect('/admin/registered-users');
+        }
+        User::setStatus((int) $id, $status);
+        flashSuccess('User status changed to ' . $status . '.');
+        redirect('/admin/registered-users');
+    }
+
+    public function destroy(string $id): void
+    {
+        if (!csrfVerify(Request::post('csrf_token'))) {
+            flashError('Your session expired. Please try again.');
+            redirect('/admin/registered-users');
+        }
+        $user = User::find((int) $id);
+        if (!$user) {
+            flashError('That user could not be found.');
+            redirect('/admin/registered-users');
+        }
+        User::delete((int) $id);
+        flashSuccess('User deleted permanently.');
+        redirect('/admin/registered-users');
+    }
+
     private function persist(?int $id): void
     {
         if (!csrfVerify(Request::post('csrf_token'))) {
@@ -88,6 +187,7 @@ class UserController extends BaseAdminController
         $roleId = (int) Request::post('role_id', 0);
         $organisationId = (int) Request::post('organisation_id', 0);
         $isActive = Request::post('is_active') === '1';
+        $existingStatus = $id ? (string) (User::find($id)['account_status'] ?? '') : '';
 
         $form = [
             'email' => $email,
@@ -97,6 +197,7 @@ class UserController extends BaseAdminController
             'role_id' => $roleId,
             'organisation_id' => $organisationId,
             'is_active' => $isActive ? 1 : 0,
+            'account_status' => $isActive ? 'active' : ($existingStatus === 'suspended' ? 'suspended' : 'blocked'),
         ];
 
         $errors = $this->validate($form, $id);

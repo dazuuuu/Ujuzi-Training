@@ -29,6 +29,7 @@ abstract class BaseAccountController
             'currentUser' => $this->user,
             'canManageUsers' => Authz::canManageUsers($this->user),
             'isOrgAdmin' => Authz::isOrganisationAdmin($this->user),
+            'canManageBranches' => Authz::isOrganisationAdmin($this->user) || ($this->user['role_slug'] ?? '') === 'attachment_trainer',
             'canCreateCourses' => Authz::canCreateCourses($this->user),
             'canViewCourses' => Authz::canViewCourses($this->user),
         ], $data));

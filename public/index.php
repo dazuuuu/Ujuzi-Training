@@ -22,6 +22,7 @@ use App\Controllers\Admin\UpdateController;
 use App\Controllers\Account\AuthController as AccountAuthController;
 use App\Controllers\Account\PasswordResetController;
 use App\Controllers\Account\DashboardController as AccountDashboardController;
+use App\Controllers\Account\LandingController as AccountLandingController;
 use App\Controllers\Account\ProfileController;
 use App\Controllers\Account\PeopleController;
 use App\Controllers\Account\RegisterController;
@@ -30,6 +31,7 @@ use App\Controllers\Account\CategoryController as AccountCategoryController;
 use App\Controllers\Account\BranchController as AccountBranchController;
 use App\Controllers\Account\CourseController;
 use App\Controllers\Account\CertificateController as AccountCertificateController;
+use App\Controllers\Api\FormLookupController;
 
 $router = new Router();
 
@@ -39,6 +41,9 @@ $router->post('/setup', [SetupController::class, 'store']);
 
 // --- Public LMS ---
 $router->get('/', [LmsController::class, 'home']);
+$router->get('/api/form/organisations', [FormLookupController::class, 'organisations']);
+$router->get('/api/form/attachment-providers', [FormLookupController::class, 'attachmentProviders']);
+$router->get('/api/form/branches', [FormLookupController::class, 'branches']);
 
 // --- Super admin: auth ---
 $router->get('/admin/login', [AdminAuthController::class, 'showLogin']);
@@ -70,11 +75,15 @@ $router->post('/admin/organisations/{id}', [OrganisationController::class, 'upda
 $router->get('/admin/share-registration', [OrganisationController::class, 'share']);
 
 // --- Super admin: users ---
+$router->get('/admin/registered-users', [UserController::class, 'index']);
 $router->get('/admin/users', [UserController::class, 'index']);
 $router->get('/admin/users/create', [UserController::class, 'create']);
 $router->post('/admin/users', [UserController::class, 'store']);
 $router->get('/admin/users/{id}/edit', [UserController::class, 'edit']);
+$router->get('/admin/users/{id}', [UserController::class, 'show']);
 $router->post('/admin/users/{id}', [UserController::class, 'update']);
+$router->post('/admin/users/{id}/status', [UserController::class, 'status']);
+$router->post('/admin/users/{id}/delete', [UserController::class, 'destroy']);
 
 // --- Super admin: forms ---
 $router->get('/admin/forms', [FormController::class, 'index']);
@@ -100,10 +109,13 @@ $router->get('/account/register', [RegisterController::class, 'showStudent']);
 $router->post('/account/register', [RegisterController::class, 'storeStudent']);
 $router->get('/account/register/trainer', [RegisterController::class, 'showTrainer']);
 $router->post('/account/register/trainer', [RegisterController::class, 'storeTrainer']);
+$router->get('/account/register/attachment-trainer', [RegisterController::class, 'showAttachmentTrainer']);
+$router->post('/account/register/attachment-trainer', [RegisterController::class, 'storeAttachmentTrainer']);
 $router->get('/register/organisation-admin/{token}', [RegisterController::class, 'showOrganisationAdmin']);
 $router->post('/register/organisation-admin/{token}', [RegisterController::class, 'storeOrganisationAdmin']);
 
 // --- User account (role-based dashboards) ---
+$router->get('/account', [AccountLandingController::class, 'index']);
 $router->get('/account/login', [AccountAuthController::class, 'choose']);
 $router->post('/account/login', [AccountAuthController::class, 'choose']);
 $router->get('/account/login/{role}', [AccountAuthController::class, 'showLogin']);

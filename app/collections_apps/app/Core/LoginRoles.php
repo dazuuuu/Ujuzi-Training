@@ -39,6 +39,7 @@ class LoginRoles
         return match ($slug) {
             'student' => '/account/register',
             'trainer' => '/account/register/trainer',
+            'attachment_trainer' => '/account/register/attachment-trainer',
             default => null,
         };
     }

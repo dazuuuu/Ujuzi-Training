@@ -22,7 +22,7 @@ $hasOffer = !empty($form['has_offer']);
   <div class="bg-white border border-neutral-200 rounded-xl shadow-sm p-6 space-y-4">
     <h2 class="font-serif-heading text-lg font-bold text-[#0a0a0a] border-b border-neutral-100 pb-3">Product Details</h2>
 
-    <div class="grid grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div class="col-span-2">
         <label class="text-[11px] font-bold text-neutral-600 uppercase">Product Name</label>
         <input type="text" name="name" required value="<?= e($form['name']) ?>" class="w-full mt-1 bg-white border border-neutral-300 rounded-lg p-2.5 text-sm focus:outline-none focus:border-black" />

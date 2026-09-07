@@ -5,7 +5,9 @@ namespace App\Services;
 use App\Core\Request;
 use App\Models\FormFieldTypes;
 use App\Models\Organisation;
+use App\Models\OrganisationBranch;
 use App\Models\OrganisationCategory;
+use App\Models\User;
 use App\Services\UploadException;
 use App\Services\UploadService;
 
@@ -100,10 +102,16 @@ class FormAnswerService
                 if (!is_array($raw)) {
                     $raw = $raw !== '' && $raw !== null ? [$raw] : [];
                 }
-                $allowed = Organisation::activeIds();
-                $ids = [];
+                $rawIds = [];
                 foreach ($raw as $item) {
                     $id = (int) $item;
+                    if ($id > 0 && !in_array($id, $rawIds, true)) {
+                        $rawIds[] = $id;
+                    }
+                }
+                $allowed = Organisation::validActiveIds($rawIds);
+                $ids = [];
+                foreach ($rawIds as $id) {
                     if ($id > 0 && in_array($id, $allowed, true) && !in_array($id, $ids, true)) {
                         $ids[] = $id;
                     }
@@ -119,17 +127,57 @@ class FormAnswerService
                 continue;
             }
 
+            if ($type === 'attachment_provider') {
+                $id = (int) ($posted[$key] ?? 0);
+                $allowed = $id > 0 ? User::validActiveAttachmentProviderIds([$id]) : [];
+                if ($field['is_required'] && !$allowed) {
+                    $errors[] = $field['label'] . ' is required.';
+                } elseif ($id > 0 && !$allowed) {
+                    $errors[] = $field['label'] . ' has an invalid attachment provider.';
+                }
+                $answers[$key] = $allowed ? $id : '';
+                continue;
+            }
+
+            if ($type === 'branch_select') {
+                $id = (int) ($posted[$key] ?? 0);
+                $branch = $id > 0 ? OrganisationBranch::findWithOrganisation($id) : null;
+                $selectedOrganisationIds = self::selectedOrganisationIds($fields, $answers);
+                $selectedProviderIds = self::selectedAttachmentProviderIds($fields, $answers);
+                if (!$selectedOrganisationIds && !empty($user['organisation_id'])) {
+                    $selectedOrganisationIds = [(int) $user['organisation_id']];
+                }
+                if (!$selectedProviderIds && (($user['role_slug'] ?? '') === 'attachment_trainer') && !empty($user['id'])) {
+                    $selectedProviderIds = [(int) $user['id']];
+                }
+                if ($field['is_required'] && !$branch) {
+                    $errors[] = $field['label'] . ' is required.';
+                } elseif ($id > 0 && (!$branch || (($branch['owner_type'] ?? 'organisation') !== 'attachment_provider' && empty($branch['organisation_is_active'])))) {
+                    $errors[] = $field['label'] . ' has an invalid branch.';
+                } elseif ($branch && self::hasBranchOwnerField($fields) && !$selectedOrganisationIds && !$selectedProviderIds) {
+                    $errors[] = $field['label'] . ' needs an organisation or attachment provider selected first.';
+                } elseif ($branch && ($branch['owner_type'] ?? 'organisation') === 'attachment_provider' && $selectedProviderIds && !in_array((int) ($branch['owner_user_id'] ?? 0), $selectedProviderIds, true)) {
+                    $errors[] = $field['label'] . ' must belong to the selected attachment provider.';
+                } elseif ($branch && ($branch['owner_type'] ?? 'organisation') !== 'attachment_provider' && $selectedOrganisationIds && !in_array((int) ($branch['organisation_id'] ?? 0), $selectedOrganisationIds, true)) {
+                    $errors[] = $field['label'] . ' must belong to the selected organisation.';
+                }
+                $answers[$key] = $branch ? $id : '';
+                continue;
+            }
+
             if ($type === 'duration') {
                 $raw = is_array($posted[$key] ?? null) ? $posted[$key] : [];
-                $start = trim((string) ($raw['start'] ?? ''));
-                $end = trim((string) ($raw['end'] ?? ''));
-                if ($field['is_required'] && ($start === '' || $end === '')) {
-                    $errors[] = $field['label'] . ' needs a start and end date.';
+                $amount = (int) ($raw['amount'] ?? 0);
+                $unit = strtolower(trim((string) ($raw['unit'] ?? '')));
+                $units = ['day', 'week', 'month', 'year'];
+                if ($field['is_required'] && ($amount < 1 || !in_array($unit, $units, true))) {
+                    $errors[] = $field['label'] . ' needs a valid amount and unit.';
+                } elseif ($amount < 0 || $amount > 3650 || ($unit !== '' && !in_array($unit, $units, true))) {
+                    $errors[] = $field['label'] . ' has an invalid duration.';
                 }
-                if ($start !== '' && $end !== '' && strtotime($end) < strtotime($start)) {
-                    $errors[] = $field['label'] . ' end date must be on or after the start date.';
-                }
-                $answers[$key] = ['start' => $start, 'end' => $end];
+                $answers[$key] = $amount > 0 && in_array($unit, $units, true)
+                    ? ['amount' => $amount, 'unit' => $unit]
+                    : ['amount' => '', 'unit' => ''];
                 continue;
             }
 
@@ -325,6 +373,60 @@ class FormAnswerService
             }
         }
         return array_values(array_unique($value));
+    }
+
+    private static function selectedOrganisationIds(array $fields, array $answers): array
+    {
+        $ids = [];
+        foreach ($fields as $field) {
+            if (($field['field_type'] ?? '') !== 'organisation') {
+                continue;
+            }
+            $value = $answers[$field['field_key'] ?? ''] ?? null;
+            $items = is_array($value) ? $value : [$value];
+            foreach ($items as $item) {
+                $id = (int) $item;
+                if ($id > 0 && !in_array($id, $ids, true)) {
+                    $ids[] = $id;
+                }
+            }
+        }
+        return $ids;
+    }
+
+    private static function selectedAttachmentProviderIds(array $fields, array $answers): array
+    {
+        $ids = [];
+        foreach ($fields as $field) {
+            if (($field['field_type'] ?? '') !== 'attachment_provider') {
+                continue;
+            }
+            $id = (int) ($answers[$field['field_key'] ?? ''] ?? 0);
+            if ($id > 0 && !in_array($id, $ids, true)) {
+                $ids[] = $id;
+            }
+        }
+        return $ids;
+    }
+
+    private static function hasBranchOwnerField(array $fields): bool
+    {
+        foreach ($fields as $field) {
+            if (in_array(($field['field_type'] ?? ''), ['organisation', 'attachment_provider'], true)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static function hasOrganisationField(array $fields): bool
+    {
+        foreach ($fields as $field) {
+            if (($field['field_type'] ?? '') === 'organisation') {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static function typeError(array $field, string $value): ?string
