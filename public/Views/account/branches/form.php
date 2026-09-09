@@ -14,7 +14,7 @@ require __DIR__ . '/../layout-header.php';
   <?php endforeach; ?>
 
   <div class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm space-y-4">
-    <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">Organisation</p>
+    <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">Branch details</p>
     <h1 class="font-serif-heading text-2xl font-bold"><?= $isEdit ? 'Edit branch' : 'Add branch' ?></h1>
     <div>
       <label class="text-[11px] font-bold uppercase text-neutral-600">Title</label>

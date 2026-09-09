@@ -3,11 +3,19 @@ $course = $course ?? [];
 $modules = $modules ?? [];
 $canEdit = !empty($canEdit);
 $isStudent = !empty($isStudent);
+$isEnrolled = !empty($isEnrolled);
 $editingModule = $editingModule ?? null;
-$moduleForm = $moduleForm ?? ['title' => '', 'description' => '', 'summary' => '', 'notes' => '', 'duration_minutes' => 10, 'video_source' => 'upload', 'video_url' => '', 'quiz_questions' => [], 'pass_percent' => 70];
+$moduleForm = $moduleForm ?? ['title' => '', 'description' => '', 'summary' => '', 'notes' => '', 'duration_minutes' => 10, 'video_source' => 'upload', 'video_url' => '', 'quiz_questions' => [], 'pass_percent' => 80];
 if (empty($moduleForm['quiz_questions'])) {
     $moduleForm['quiz_questions'] = [['question' => '', 'options' => ['', '', '', ''], 'correct' => 0]];
 }
+$finalQuestions = $course['final_exam_questions'] ?? [];
+if (!$finalQuestions) {
+    $finalQuestions = [['question' => '', 'options' => ['', '', '', ''], 'correct' => 0]];
+}
+$finalPassPercent = (int) ($course['final_pass_percent'] ?? 80);
+$finalProgress = $finalProgress ?? null;
+$modulesComplete = !empty($modulesComplete);
 $durations = $durations ?? \App\Models\CourseModule::durations();
 $materials = is_array($course['materials'] ?? null) ? $course['materials'] : [];
 $fileHref = static function ($file): string {
@@ -38,10 +46,18 @@ require __DIR__ . '/../layout-header.php';
       <div class="flex flex-wrap items-center gap-2">
         <?php if ($canEdit): ?>
           <a href="<?= url('/account/courses/' . (int) $course['id'] . '/edit') ?>" class="btn-secondary">Edit details</a>
-          <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/delete') ?>" onsubmit="return confirm('Delete this course and its topics?');">
+          <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/delete') ?>" onsubmit="return confirm('Delete this course and its modules?');">
             <?= csrfField() ?>
             <button type="submit" class="btn-danger">Delete</button>
           </form>
+        <?php endif; ?>
+        <?php if ($isStudent && !$isEnrolled): ?>
+          <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/enroll') ?>">
+            <?= csrfField() ?>
+            <button type="submit" class="btn-primary">Enroll for course</button>
+          </form>
+        <?php elseif ($isStudent): ?>
+          <span class="btn-secondary" style="padding:0.45rem 0.8rem;">Enrolled</span>
         <?php endif; ?>
         <a href="<?= url('/account/courses') ?>" class="btn-secondary">Back</a>
       </div>
@@ -64,13 +80,23 @@ require __DIR__ . '/../layout-header.php';
     <?php endif; ?>
   </section>
 
+  <?php if ($isStudent && !$isEnrolled): ?>
+    <section class="rounded-xl border bg-white p-6 shadow-sm space-y-3" style="border-color:var(--ke-line)">
+      <h2 class="font-serif-heading text-lg font-bold">Enrollment required</h2>
+      <p class="text-sm font-medium" style="color:var(--ke-muted)">Enroll for this course to open the modules, quizzes, and final exam.</p>
+      <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/enroll') ?>">
+        <?= csrfField() ?>
+        <button type="submit" class="btn-primary">Enroll now</button>
+      </form>
+    </section>
+  <?php else: ?>
   <section class="rounded-xl border bg-white p-6 shadow-sm space-y-4" style="border-color:var(--ke-line)">
     <div>
-      <h2 class="font-serif-heading text-lg font-bold">Topics</h2>
-      <p class="mt-1 text-sm font-medium" style="color:var(--ke-muted)">Each topic (module / unit) can include a video, description, materials, and a multiple-choice quiz. Students must pass a topic’s quiz before the next one opens.</p>
+      <h2 class="font-serif-heading text-lg font-bold">Modules</h2>
+      <p class="mt-1 text-sm font-medium" style="color:var(--ke-muted)">Each module can include an overview, description, resources, video, and a multiple-choice quiz. Students must score at least 80% before the next module opens.</p>
     </div>
     <?php if (!$modules): ?>
-      <p class="text-sm font-bold" style="color:var(--ke-muted)">No topics yet.</p>
+      <p class="text-sm font-bold" style="color:var(--ke-muted)">No modules yet.</p>
     <?php endif; ?>
     <?php foreach ($modules as $index => $module):
       $moduleMaterials = is_array($module['materials'] ?? null) ? $module['materials'] : [];
@@ -84,7 +110,7 @@ require __DIR__ . '/../layout-header.php';
         </div>
         <?php if ($locked): ?>
           <div class="module-lock">
-            <p class="text-sm font-bold">Locked. Pass the quiz on the previous topic to continue.</p>
+            <p class="text-sm font-bold">Locked. Pass the quiz on the previous module to continue.</p>
           </div>
         <?php else: ?>
           <?php if (!empty($module['summary'])): ?>
@@ -124,8 +150,8 @@ require __DIR__ . '/../layout-header.php';
 
           <?php if ($isStudent && $questions): ?>
             <div class="quiz-card">
-              <h4 class="font-serif-heading text-lg font-bold">Topic quiz</h4>
-              <p class="text-sm font-medium" style="color:var(--ke-muted)">Score at least <?= (int) $module['pass_percent'] ?>% to open the next topic.</p>
+              <h4 class="font-serif-heading text-lg font-bold">Module quiz</h4>
+              <p class="text-sm font-medium" style="color:var(--ke-muted)">Score at least <?= (int) $module['pass_percent'] ?>% to open the next module.</p>
               <?php if (!empty($module['is_passed'])): ?>
                 <p class="text-sm font-black" style="color:var(--ke-green)">Passed<?= !empty($module['progress']['score']) ? ' · ' . (int) $module['progress']['score'] . '%' : '' ?></p>
               <?php endif; ?>
@@ -146,27 +172,99 @@ require __DIR__ . '/../layout-header.php';
               </form>
             </div>
           <?php elseif ($isStudent && empty($questions)): ?>
-            <p class="text-xs font-bold" style="color:var(--ke-green)">No quiz on this topic — the next topic is open.</p>
+            <p class="text-xs font-bold" style="color:var(--ke-green)">No quiz on this module, so the next module is open.</p>
           <?php elseif ($canEdit && $questions): ?>
             <p class="text-xs font-bold" style="color:var(--ke-muted)"><?= count($questions) ?> quiz question<?= count($questions) === 1 ? '' : 's' ?> · pass mark <?= (int) $module['pass_percent'] ?>%</p>
           <?php endif; ?>
         <?php endif; ?>
         <?php if ($canEdit): ?>
-          <a href="<?= url('/account/courses/' . (int) $course['id'] . '?module=' . (int) $module['id']) ?>" class="btn-secondary" style="padding:0.35rem 0.65rem;">Edit topic</a>
+          <a href="<?= url('/account/courses/' . (int) $course['id'] . '?module=' . (int) $module['id']) ?>" class="btn-secondary" style="padding:0.35rem 0.65rem;">Edit module</a>
         <?php endif; ?>
       </article>
     <?php endforeach; ?>
   </section>
 
+  <section class="rounded-xl border bg-white p-6 shadow-sm space-y-4" id="final-exam" style="border-color:var(--ke-line)">
+    <div>
+      <h2 class="font-serif-heading text-lg font-bold">Final exam</h2>
+      <p class="mt-1 text-sm font-medium" style="color:var(--ke-muted)">Learners unlock the final exam after passing every module quiz. Passing it adds this course skill to their one certificate.</p>
+    </div>
+
+    <?php if ($isStudent): ?>
+      <?php if (!$modulesComplete): ?>
+        <div class="rounded-lg border border-dashed p-4 text-sm font-bold" style="border-color:var(--ke-line);color:var(--ke-muted)">Pass every module quiz to unlock the final exam.</div>
+      <?php elseif (empty($course['final_exam_questions'])): ?>
+        <div class="rounded-lg border border-dashed p-4 text-sm font-bold" style="border-color:var(--ke-line);color:var(--ke-muted)">The tutor has not added the final exam yet.</div>
+      <?php else: ?>
+        <div class="quiz-card">
+          <h3 class="font-serif-heading text-lg font-bold">Course final exam</h3>
+          <p class="text-sm font-medium" style="color:var(--ke-muted)">Score at least <?= $finalPassPercent ?>% to complete the course.</p>
+          <?php if (!empty($finalProgress['passed'])): ?>
+            <p class="text-sm font-black" style="color:var(--ke-green)">Passed<?= !empty($finalProgress['score']) ? ' · ' . (int) $finalProgress['score'] . '%' : '' ?>. This skill is on your certificate.</p>
+            <a href="<?= url('/account/certificate') ?>" class="btn-primary" style="padding:0.4rem 0.75rem;">Open certificate</a>
+          <?php endif; ?>
+          <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/final-exam/submit') ?>" class="space-y-4">
+            <?= csrfField() ?>
+            <?php foreach (($course['final_exam_questions'] ?? []) as $qIndex => $question): ?>
+              <fieldset class="space-y-2">
+                <legend class="text-sm font-black"><?= ($qIndex + 1) ?>. <?= e($question['question']) ?></legend>
+                <?php foreach ($question['options'] as $oIndex => $option): ?>
+                  <label class="flex items-center gap-2 text-sm font-semibold">
+                    <input type="radio" name="answers[<?= (int) $qIndex ?>]" value="<?= (int) $oIndex ?>" required class="h-4 w-4" />
+                    <?= e($option) ?>
+                  </label>
+                <?php endforeach; ?>
+              </fieldset>
+            <?php endforeach; ?>
+            <button type="submit" class="btn-primary"><?= !empty($finalProgress['passed']) ? 'Retake final exam' : 'Submit final exam' ?></button>
+          </form>
+        </div>
+      <?php endif; ?>
+    <?php elseif ($canEdit): ?>
+      <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/final-exam') ?>" class="space-y-4">
+        <?= csrfField() ?>
+        <div>
+          <label class="text-[11px] font-bold uppercase text-neutral-600">Pass mark (%)</label>
+          <input type="number" name="final_pass_percent" min="80" max="100" value="<?= $finalPassPercent ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
+        </div>
+        <div id="final-questions" class="space-y-4" data-question-prefix="final_questions">
+          <?php foreach ($finalQuestions as $qIndex => $question):
+            $options = $question['options'] ?? ['', '', '', ''];
+            while (count($options) < 4) {
+                $options[] = '';
+            }
+          ?>
+            <div class="quiz-question rounded-lg border p-3 space-y-2" style="border-color:var(--ke-line)">
+              <label class="text-[11px] font-bold uppercase text-neutral-600">Question</label>
+              <input type="text" name="final_questions[<?= (int) $qIndex ?>][text]" value="<?= e($question['question'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
+              <?php foreach ($options as $oIndex => $option): ?>
+                <label class="flex items-center gap-2 text-sm">
+                  <input type="radio" name="final_questions[<?= (int) $qIndex ?>][correct]" value="<?= (int) $oIndex ?>" <?= (int) ($question['correct'] ?? 0) === (int) $oIndex ? 'checked' : '' ?> class="h-4 w-4" />
+                  <input type="text" name="final_questions[<?= (int) $qIndex ?>][options][]" value="<?= e($option) ?>" placeholder="Option <?= (int) $oIndex + 1 ?>" class="flex-1 rounded-lg border border-neutral-300 p-2 text-sm" />
+                </label>
+              <?php endforeach; ?>
+              <p class="text-[11px] font-semibold" style="color:var(--ke-muted)">Select the radio next to the correct answer.</p>
+            </div>
+          <?php endforeach; ?>
+        </div>
+        <button type="button" class="btn-secondary js-add-question" data-target="final-questions">Add question</button>
+        <button type="submit" class="btn-primary">Save final exam</button>
+      </form>
+    <?php else: ?>
+      <p class="text-sm font-bold" style="color:var(--ke-muted)">The final exam is available after all modules are complete.</p>
+    <?php endif; ?>
+  </section>
+  <?php endif; ?>
+
   <?php if ($canEdit): ?>
     <section class="rounded-xl border bg-white p-6 shadow-sm space-y-4" style="border-color:var(--ke-line)">
-      <h2 class="font-serif-heading text-lg font-bold"><?= $editingModule ? 'Edit topic' : 'Add topic' ?></h2>
+      <h2 class="font-serif-heading text-lg font-bold"><?= $editingModule ? 'Edit module' : 'Add module' ?></h2>
       <form method="post" action="<?= $editingModule
         ? url('/account/courses/' . (int) $course['id'] . '/modules/' . (int) $editingModule['id'])
         : url('/account/courses/' . (int) $course['id'] . '/modules') ?>" enctype="multipart/form-data" class="space-y-4" id="module-form">
         <?= csrfField() ?>
         <div>
-          <label class="text-[11px] font-bold uppercase text-neutral-600">Topic title</label>
+          <label class="text-[11px] font-bold uppercase text-neutral-600">Module title</label>
           <input type="text" name="title" required value="<?= e($moduleForm['title'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
         </div>
         <div>
@@ -180,7 +278,7 @@ require __DIR__ . '/../layout-header.php';
           </select>
         </div>
         <div>
-          <label class="text-[11px] font-bold uppercase text-neutral-600">Summary</label>
+          <label class="text-[11px] font-bold uppercase text-neutral-600">Overview</label>
           <textarea name="summary" rows="3" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm"><?= e($moduleForm['summary'] ?? '') ?></textarea>
         </div>
         <div>
@@ -188,11 +286,11 @@ require __DIR__ . '/../layout-header.php';
           <textarea name="description" rows="4" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm"><?= e($moduleForm['description'] ?? '') ?></textarea>
         </div>
         <div>
-          <label class="text-[11px] font-bold uppercase text-neutral-600">Notes</label>
+          <label class="text-[11px] font-bold uppercase text-neutral-600">Additional notes</label>
           <textarea name="notes" rows="4" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm"><?= e($moduleForm['notes'] ?? '') ?></textarea>
         </div>
         <div>
-          <label class="text-[11px] font-bold uppercase text-neutral-600">Materials (PDF, Word, images)</label>
+          <label class="text-[11px] font-bold uppercase text-neutral-600">Resources (PDF, Word, images)</label>
           <input type="file" name="materials[]" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,image/*" class="mt-2 block w-full text-sm" />
         </div>
         <fieldset class="rounded-lg border p-4 space-y-3" style="border-color:var(--ke-line)">
@@ -216,13 +314,13 @@ require __DIR__ . '/../layout-header.php';
           </div>
         </fieldset>
         <fieldset class="rounded-lg border p-4 space-y-3" style="border-color:var(--ke-line)">
-          <legend class="px-1 text-[11px] font-black uppercase" style="color:var(--ke-muted)">End-of-topic quiz</legend>
-          <p class="text-sm font-medium" style="color:var(--ke-muted)">Add multiple-choice questions. Students must pass to unlock the next topic. Leave blank if this topic has no gate.</p>
+          <legend class="px-1 text-[11px] font-black uppercase" style="color:var(--ke-muted)">End-of-module quiz</legend>
+          <p class="text-sm font-medium" style="color:var(--ke-muted)">Add multiple-choice questions. Students must score at least 80% to unlock the next module.</p>
           <div>
             <label class="text-[11px] font-bold uppercase text-neutral-600">Pass mark (%)</label>
-            <input type="number" name="pass_percent" min="1" max="100" value="<?= (int) ($moduleForm['pass_percent'] ?? 70) ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
+            <input type="number" name="pass_percent" min="80" max="100" value="<?= (int) ($moduleForm['pass_percent'] ?? 80) ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
           </div>
-          <div id="quiz-questions" class="space-y-4">
+          <div id="quiz-questions" class="space-y-4" data-question-prefix="questions">
             <?php foreach ($moduleForm['quiz_questions'] as $qIndex => $question):
               $options = $question['options'] ?? ['', '', '', ''];
               while (count($options) < 4) {
@@ -242,19 +340,19 @@ require __DIR__ . '/../layout-header.php';
               </div>
             <?php endforeach; ?>
           </div>
-          <button type="button" class="btn-secondary" id="add-question">Add question</button>
+          <button type="button" class="btn-secondary js-add-question" id="add-question" data-target="quiz-questions">Add question</button>
         </fieldset>
         <div class="flex flex-wrap items-center gap-3">
-          <button type="submit" class="btn-primary"><?= $editingModule ? 'Save topic' : 'Add topic' ?></button>
+          <button type="submit" class="btn-primary"><?= $editingModule ? 'Save module' : 'Add module' ?></button>
           <?php if ($editingModule): ?>
             <a href="<?= url('/account/courses/' . (int) $course['id']) ?>" class="btn-secondary">Cancel</a>
           <?php endif; ?>
         </div>
       </form>
       <?php if ($editingModule): ?>
-        <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/modules/' . (int) $editingModule['id'] . '/delete') ?>" onsubmit="return confirm('Delete this topic?');">
+        <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/modules/' . (int) $editingModule['id'] . '/delete') ?>" onsubmit="return confirm('Delete this module?');">
           <?= csrfField() ?>
-          <button type="submit" class="btn-danger">Delete topic</button>
+          <button type="submit" class="btn-danger">Delete module</button>
         </form>
       <?php endif; ?>
     </section>
@@ -274,27 +372,30 @@ require __DIR__ . '/../layout-header.php';
   });
   syncVideoSource();
 
-  var wrap = document.getElementById('quiz-questions');
-  var addBtn = document.getElementById('add-question');
-  if (wrap && addBtn) {
+  document.querySelectorAll('.js-add-question').forEach(function (addBtn) {
     addBtn.addEventListener('click', function () {
+      var wrap = document.getElementById(addBtn.getAttribute('data-target'));
+      if (!wrap) {
+        return;
+      }
       var index = wrap.querySelectorAll('.quiz-question').length;
+      var prefix = wrap.getAttribute('data-question-prefix') || 'questions';
       var block = document.createElement('div');
       block.className = 'quiz-question rounded-lg border p-3 space-y-2';
       block.style.borderColor = 'var(--ke-line)';
       block.innerHTML =
         '<label class="text-[11px] font-bold uppercase text-neutral-600">Question</label>' +
-        '<input type="text" name="questions[' + index + '][text]" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />' +
+        '<input type="text" name="' + prefix + '[' + index + '][text]" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />' +
         [0,1,2,3].map(function (i) {
           return '<label class="flex items-center gap-2 text-sm">' +
-            '<input type="radio" name="questions[' + index + '][correct]" value="' + i + '"' + (i === 0 ? ' checked' : '') + ' class="h-4 w-4" />' +
-            '<input type="text" name="questions[' + index + '][options][]" placeholder="Option ' + (i + 1) + '" class="flex-1 rounded-lg border border-neutral-300 p-2 text-sm" />' +
+            '<input type="radio" name="' + prefix + '[' + index + '][correct]" value="' + i + '"' + (i === 0 ? ' checked' : '') + ' class="h-4 w-4" />' +
+            '<input type="text" name="' + prefix + '[' + index + '][options][]" placeholder="Option ' + (i + 1) + '" class="flex-1 rounded-lg border border-neutral-300 p-2 text-sm" />' +
             '</label>';
         }).join('') +
         '<p class="text-[11px] font-semibold" style="color:var(--ke-muted)">Select the radio next to the correct answer.</p>';
       wrap.appendChild(block);
     });
-  }
+  });
 })();
 </script>
 

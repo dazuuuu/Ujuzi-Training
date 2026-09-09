@@ -12,6 +12,36 @@ require __DIR__ . '/layout-header.php';
 
   <div class="profile-layout">
     <div class="profile-form-column">
+      <section class="profile-form-card rounded-xl border bg-white p-4 shadow-sm" style="border-color:var(--ke-line)">
+        <div class="border-b border-neutral-100 pb-3">
+          <h2 class="font-serif-heading text-lg font-bold">Account details</h2>
+          <p class="mt-1 text-xs font-semibold" style="color:var(--ke-muted)">Update your name and sign-in details separately from the assigned registration forms.</p>
+        </div>
+        <form method="post" action="<?= url('/account/profile') ?>" class="mt-4 grid gap-3 sm:grid-cols-2">
+          <?= csrfField() ?>
+          <input type="hidden" name="account_update" value="1" />
+          <div>
+            <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">First name</label>
+            <input type="text" name="first_name" value="<?= e($currentUser['first_name'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
+          </div>
+          <div>
+            <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Last name</label>
+            <input type="text" name="last_name" value="<?= e($currentUser['last_name'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
+          </div>
+          <div>
+            <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Email</label>
+            <input type="email" name="email" value="<?= e($currentUser['email'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
+          </div>
+          <div>
+            <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Phone</label>
+            <input type="tel" name="phone" value="<?= e($currentUser['phone'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
+          </div>
+          <div class="sm:col-span-2">
+            <button type="submit" class="btn-primary">Save account details</button>
+          </div>
+        </form>
+      </section>
+
       <?php if (!$forms): ?>
         <div class="rounded-xl border border-dashed p-8 text-sm font-bold" style="border-color:var(--ke-line);color:var(--ke-muted)">No forms have been assigned to your role yet.</div>
       <?php endif; ?>
@@ -42,11 +72,14 @@ require __DIR__ . '/layout-header.php';
         </span>
       </div>
       <?php foreach ($form['fields'] as $field): ?>
-        <div>
+        <div class="profile-field-row">
           <?php
             $value = $answers[$field['field_key']] ?? '';
             require __DIR__ . '/partials/field.php';
           ?>
+          <?php if (!\App\Models\FormFieldTypes::isLayout($field['field_type'] ?? '')): ?>
+            <button type="submit" name="save_field" value="<?= e($field['field_key']) ?>" formnovalidate class="profile-field-save btn-secondary">Save field</button>
+          <?php endif; ?>
         </div>
       <?php endforeach; ?>
       <button type="submit" class="btn-primary"><?= $saved ? 'Update details' : 'Save details' ?></button>
@@ -55,29 +88,24 @@ require __DIR__ . '/layout-header.php';
     </div>
 
     <aside class="profile-details-column">
-      <section class="rounded-xl border bg-white p-4 shadow-sm" style="border-color:var(--ke-line)">
-        <h2 class="font-serif-heading text-lg font-bold">Account details</h2>
-        <p class="mt-1 text-xs font-semibold" style="color:var(--ke-muted)">These details are used when you sign in. You can update them here.</p>
-        <form method="post" action="<?= url('/account/profile') ?>" class="mt-4 space-y-3">
-          <?= csrfField() ?>
-          <input type="hidden" name="account_update" value="1" />
-          <div>
-            <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Email</label>
-            <input type="email" name="email" value="<?= e($currentUser['email'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
-          </div>
-          <div>
-            <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Phone</label>
-            <input type="tel" name="phone" value="<?= e($currentUser['phone'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
-          </div>
-          <button type="submit" class="btn-primary w-full">Update sign-in details</button>
-        </form>
-        <div class="mt-5 border-t pt-4" style="border-color:var(--ke-line)">
-          <dl class="space-y-3">
-            <div><dt class="text-[10px] font-bold uppercase" style="color:var(--ke-muted)">Name</dt><dd class="mt-1 text-sm font-bold"><?= e(userDisplayName($currentUser)) ?></dd></div>
-            <div><dt class="text-[10px] font-bold uppercase" style="color:var(--ke-muted)">Role</dt><dd class="mt-1 text-sm font-bold"><?= e($currentUser['role_name'] ?? '') ?></dd></div>
-            <div><dt class="text-[10px] font-bold uppercase" style="color:var(--ke-muted)">Organisation</dt><dd class="mt-1 text-sm font-bold"><?= e($currentUser['organisation_name'] ?? 'Not selected') ?></dd></div>
-          </dl>
-        </div>
+      <section class="profile-snapshot rounded-xl border bg-white p-4 shadow-sm" style="border-color:var(--ke-line)">
+        <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">Saved information</p>
+        <h2 class="mt-2 font-serif-heading text-lg font-bold">Your details</h2>
+        <dl class="mt-4 divide-y divide-neutral-100">
+          <div class="py-3"><dt class="text-[10px] font-bold uppercase" style="color:var(--ke-muted)">Name</dt><dd class="mt-1 text-sm font-bold"><?= e(userDisplayName($currentUser)) ?></dd></div>
+          <div class="py-3"><dt class="text-[10px] font-bold uppercase" style="color:var(--ke-muted)">Email</dt><dd class="mt-1 text-sm font-bold break-words"><?= e($currentUser['email'] ?? 'Not provided') ?></dd></div>
+          <div class="py-3"><dt class="text-[10px] font-bold uppercase" style="color:var(--ke-muted)">Phone</dt><dd class="mt-1 text-sm font-bold"><?= e($currentUser['phone'] ?? 'Not provided') ?></dd></div>
+          <div class="py-3"><dt class="text-[10px] font-bold uppercase" style="color:var(--ke-muted)">Role</dt><dd class="mt-1 text-sm font-bold"><?= e($currentUser['role_name'] ?? '') ?></dd></div>
+          <div class="py-3"><dt class="text-[10px] font-bold uppercase" style="color:var(--ke-muted)">Organisation</dt><dd class="mt-1 text-sm font-bold"><?= e($currentUser['organisation_name'] ?? 'Not selected') ?></dd></div>
+          <?php foreach ($forms as $summaryForm): ?>
+            <?php foreach ($summaryForm['fields'] as $summaryField): ?>
+              <?php if (\App\Models\FormFieldTypes::isLayout($summaryField['field_type'] ?? '')) continue; ?>
+              <?php $summaryValue = $summaryForm['response']['answers'][$summaryField['field_key']] ?? ''; ?>
+              <?php $summaryText = \App\Models\FormField::formatAnswer($summaryField, $summaryValue); ?>
+              <div class="py-3"><dt class="text-[10px] font-bold uppercase" style="color:var(--ke-muted)"><?= e($summaryField['label']) ?></dt><dd class="mt-1 text-sm font-bold break-words"><?= e($summaryText) ?></dd></div>
+            <?php endforeach; ?>
+          <?php endforeach; ?>
+        </dl>
       </section>
     </aside>
   </div>

@@ -462,7 +462,7 @@ input:focus, select:focus, textarea:focus {
 
 .profile-layout {
   display: grid;
-  grid-template-columns: minmax(0, 700px) minmax(250px, 300px);
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
   gap: 1.25rem;
   align-items: start;
 }
@@ -482,8 +482,29 @@ input:focus, select:focus, textarea:focus {
   top: 1rem;
 }
 
+.profile-snapshot {
+  max-height: calc(100vh - 7rem);
+  overflow-y: auto;
+}
+
 .profile-form-card {
   min-width: 0;
+}
+
+.profile-field-row {
+  min-width: 0;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid #f0f1f3;
+}
+
+.profile-field-row:last-of-type {
+  border-bottom: 0;
+}
+
+.profile-field-save {
+  margin-top: 0.6rem;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.72rem;
 }
 
 .account-landing {
@@ -541,6 +562,22 @@ input:focus, select:focus, textarea:focus {
   color: var(--ke-red-dark);
 }
 
+.account-completion-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--ke-green);
+  border-radius: 0.45rem;
+  background: #eef7f1;
+  color: #111111;
+}
+
+.account-completion-banner p:last-child {
+  color: #365244;
+}
+
 @media (max-width: 800px) {
   .profile-layout {
     grid-template-columns: minmax(0, 1fr);
@@ -552,6 +589,11 @@ input:focus, select:focus, textarea:focus {
 }
 
 @media (max-width: 560px) {
+  .account-completion-banner {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .landing-grid {
     grid-template-columns: 1fr;
   }
@@ -1875,6 +1917,9 @@ body.admin-panel .admin-data-table .btn-danger:hover {
 /* Shared light workspace used by Super Admin and every signed-in role. */
 .workspace-shell {
   display: flex;
+  height: calc(100vh - 8px);
+  min-height: 0;
+  overflow: hidden;
   background: #f5f7f9;
   color: #111111;
 }
@@ -1882,6 +1927,12 @@ body.admin-panel .admin-data-table .btn-danger:hover {
 .workspace-sidebar {
   width: 224px;
   flex: 0 0 224px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
   background: #ffffff;
   color: #111111;
   border-right: 1px solid #e5e7eb;
@@ -1923,6 +1974,7 @@ body.admin-panel .admin-data-table .btn-danger:hover {
   border-radius: 0.35rem;
   text-decoration: none !important;
   font-weight: 700;
+  line-height: 1.25;
 }
 
 .workspace-nav-link:hover {
@@ -1947,11 +1999,17 @@ body.admin-panel .admin-data-table .btn-danger:hover {
 
 .workspace-main {
   min-width: 0;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
   background: #f5f7f9;
 }
 
 .workspace-topbar {
   min-height: 64px;
+  position: sticky;
+  top: 0;
+  z-index: 15;
   color: #111111;
 }
 
@@ -2048,6 +2106,8 @@ body.admin-panel aside a.btn-danger:hover {
 @media (max-width: 900px) {
   .workspace-shell {
     flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
   }
 
   .workspace-sidebar {
@@ -2056,6 +2116,7 @@ body.admin-panel aside a.btn-danger:hover {
     min-height: auto;
     height: auto;
     position: static;
+    max-height: 45vh;
   }
 
   .workspace-sidebar .workspace-nav {
@@ -2077,6 +2138,11 @@ body.admin-panel aside a.btn-danger:hover {
 
   .workspace-content {
     padding: 1rem !important;
+  }
+
+  .workspace-main {
+    height: auto;
+    flex: 1;
   }
 }
 

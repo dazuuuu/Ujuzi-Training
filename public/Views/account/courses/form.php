@@ -11,7 +11,7 @@ require __DIR__ . '/../layout-header.php';
   <div>
     <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">Courses</p>
     <h1 class="mt-2 font-serif-heading text-3xl font-bold"><?= $course ? 'Edit course' : 'Create a course' ?></h1>
-    <p class="mt-2 text-sm font-medium" style="color:var(--ke-muted)">Fill the form Super Admin assigned to tutors. After you save, open the course and use Edit topics to add videos, materials, and a pass-to-unlock quiz.</p>
+    <p class="mt-2 text-sm font-medium" style="color:var(--ke-muted)">Fill the form Super Admin assigned to tutors. After you save, open the course to add modules, videos, resources, quizzes, and the final exam.</p>
   </div>
 
   <?php foreach ($errors as $err): ?>

@@ -8,7 +8,7 @@ require __DIR__ . '/../layout-header.php';
     <div>
       <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">Organisation</p>
       <h1 class="mt-2 font-serif-heading text-3xl font-bold">Branches</h1>
-      <p class="mt-1 max-w-2xl text-sm font-medium text-neutral-600">List campuses on this page, or add an Organisation branches field to the organisation admin profile form (name, location, and extra details you define). Cover images stay on this page.</p>
+      <p class="mt-1 max-w-2xl text-sm font-medium text-neutral-600">Create and manage branches for your account. A branch can be created independently without selecting an organisation.</p>
     </div>
     <a href="<?= url('/account/branches/create') ?>" class="btn-primary">Add branch</a>
   </section>

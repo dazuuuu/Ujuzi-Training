@@ -159,6 +159,7 @@ $router->get('/account/courses', [CourseController::class, 'index']);
 $router->get('/account/courses/create', [CourseController::class, 'create']);
 $router->post('/account/courses', [CourseController::class, 'store']);
 $router->get('/account/courses/{id}', [CourseController::class, 'show']);
+$router->post('/account/courses/{id}/enroll', [CourseController::class, 'enroll']);
 $router->get('/account/courses/{id}/edit', [CourseController::class, 'edit']);
 $router->post('/account/courses/{id}', [CourseController::class, 'update']);
 $router->post('/account/courses/{id}/delete', [CourseController::class, 'destroy']);
@@ -166,6 +167,8 @@ $router->post('/account/courses/{id}/modules', [CourseController::class, 'storeM
 $router->post('/account/courses/{id}/modules/{moduleId}', [CourseController::class, 'updateModule']);
 $router->post('/account/courses/{id}/modules/{moduleId}/delete', [CourseController::class, 'destroyModule']);
 $router->post('/account/courses/{id}/modules/{moduleId}/quiz', [CourseController::class, 'submitQuiz']);
+$router->post('/account/courses/{id}/final-exam', [CourseController::class, 'updateFinalExam']);
+$router->post('/account/courses/{id}/final-exam/submit', [CourseController::class, 'submitFinalExam']);
 $router->get('/account/certificate', [AccountCertificateController::class, 'show']);
 
 $router->dispatch();

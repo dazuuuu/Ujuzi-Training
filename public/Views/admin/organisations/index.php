@@ -2,6 +2,7 @@
 /** Requires $organisations, $invites in scope. */
 require __DIR__ . '/../layout-header.php';
 $invites = $invites ?? [];
+$adminUsersByOrganisation = $adminUsersByOrganisation ?? [];
 ?>
 
 <div class="space-y-6">
@@ -19,6 +20,7 @@ $invites = $invites ?? [];
       <thead class="bg-neutral-100 text-[11px] uppercase tracking-wider text-black">
         <tr>
           <th class="px-5 py-3">Name</th>
+          <th class="px-5 py-3">Admin login</th>
           <th class="px-5 py-3">Status</th>
           <th class="px-5 py-3">Created</th>
           <th class="px-5 py-3"></th>
@@ -26,13 +28,23 @@ $invites = $invites ?? [];
       </thead>
       <tbody class="divide-y divide-neutral-100">
         <?php if (!$organisations): ?>
-          <tr><td colspan="4" class="px-5 py-8 text-center font-bold text-neutral-700">No organisations yet.</td></tr>
+          <tr><td colspan="5" class="px-5 py-8 text-center font-bold text-neutral-700">No organisations yet.</td></tr>
         <?php endif; ?>
         <?php foreach ($organisations as $org): ?>
+          <?php $adminUsers = $adminUsersByOrganisation[(int) $org['id']] ?? []; ?>
           <tr>
             <td class="px-5 py-4">
               <p class="font-black text-black"><?= e($org['name']) ?></p>
               <p class="text-xs font-semibold text-neutral-600"><?= e($org['description'] ?: 'No description') ?></p>
+            </td>
+            <td class="px-5 py-4">
+              <?php if ($adminUsers): ?>
+                <?php foreach ($adminUsers as $adminUser): ?>
+                  <p class="text-xs font-bold text-neutral-700"><?= e($adminUser['email'] ?? '') ?></p>
+                <?php endforeach; ?>
+              <?php else: ?>
+                <p class="text-xs font-black uppercase" style="color:var(--ke-red)">No admin account</p>
+              <?php endif; ?>
             </td>
             <td class="px-5 py-4 font-bold"><?= !empty($org['is_active']) ? 'Active' : 'Inactive' ?></td>
             <td class="px-5 py-4 font-semibold text-neutral-700"><?= e(date('M j, Y', strtotime($org['created_at']))) ?></td>

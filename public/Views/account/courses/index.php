@@ -15,7 +15,7 @@ require __DIR__ . '/../layout-header.php';
         if ($isStudent) {
             echo 'These are published courses for the organisation you selected, plus any global courses available to every student.';
         } elseif ($canCreate) {
-            echo 'Create a course from the form Super Admin assigned to tutors. After saving, use Edit topics to add videos, materials, and a quiz.';
+            echo 'Create a course from the form Super Admin assigned to tutors. After saving, add modules with videos, resources, quizzes, and a final exam.';
         } else {
             echo 'Courses created by tutors approved in your organisation.';
         }
@@ -41,7 +41,7 @@ require __DIR__ . '/../layout-header.php';
 
   <?php if (!$courses): ?>
     <div class="rounded-xl border border-dashed p-8 text-sm font-bold" style="border-color:var(--ke-line);color:var(--ke-muted)">
-      <?= $isStudent ? 'No courses for your organisation yet. Global courses will appear here when tutors publish them.' : 'No courses yet.' ?>
+      <?= $isStudent ? 'No courses for your organisation yet. Global courses will appear here when tutors publish them.' : ($canCreate ? 'No courses yet. Create your first course when ready.' : 'No courses yet. Once an organisation approves you as a tutor, the create option will appear here.') ?>
     </div>
   <?php else: ?>
     <div class="course-grid">
@@ -65,9 +65,17 @@ require __DIR__ . '/../layout-header.php';
             <p class="text-[11px] font-black uppercase" style="color: <?= !empty($course['is_published']) ? 'var(--ke-green)' : 'var(--ke-muted)' ?>"><?= !empty($course['is_published']) ? 'Published' : 'Draft' ?></p>
           <?php endif; ?>
           <div class="flex flex-wrap gap-2">
-            <a href="<?= url('/account/courses/' . (int) $course['id']) ?>" class="btn-primary" style="padding:0.4rem 0.75rem;"><?= $isStudent ? 'Open' : 'View' ?></a>
+            <?php if ($isStudent && empty($course['is_enrolled'])): ?>
+              <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/enroll') ?>">
+                <?= csrfField() ?>
+                <button type="submit" class="btn-primary" style="padding:0.4rem 0.75rem;">Enroll</button>
+              </form>
+              <a href="<?= url('/account/courses/' . (int) $course['id']) ?>" class="btn-secondary" style="padding:0.4rem 0.75rem;">Preview</a>
+            <?php else: ?>
+              <a href="<?= url('/account/courses/' . (int) $course['id']) ?>" class="btn-primary" style="padding:0.4rem 0.75rem;"><?= $isStudent ? 'Continue' : 'View' ?></a>
+            <?php endif; ?>
             <?php if ($canCreate && (int) ($course['trainer_user_id'] ?? 0) === (int) ($currentUser['id'] ?? 0)): ?>
-              <a href="<?= url('/account/courses/' . (int) $course['id']) ?>" class="btn-secondary" style="padding:0.4rem 0.75rem;">Edit topics</a>
+              <a href="<?= url('/account/courses/' . (int) $course['id']) ?>" class="btn-secondary" style="padding:0.4rem 0.75rem;">Edit modules</a>
               <a href="<?= url('/account/courses/' . (int) $course['id'] . '/edit') ?>" class="btn-secondary" style="padding:0.4rem 0.75rem;">Edit details</a>
             <?php endif; ?>
           </div>

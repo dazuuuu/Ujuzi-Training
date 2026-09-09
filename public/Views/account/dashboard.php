@@ -4,6 +4,15 @@ require __DIR__ . '/layout-header.php';
 ?>
 
 <div class="space-y-8">
+  <?php if (!empty($needsProfile)): ?>
+    <section class="account-completion-banner">
+      <div>
+        <p class="text-sm font-black">Complete your profile</p>
+        <p class="mt-1 text-xs font-semibold">Finish the registration details assigned to your role so your account is fully set up.</p>
+      </div>
+      <a href="<?= url('/account/profile') ?>" class="btn-primary" style="padding:0.45rem 0.8rem;">Open profile</a>
+    </section>
+  <?php endif; ?>
   <div>
     <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)"><?= e($currentUser['role_name']) ?></p>
     <h1 class="mt-2 font-serif-heading text-3xl font-bold text-[#0a0a0a]">Hello, <?= e($currentUser['first_name'] ?: userDisplayName($currentUser)) ?></h1>
@@ -127,7 +136,14 @@ require __DIR__ . '/layout-header.php';
               <p class="text-[11px] font-black uppercase visibility-badge <?= ($course['visibility'] ?? 'strict') === 'global' ? 'is-global' : 'is-strict' ?>">
                 <?= ($course['visibility'] ?? 'strict') === 'global' ? 'Global' : 'Your organisation' ?>
               </p>
-              <a href="<?= url('/account/courses/' . (int) $course['id']) ?>" class="btn-primary" style="padding:0.35rem 0.65rem;">Open</a>
+              <?php if (empty($course['is_enrolled'])): ?>
+                <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/enroll') ?>">
+                  <?= csrfField() ?>
+                  <button type="submit" class="btn-primary" style="padding:0.35rem 0.65rem;">Enroll</button>
+                </form>
+              <?php else: ?>
+                <a href="<?= url('/account/courses/' . (int) $course['id']) ?>" class="btn-primary" style="padding:0.35rem 0.65rem;">Continue</a>
+              <?php endif; ?>
             </article>
           <?php endforeach; ?>
         </div>
@@ -185,7 +201,7 @@ require __DIR__ . '/layout-header.php';
         <div>
           <h2 class="font-serif-heading text-lg font-bold">Courses</h2>
           <p class="mt-1 text-xs font-semibold" style="color:var(--ke-muted)"><?= !empty($canCreateCourses)
-            ? 'Create courses after an organisation approves you, then add topics with videos, materials, and a quiz that unlocks the next topic.'
+            ? 'Create courses after an organisation approves you, then add modules with videos, resources, quizzes, and a final exam.'
             : 'Review courses tutors have created for your organisation.' ?></p>
         </div>
         <a href="<?= url(!empty($canCreateCourses) ? '/account/courses/create' : '/account/courses') ?>" class="btn-primary"><?= !empty($canCreateCourses) ? 'Create a course' : 'View courses' ?></a>
