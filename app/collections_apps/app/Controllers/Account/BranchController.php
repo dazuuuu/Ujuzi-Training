@@ -138,7 +138,7 @@ class BranchController extends BaseAccountController
         $payload = [
             'organisation_id' => $this->branchOrganisationId(),
             'owner_type' => $this->branchOwnerType(),
-            'owner_user_id' => $this->branchOwnerType() === 'attachment_provider' ? (int) $this->user['id'] : null,
+            'owner_user_id' => $this->branchOwnerType() === 'organisation' ? null : (int) $this->user['id'],
             'title' => $title,
             'location' => $location,
             'cover_image' => $cover,
@@ -158,10 +158,7 @@ class BranchController extends BaseAccountController
 
     private function requireBranchManager(): void
     {
-        if (!Authz::isOrganisationAdmin($this->user) && ($this->user['role_slug'] ?? '') !== 'attachment_trainer') {
-            flashError('Only organisation admins and attachment providers can manage branches.');
-            redirect('/account/dashboard');
-        }
+        // Every authenticated role may create branches owned by its own account.
     }
 
     private function ownedBranch(int $id): array
@@ -177,7 +174,11 @@ class BranchController extends BaseAccountController
         $ownsProviderBranch = ($this->user['role_slug'] ?? '') === 'attachment_trainer'
             && ($branch['owner_type'] ?? '') === 'attachment_provider'
             && (int) ($branch['owner_user_id'] ?? 0) === (int) $this->user['id'];
-        if (!$ownsOrganisationBranch && !$ownsProviderBranch) {
+        $ownsPersonalBranch = !Authz::isOrganisationAdmin($this->user)
+            && ($this->user['role_slug'] ?? '') !== 'attachment_trainer'
+            && ($branch['owner_type'] ?? '') === 'user'
+            && (int) ($branch['owner_user_id'] ?? 0) === (int) $this->user['id'];
+        if (!$ownsOrganisationBranch && !$ownsProviderBranch && !$ownsPersonalBranch) {
             flashError('That branch could not be found.');
             redirect('/account/branches');
         }
@@ -189,16 +190,25 @@ class BranchController extends BaseAccountController
         if (($this->user['role_slug'] ?? '') === 'attachment_trainer') {
             return OrganisationBranch::forAttachmentProvider((int) $this->user['id']);
         }
-        return OrganisationBranch::forOrganisation((int) $this->user['organisation_id']);
+        if (Authz::isOrganisationAdmin($this->user)) {
+            return OrganisationBranch::forOrganisation((int) $this->user['organisation_id']);
+        }
+        return OrganisationBranch::forUser((int) $this->user['id']);
     }
 
     private function branchOwnerType(): string
     {
-        return ($this->user['role_slug'] ?? '') === 'attachment_trainer' ? 'attachment_provider' : 'organisation';
+        if (($this->user['role_slug'] ?? '') === 'attachment_trainer') {
+            return 'attachment_provider';
+        }
+        return Authz::isOrganisationAdmin($this->user) ? 'organisation' : 'user';
     }
 
     private function branchOrganisationId(): ?int
     {
+        if ($this->branchOwnerType() !== 'organisation') {
+            return null;
+        }
         $orgId = (int) ($this->user['organisation_id'] ?? 0);
         return $orgId > 0 ? $orgId : null;
     }

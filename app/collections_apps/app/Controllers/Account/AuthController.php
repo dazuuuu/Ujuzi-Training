@@ -7,6 +7,7 @@ use App\Core\LoginRoles;
 use App\Core\Request;
 use App\Core\UserSession;
 use App\Core\View;
+use App\Models\Organisation;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\MailerException;
@@ -157,6 +158,15 @@ class AuthController
     private function authenticateUser(?array $user, string $expectedSlug, string $password): string
     {
         if (!$user) {
+            if ($expectedSlug === 'organisation_admin' && Request::post('method', 'email') !== 'phone') {
+                try {
+                    if (Organisation::count() > 0) {
+                        return 'That email is not an Organisation Admin user account yet. Super Admin must create an admin account for the organisation, or send the organisation admin invite link.';
+                    }
+                } catch (\Throwable $e) {
+                    // Fall through to the generic role login message.
+                }
+            }
             return Request::post('method', 'email') === 'phone'
                 ? 'We could not find a ' . roleLabel($expectedSlug) . ' account for that phone number.'
                 : 'We could not find a ' . roleLabel($expectedSlug) . ' account for that email. Use the login page that matches your role, or register if you are new.';

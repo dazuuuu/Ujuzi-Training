@@ -13,6 +13,35 @@ class Organisation
             ->fetchAll();
     }
 
+    public static function adminUsersByOrganisation(): array
+    {
+        $stmt = Database::connection()->query(
+            "SELECT u.id, u.email, u.first_name, u.last_name, u.organisation_id
+             FROM users u
+             INNER JOIN roles r ON r.id = u.role_id
+             WHERE r.slug = 'organisation_admin'
+             ORDER BY u.first_name ASC, u.last_name ASC, u.email ASC"
+        );
+        $out = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $out[(int) $row['organisation_id']][] = $row;
+        }
+        return $out;
+    }
+
+    public static function adminUsers(int $organisationId): array
+    {
+        $stmt = Database::connection()->prepare(
+            "SELECT u.id, u.email, u.first_name, u.last_name, u.is_active
+             FROM users u
+             INNER JOIN roles r ON r.id = u.role_id
+             WHERE r.slug = 'organisation_admin' AND u.organisation_id = ?
+             ORDER BY u.first_name ASC, u.last_name ASC, u.email ASC"
+        );
+        $stmt->execute([$organisationId]);
+        return $stmt->fetchAll();
+    }
+
     public static function active(): array
     {
         return Database::connection()

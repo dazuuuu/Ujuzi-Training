@@ -18,7 +18,7 @@ class FormAnswerService
     /**
      * @return array{answers: array, errors: array}
      */
-    public static function collect(array $fields, array $posted, array $existing = [], ?array $user = null): array
+    public static function collect(array $fields, array $posted, array $existing = [], ?array $user = null, ?string $onlyKey = null): array
     {
         $answers = $existing;
         $errors = [];
@@ -27,6 +27,9 @@ class FormAnswerService
             $type = $field['field_type'];
             $key = $field['field_key'];
             if (FormFieldTypes::isLayout($type)) {
+                continue;
+            }
+            if ($onlyKey !== null && $key !== $onlyKey) {
                 continue;
             }
 

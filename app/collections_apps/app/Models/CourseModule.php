@@ -47,7 +47,7 @@ class CourseModule
             $fields['video_url'] ?? null,
             !empty($fields['materials']) ? json_encode(array_values($fields['materials'])) : null,
             json_encode(self::normalizeQuestions($fields['quiz_questions'] ?? [])),
-            self::normalizePassPercent($fields['pass_percent'] ?? 70),
+            self::normalizePassPercent($fields['pass_percent'] ?? 80),
             $sort,
         ]);
         return (int) $pdo->lastInsertId();
@@ -70,7 +70,7 @@ class CourseModule
             $fields['video_url'] ?? null,
             !empty($fields['materials']) ? json_encode(array_values($fields['materials'])) : null,
             json_encode(self::normalizeQuestions($fields['quiz_questions'] ?? [])),
-            self::normalizePassPercent($fields['pass_percent'] ?? 70),
+            self::normalizePassPercent($fields['pass_percent'] ?? 80),
             $id,
         ]);
     }
@@ -148,8 +148,8 @@ class CourseModule
     public static function normalizePassPercent($value): int
     {
         $percent = (int) $value;
-        if ($percent < 1) {
-            $percent = 70;
+        if ($percent < 80) {
+            $percent = 80;
         }
         return min(100, $percent);
     }
@@ -168,7 +168,7 @@ class CourseModule
             }
         }
         $score = (int) round(($correctCount / $total) * 100);
-        $pass = self::normalizePassPercent($module['pass_percent'] ?? 70);
+        $pass = self::normalizePassPercent($module['pass_percent'] ?? 80);
         return [
             'score' => $score,
             'passed' => $score >= $pass,
@@ -207,7 +207,7 @@ class CourseModule
             $row['materials'] = [];
         }
         $row['quiz_questions'] = self::normalizeQuestions($row['quiz_questions'] ?? []);
-        $row['pass_percent'] = self::normalizePassPercent($row['pass_percent'] ?? 70);
+        $row['pass_percent'] = self::normalizePassPercent($row['pass_percent'] ?? 80);
         $row['youtube_id'] = self::youtubeId($row['video_url'] ?? null);
         $row['embed_url'] = self::embedUrl($row['video_url'] ?? null);
         $row['duration_minutes'] = (int) ($row['duration_minutes'] ?? 10);

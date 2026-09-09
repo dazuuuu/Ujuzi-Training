@@ -5,6 +5,8 @@ namespace App\Controllers\Account;
 use App\Core\Authz;
 use App\Core\Request;
 use App\Models\Course;
+use App\Models\CourseEnrollment;
+use App\Models\CourseFinalExamProgress;
 use App\Models\CourseModule;
 use App\Models\CourseModuleProgress;
 use App\Models\Form;
@@ -23,6 +25,7 @@ class CourseController extends BaseAccountController
         if (Authz::isStudent($this->user)) {
             try {
                 $courses = Course::forLearner(Authz::learnerOrganisationIds($this->user));
+                $courses = $this->markEnrollment($courses);
             } catch (\Throwable $e) {
                 $courses = [];
             }
@@ -78,6 +81,15 @@ class CourseController extends BaseAccountController
         $editingModule = null;
         $editId = (int) Request::query('module', 0);
         $canEdit = Authz::canEditCourse($this->user, $course);
+        $isStudent = Authz::isStudent($this->user);
+        $isEnrolled = false;
+        if ($isStudent) {
+            try {
+                $isEnrolled = CourseEnrollment::isEnrolled((int) $this->user['id'], (int) $course['id']);
+            } catch (\Throwable $e) {
+                $isEnrolled = false;
+            }
+        }
         if ($editId && $canEdit) {
             foreach ($modules as $module) {
                 if ((int) $module['id'] === $editId) {
@@ -88,11 +100,14 @@ class CourseController extends BaseAccountController
         }
 
         $progress = [];
-        $isStudent = Authz::isStudent($this->user);
-        if ($isStudent) {
+        $finalProgress = null;
+        $modulesComplete = false;
+        if ($isStudent && $isEnrolled) {
             try {
                 $progress = CourseModuleProgress::forUserCourse((int) $this->user['id'], (int) $course['id']);
                 $modules = CourseModule::withUnlockState($modules, $progress);
+                $modulesComplete = Course::modulesCompletedByUser((int) $course['id'], (int) $this->user['id']);
+                $finalProgress = CourseFinalExamProgress::findForUserCourse((int) $this->user['id'], (int) $course['id']);
             } catch (\Throwable $e) {
                 $modules = CourseModule::withUnlockState($modules, []);
             }
@@ -105,10 +120,30 @@ class CourseController extends BaseAccountController
             'modules' => $modules,
             'canEdit' => $canEdit,
             'isStudent' => $isStudent,
+            'isEnrolled' => $isEnrolled,
             'durations' => CourseModule::durations(),
             'moduleForm' => $editingModule ?: $this->blankModule(),
             'editingModule' => $editingModule,
+            'finalProgress' => $finalProgress,
+            'modulesComplete' => $modulesComplete,
         ]);
+    }
+
+    public function enroll(string $id): void
+    {
+        $course = $this->accessibleCourse((int) $id);
+        if (!Authz::isStudent($this->user)) {
+            flashError('Only students enroll for courses.');
+            redirect('/account/courses/' . $course['id']);
+        }
+        if (!csrfVerify(Request::post('csrf_token'))) {
+            flashError('Your session expired. Please try again.');
+            redirect('/account/courses/' . $course['id']);
+        }
+
+        CourseEnrollment::enroll((int) $this->user['id'], (int) $course['id']);
+        flashSuccess('You are enrolled. Start with the first module.');
+        redirect('/account/courses/' . $course['id']);
     }
 
     public function edit(string $id): void
@@ -163,19 +198,43 @@ class CourseController extends BaseAccountController
             redirect('/account/courses/' . $course['id']);
         }
         CourseModule::delete((int) $module['id']);
-        flashSuccess('Topic removed.');
+        flashSuccess('Module removed.');
         redirect('/account/courses/' . $course['id']);
+    }
+
+    public function updateFinalExam(string $id): void
+    {
+        $course = $this->editableCourse((int) $id);
+        if (!csrfVerify(Request::post('csrf_token'))) {
+            flashError('Your session expired. Please try again.');
+            redirect('/account/courses/' . $course['id'] . '#final-exam');
+        }
+
+        $questions = CourseModule::normalizeQuestions($this->postedQuestionsFrom('final_questions'));
+        $passPercent = CourseModule::normalizePassPercent(Request::post('final_pass_percent', 80));
+        if (!$questions) {
+            flashError('Add at least one valid final exam question with two or more answer choices.');
+            redirect('/account/courses/' . $course['id'] . '#final-exam');
+        }
+
+        Course::updateFinalExam((int) $course['id'], $questions, $passPercent);
+        flashSuccess('Final exam saved. Students unlock it after passing every module quiz.');
+        redirect('/account/courses/' . $course['id'] . '#final-exam');
     }
 
     public function submitQuiz(string $id, string $moduleId): void
     {
         $course = $this->accessibleCourse((int) $id);
         if (!Authz::isStudent($this->user)) {
-            flashError('Only students take the topic quiz.');
+            flashError('Only students take the module quiz.');
             redirect('/account/courses/' . $course['id']);
         }
         if (!csrfVerify(Request::post('csrf_token'))) {
             flashError('Your session expired. Please try again.');
+            redirect('/account/courses/' . $course['id']);
+        }
+        if (!CourseEnrollment::isEnrolled((int) $this->user['id'], (int) $course['id'])) {
+            flashError('Enroll for this course before taking module quizzes.');
             redirect('/account/courses/' . $course['id']);
         }
 
@@ -192,11 +251,11 @@ class CourseController extends BaseAccountController
             }
         }
         if (!$current || empty($current['is_unlocked'])) {
-            flashError('Pass the previous topic quiz before opening this one.');
+            flashError('Pass the previous module quiz before opening this one.');
             redirect('/account/courses/' . $course['id']);
         }
         if (empty($current['quiz_questions'])) {
-            flashError('This topic has no quiz.');
+            flashError('This module has no quiz.');
             redirect('/account/courses/' . $course['id'] . '#topic-' . $module['id']);
         }
 
@@ -215,15 +274,60 @@ class CourseController extends BaseAccountController
         ]);
 
         if ($result['passed']) {
-            $message = 'You scored ' . $result['score'] . '%. The next topic is now open.';
-            if (Course::isCompletedByUser((int) $course['id'], (int) $this->user['id'])) {
-                $message = 'You scored ' . $result['score'] . '%. This course is complete. Your certificate now lists this skill, and attachment trainers for your organisation are available.';
+            $message = 'You scored ' . $result['score'] . '%. The next module is now open.';
+            if (Course::modulesCompletedByUser((int) $course['id'], (int) $this->user['id'])) {
+                $message = 'You scored ' . $result['score'] . '%. All modules are complete. Take the final exam to add this skill to your certificate.';
             }
             flashSuccess($message);
         } else {
-            flashError('You scored ' . $result['score'] . '%. You need ' . (int) $current['pass_percent'] . '% to unlock the next topic. Try again.');
+            flashError('You scored ' . $result['score'] . '%. You need ' . (int) $current['pass_percent'] . '% to unlock the next module. Try again.');
         }
         redirect('/account/courses/' . $course['id'] . '#topic-' . $module['id']);
+    }
+
+    public function submitFinalExam(string $id): void
+    {
+        $course = $this->accessibleCourse((int) $id);
+        if (!Authz::isStudent($this->user)) {
+            flashError('Only students take the final exam.');
+            redirect('/account/courses/' . $course['id']);
+        }
+        if (!csrfVerify(Request::post('csrf_token'))) {
+            flashError('Your session expired. Please try again.');
+            redirect('/account/courses/' . $course['id'] . '#final-exam');
+        }
+        if (!CourseEnrollment::isEnrolled((int) $this->user['id'], (int) $course['id'])) {
+            flashError('Enroll for this course before taking the final exam.');
+            redirect('/account/courses/' . $course['id']);
+        }
+        if (!Course::modulesCompletedByUser((int) $course['id'], (int) $this->user['id'])) {
+            flashError('Pass every module quiz before taking the final exam.');
+            redirect('/account/courses/' . $course['id'] . '#final-exam');
+        }
+        if (empty($course['final_exam_questions'])) {
+            flashError('The tutor has not published a final exam for this course yet.');
+            redirect('/account/courses/' . $course['id'] . '#final-exam');
+        }
+
+        $posted = Request::post('answers', []);
+        if (!is_array($posted)) {
+            $posted = [];
+        }
+        $result = Course::gradeFinalExam($course, $posted);
+        CourseFinalExamProgress::saveAttempt([
+            'user_id' => (int) $this->user['id'],
+            'course_id' => (int) $course['id'],
+            'score' => $result['score'],
+            'passed' => $result['passed'],
+            'answers' => $posted,
+        ]);
+
+        if ($result['passed']) {
+            flashSuccess('You scored ' . $result['score'] . '%. This course skill is now listed on your certificate.');
+        } else {
+            flashError('You scored ' . $result['score'] . '%. You need ' . (int) $course['final_pass_percent'] . '% to pass the final exam. Try again.');
+        }
+        redirect('/account/courses/' . $course['id'] . '#final-exam');
     }
 
     private function persist(?int $id): void
@@ -281,12 +385,12 @@ class CourseController extends BaseAccountController
                 $payload['materials'] = $existingCourse['materials'];
             }
             Course::update($id, $payload);
-            flashSuccess('Course updated. Use Edit topics to add videos, materials, and quizzes.');
+            flashSuccess('Course updated. Use Edit modules to add videos, resources, quizzes, and the final exam.');
             redirect('/account/courses/' . $id);
         }
 
         $newId = Course::create($payload);
-        flashSuccess('Course created. Add topics — each topic can include a video, materials, and a quiz that must be passed to open the next one.');
+        flashSuccess('Course created. Add modules, then set the final exam. Each module can include a video, resources, and a quiz that must be passed to open the next one.');
         redirect('/account/courses/' . $newId);
     }
 
@@ -310,7 +414,7 @@ class CourseController extends BaseAccountController
         $youtubeUrl = trim((string) Request::post('video_url', ''));
         $errors = [];
         if ($title === '') {
-            $errors[] = 'Topic title is required.';
+            $errors[] = 'Module title is required.';
         }
 
         $videoPath = $module['video_path'] ?? null;
@@ -332,7 +436,7 @@ class CourseController extends BaseAccountController
                     $errors[] = $e->getMessage();
                 }
             } elseif (!$videoPath) {
-                $errors[] = 'Upload a topic video (about 10, 20, 30, or 60 minutes).';
+                $errors[] = 'Upload a module video (about 10, 20, 30, or 60 minutes).';
             }
         }
 
@@ -346,7 +450,10 @@ class CourseController extends BaseAccountController
         }
 
         $quiz = CourseModule::normalizeQuestions($this->postedQuestions());
-        $passPercent = CourseModule::normalizePassPercent(Request::post('pass_percent', 70));
+        $passPercent = CourseModule::normalizePassPercent(Request::post('pass_percent', 80));
+        if (!$quiz) {
+            $errors[] = 'Add at least one valid module quiz question with two or more answer choices.';
+        }
 
         if ($errors) {
             flashError(implode(' ', $errors));
@@ -370,18 +477,23 @@ class CourseController extends BaseAccountController
 
         if ($module) {
             CourseModule::update((int) $module['id'], $payload);
-            flashSuccess('Topic updated.');
+            flashSuccess('Module updated.');
             redirect($redirect . '#topic-' . (int) $module['id']);
         }
 
         $newId = CourseModule::create($payload);
-        flashSuccess('Topic added.');
+        flashSuccess('Module added.');
         redirect($redirect . '#topic-' . $newId);
     }
 
     private function postedQuestions(): array
     {
-        $raw = Request::post('questions', []);
+        return $this->postedQuestionsFrom('questions');
+    }
+
+    private function postedQuestionsFrom(string $key): array
+    {
+        $raw = Request::post($key, []);
         if (!is_array($raw)) {
             return [];
         }
@@ -471,10 +583,26 @@ class CourseController extends BaseAccountController
         return $withFields;
     }
 
+    private function markEnrollment(array $courses): array
+    {
+        $ids = [];
+        try {
+            $ids = CourseEnrollment::idsForUser((int) $this->user['id']);
+        } catch (\Throwable $e) {
+            $ids = [];
+        }
+        $lookup = array_fill_keys($ids, true);
+        foreach ($courses as &$course) {
+            $course['is_enrolled'] = !empty($lookup[(int) $course['id']]);
+        }
+        unset($course);
+        return $courses;
+    }
+
     private function requireViewer(): void
     {
         if (!Authz::canViewCourses($this->user)) {
-            flashError('Courses are available after you select an organisation on your profile, or after an organisation approves you as a tutor.');
+            flashError('Courses are available for students, tutors, trainers, teachers, and organisation admins.');
             redirect('/account/dashboard');
         }
     }
@@ -511,7 +639,7 @@ class CourseController extends BaseAccountController
     {
         $module = CourseModule::find($moduleId);
         if (!$module || (int) $module['course_id'] !== (int) $course['id']) {
-            flashError('That topic could not be found.');
+            flashError('That module could not be found.');
             redirect('/account/courses/' . $course['id']);
         }
         return $module;
@@ -531,7 +659,7 @@ class CourseController extends BaseAccountController
             'quiz_questions' => [
                 ['question' => '', 'options' => ['', '', '', ''], 'correct' => 0],
             ],
-            'pass_percent' => 70,
+            'pass_percent' => 80,
         ];
     }
 }

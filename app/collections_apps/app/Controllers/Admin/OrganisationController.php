@@ -6,6 +6,9 @@ use App\Core\Request;
 use App\Core\View;
 use App\Models\Organisation;
 use App\Models\OrganisationAdminInvite;
+use App\Models\OrganisationMembership;
+use App\Models\Role;
+use App\Models\User;
 use App\Services\MailerException;
 use App\Services\MailerService;
 
@@ -18,6 +21,7 @@ class OrganisationController extends BaseAdminController
             'activeNav' => 'organisations',
             'organisations' => Organisation::all(),
             'invites' => OrganisationAdminInvite::latestByOrganisation(),
+            'adminUsersByOrganisation' => Organisation::adminUsersByOrganisation(),
             'freshInvite' => $this->freshInviteFromSession(),
         ]);
     }
@@ -29,9 +33,10 @@ class OrganisationController extends BaseAdminController
             'activeNav' => 'organisations',
             'organisation' => null,
             'errors' => [],
-            'form' => ['name' => '', 'description' => '', 'is_active' => 1],
+            'form' => $this->blankForm(),
             'invite' => null,
             'freshInvite' => null,
+            'adminUsers' => [],
         ]);
     }
 
@@ -61,6 +66,7 @@ class OrganisationController extends BaseAdminController
             'form' => $organisation,
             'invite' => OrganisationAdminInvite::latestForOrganisation((int) $id),
             'freshInvite' => $fresh,
+            'adminUsers' => Organisation::adminUsers((int) $id),
         ]);
     }
 
@@ -81,6 +87,7 @@ class OrganisationController extends BaseAdminController
             'activeNav' => 'share',
             'organisations' => Organisation::all(),
             'invites' => OrganisationAdminInvite::latestByOrganisation(),
+            'adminUsersByOrganisation' => Organisation::adminUsersByOrganisation(),
             'freshInvite' => $this->freshInviteFromSession(),
         ]);
     }
@@ -182,12 +189,38 @@ class OrganisationController extends BaseAdminController
         $name = trim((string) Request::post('name', ''));
         $description = trim((string) Request::post('description', ''));
         $isActive = Request::post('is_active') === '1';
+        $adminFirstName = trim((string) Request::post('admin_first_name', ''));
+        $adminLastName = trim((string) Request::post('admin_last_name', ''));
+        $adminEmail = strtolower(trim((string) Request::post('admin_email', '')));
+        $adminPassword = (string) Request::post('admin_password', '');
         $errors = [];
         if ($name === '') {
             $errors[] = 'Organisation name is required.';
         }
+        if ($adminEmail !== '') {
+            if (!filter_var($adminEmail, FILTER_VALIDATE_EMAIL)) {
+                $errors[] = 'Enter a valid organisation admin email.';
+            }
+            $existing = User::findByIdentifier('email', $adminEmail);
+            if ($existing) {
+                $errors[] = 'That organisation admin email is already used by another account.';
+            }
+            $passwordError = User::passwordError($adminPassword);
+            if ($passwordError) {
+                $errors[] = $passwordError;
+            }
+        } elseif ($adminPassword !== '' || $adminFirstName !== '' || $adminLastName !== '') {
+            $errors[] = 'Enter the organisation admin email before saving admin account details.';
+        }
 
-        $form = ['name' => $name, 'description' => $description, 'is_active' => $isActive ? 1 : 0];
+        $form = [
+            'name' => $name,
+            'description' => $description,
+            'is_active' => $isActive ? 1 : 0,
+            'admin_first_name' => $adminFirstName,
+            'admin_last_name' => $adminLastName,
+            'admin_email' => $adminEmail,
+        ];
         if ($errors) {
             View::render('admin.organisations.form', [
                 'pageTitle' => $id ? 'Edit organisation' : 'Add organisation',
@@ -197,6 +230,7 @@ class OrganisationController extends BaseAdminController
                 'form' => $form,
                 'invite' => $id ? OrganisationAdminInvite::latestForOrganisation($id) : null,
                 'freshInvite' => $id ? $this->freshInviteFromSession() : null,
+                'adminUsers' => $id ? Organisation::adminUsers($id) : [],
             ]);
             return;
         }
@@ -210,12 +244,54 @@ class OrganisationController extends BaseAdminController
 
         if ($id) {
             Organisation::update($id, $payload);
-            flashSuccess('Organisation updated.');
+            $adminCreated = $this->createOrganisationAdmin($id, $adminEmail, $adminPassword, $adminFirstName, $adminLastName);
+            flashSuccess($adminCreated ? 'Organisation updated and organisation admin account created.' : 'Organisation updated.');
         } else {
-            Organisation::create($payload);
-            flashSuccess('Organisation created.');
+            $newId = Organisation::create($payload);
+            $adminCreated = $this->createOrganisationAdmin($newId, $adminEmail, $adminPassword, $adminFirstName, $adminLastName);
+            flashSuccess($adminCreated ? 'Organisation created with an organisation admin account.' : 'Organisation created.');
         }
         redirect('/admin/organisations');
+    }
+
+    private function createOrganisationAdmin(int $organisationId, string $email, string $password, string $firstName, string $lastName): bool
+    {
+        if ($email === '') {
+            return false;
+        }
+        $role = Role::findBySlug('organisation_admin');
+        if (!$role) {
+            return false;
+        }
+        $userId = User::create([
+            'role_id' => (int) $role['id'],
+            'organisation_id' => $organisationId,
+            'email' => $email,
+            'phone' => '',
+            'first_name' => $firstName !== '' ? $firstName : 'Organisation',
+            'last_name' => $lastName !== '' ? $lastName : 'Admin',
+            'password' => $password,
+            'is_active' => 1,
+            'email_verified_at' => date('Y-m-d H:i:s'),
+        ]);
+        try {
+            OrganisationMembership::ensureApproved($userId, $organisationId);
+        } catch (\Throwable $e) {
+            // Memberships are a convenience for scoping; the user's organisation_id is authoritative here.
+        }
+        return true;
+    }
+
+    private function blankForm(): array
+    {
+        return [
+            'name' => '',
+            'description' => '',
+            'is_active' => 1,
+            'admin_first_name' => '',
+            'admin_last_name' => '',
+            'admin_email' => '',
+        ];
     }
 
     private function inviteReturnPath(int $organisationId): string

@@ -15,7 +15,7 @@ return [
         }
 
         try {
-            $pdo->exec('ALTER TABLE course_modules ADD COLUMN pass_percent TINYINT UNSIGNED NOT NULL DEFAULT 70 AFTER quiz_questions');
+            $pdo->exec('ALTER TABLE course_modules ADD COLUMN pass_percent TINYINT UNSIGNED NOT NULL DEFAULT 80 AFTER quiz_questions');
         } catch (Throwable $e) {
             // Column already exists.
         }

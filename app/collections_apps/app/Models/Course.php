@@ -46,9 +46,9 @@ class Course
         $stmt = Database::connection()->prepare(
             "SELECT DISTINCT u.*, r.slug AS role_slug, r.name AS role_name,
                     o.name AS organisation_name, GROUP_CONCAT(DISTINCT c.title ORDER BY c.title SEPARATOR ', ') AS enrolled_courses
-             FROM course_module_progress p
-             INNER JOIN courses c ON c.id = p.course_id AND c.trainer_user_id = ?
-             INNER JOIN users u ON u.id = p.user_id
+             FROM course_enrollments e
+             INNER JOIN courses c ON c.id = e.course_id AND c.trainer_user_id = ?
+             INNER JOIN users u ON u.id = e.user_id
              INNER JOIN roles r ON r.id = u.role_id AND r.slug = 'student'
              LEFT JOIN organisations o ON o.id = u.organisation_id
              GROUP BY u.id
@@ -115,6 +115,11 @@ class Course
 
     public static function isCompletedByUser(int $courseId, int $userId): bool
     {
+        return self::modulesCompletedByUser($courseId, $userId) && self::finalExamPassedByUser($courseId, $userId);
+    }
+
+    public static function modulesCompletedByUser(int $courseId, int $userId): bool
+    {
         $modules = CourseModule::forCourse($courseId);
         if (!$modules) {
             return false;
@@ -131,6 +136,20 @@ class Course
             }
         }
         return true;
+    }
+
+    public static function finalExamPassedByUser(int $courseId, int $userId): bool
+    {
+        $course = self::find($courseId);
+        if (!$course || empty($course['final_exam_questions'])) {
+            return false;
+        }
+        try {
+            $progress = CourseFinalExamProgress::findForUserCourse($userId, $courseId);
+        } catch (\Throwable $e) {
+            $progress = null;
+        }
+        return !empty($progress['passed']);
     }
 
     public static function skillNames(array $courses): array
@@ -200,6 +219,26 @@ class Course
         Database::connection()->prepare('DELETE FROM courses WHERE id = ?')->execute([$id]);
     }
 
+    public static function updateFinalExam(int $id, array $questions, int $passPercent = 80): void
+    {
+        Database::connection()->prepare(
+            'UPDATE courses SET final_exam_questions = ?, final_pass_percent = ? WHERE id = ?'
+        )->execute([
+            json_encode(CourseModule::normalizeQuestions($questions)),
+            CourseModule::normalizePassPercent($passPercent),
+            $id,
+        ]);
+    }
+
+    public static function gradeFinalExam(array $course, array $answers): array
+    {
+        $module = [
+            'quiz_questions' => $course['final_exam_questions'] ?? [],
+            'pass_percent' => $course['final_pass_percent'] ?? 80,
+        ];
+        return CourseModule::grade($module, $answers);
+    }
+
     public static function normalizeVisibility(?string $value): string
     {
         return $value === self::VISIBILITY_GLOBAL ? self::VISIBILITY_GLOBAL : self::VISIBILITY_STRICT;
@@ -212,7 +251,7 @@ class Course
 
     public static function hydrate(array $row): array
     {
-        foreach (['materials', 'answers'] as $key) {
+        foreach (['materials', 'answers', 'final_exam_questions'] as $key) {
             $value = $row[$key] ?? null;
             if (is_string($value) && $value !== '') {
                 $row[$key] = json_decode($value, true) ?: [];
@@ -220,6 +259,8 @@ class Course
                 $row[$key] = [];
             }
         }
+        $row['final_exam_questions'] = CourseModule::normalizeQuestions($row['final_exam_questions'] ?? []);
+        $row['final_pass_percent'] = CourseModule::normalizePassPercent($row['final_pass_percent'] ?? 80);
         $row['is_published'] = !empty($row['is_published']);
         $row['visibility'] = self::normalizeVisibility($row['visibility'] ?? null);
         return $row;

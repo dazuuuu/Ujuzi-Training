@@ -28,6 +28,17 @@ class OrganisationBranch
         return array_map([self::class, 'hydrate'], $stmt->fetchAll());
     }
 
+    public static function forUser(int $userId): array
+    {
+        $stmt = Database::connection()->prepare(
+            "SELECT * FROM organisation_branches
+             WHERE owner_type = 'user' AND owner_user_id = ?
+             ORDER BY sort_order ASC, title ASC"
+        );
+        $stmt->execute([$userId]);
+        return array_map([self::class, 'hydrate'], $stmt->fetchAll());
+    }
+
     public static function find(int $id): ?array
     {
         $stmt = Database::connection()->prepare('SELECT * FROM organisation_branches WHERE id = ?');
@@ -262,6 +273,39 @@ class OrganisationBranch
             ];
         }
         return $rows;
+    }
+
+    public static function asUserFormRows(int $userId): array
+    {
+        $rows = [];
+        foreach (self::forUser($userId) as $branch) {
+            $rows[] = ['id' => (int) $branch['id'], 'name' => (string) ($branch['title'] ?? ''), 'location' => (string) ($branch['location'] ?? ''), 'extra' => self::extras($branch)];
+        }
+        return $rows;
+    }
+
+    public static function syncUserFormRows(int $userId, array $rows): void
+    {
+        $existing = self::forUser($userId);
+        $byId = [];
+        foreach ($existing as $branch) $byId[(int) $branch['id']] = $branch;
+        $keepIds = [];
+        foreach ($rows as $order => $row) {
+            if (!is_array($row)) continue;
+            $title = trim((string) ($row['name'] ?? $row['title'] ?? ''));
+            $location = trim((string) ($row['location'] ?? ''));
+            if ($title === '' || $location === '') continue;
+            $details = $row['extra'] ?? $row['extras'] ?? $row['details'] ?? [];
+            $details = is_array($details) ? $details : [];
+            $id = (int) ($row['id'] ?? 0);
+            if ($id > 0 && isset($byId[$id])) {
+                self::update($id, ['title' => $title, 'location' => $location, 'details' => $details, 'cover_image' => $byId[$id]['cover_image'] ?? null, 'sort_order' => (int) ($byId[$id]['sort_order'] ?? $order)]);
+                $keepIds[] = $id;
+            } else {
+                $keepIds[] = self::create(['organisation_id' => null, 'owner_type' => 'user', 'owner_user_id' => $userId, 'title' => $title, 'location' => $location, 'details' => $details, 'cover_image' => null, 'sort_order' => $order]);
+            }
+        }
+        foreach ($existing as $branch) if (!in_array((int) $branch['id'], $keepIds, true)) self::delete((int) $branch['id']);
     }
 
     public static function syncProviderFormRows(int $providerUserId, array $rows): void

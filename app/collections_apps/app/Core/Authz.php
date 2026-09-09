@@ -119,7 +119,9 @@ class Authz
 
     public static function canViewCourses(array $actor): bool
     {
-        return self::isOrganisationAdmin($actor) || self::canCreateCourses($actor) || self::isStudent($actor);
+        return self::isOrganisationAdmin($actor)
+            || OrganisationMembership::isTrainerRole((string) ($actor['role_slug'] ?? ''))
+            || self::isStudent($actor);
     }
 
     public static function canAccessCourse(array $actor, array $course): bool

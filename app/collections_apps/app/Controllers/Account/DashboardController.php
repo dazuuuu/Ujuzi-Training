@@ -3,7 +3,9 @@
 namespace App\Controllers\Account;
 
 use App\Core\Authz;
+use App\Core\AccountRedirect;
 use App\Models\Course;
+use App\Models\CourseEnrollment;
 use App\Models\Form;
 use App\Models\FormResponse;
 use App\Models\OrganisationBranch;
@@ -43,6 +45,12 @@ class DashboardController extends BaseAccountController
             if (Authz::isStudent($this->user)) {
                 $orgIds = Authz::learnerOrganisationIds($this->user);
                 $learnerCourses = Course::forLearner($orgIds);
+                $enrolledIds = CourseEnrollment::idsForUser((int) $this->user['id']);
+                $enrolledLookup = array_fill_keys($enrolledIds, true);
+                foreach ($learnerCourses as &$course) {
+                    $course['is_enrolled'] = !empty($enrolledLookup[(int) $course['id']]);
+                }
+                unset($course);
                 foreach ($orgIds as $orgId) {
                     $learnerBranches = array_merge($learnerBranches, OrganisationBranch::forOrganisation($orgId));
                 }
@@ -79,6 +87,7 @@ class DashboardController extends BaseAccountController
             'completedCourses' => $completedCourses,
             'attachmentTrainers' => $attachmentTrainers,
             'isStudent' => Authz::isStudent($this->user),
+            'needsProfile' => AccountRedirect::needsProfile($this->user),
         ]);
     }
 }

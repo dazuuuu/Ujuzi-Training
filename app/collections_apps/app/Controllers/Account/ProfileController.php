@@ -23,26 +23,38 @@ class ProfileController extends BaseAccountController
             $form['fields'] = FormField::forForm((int) $form['id']);
             $form['response'] = FormResponse::findForUserForm((int) $this->user['id'], (int) $form['id']);
             $answers = is_array($form['response']['answers'] ?? null) ? $form['response']['answers'] : [];
+            foreach ($form['fields'] as $field) {
+                $fieldKey = (string) ($field['field_key'] ?? '');
+                $fieldType = (string) ($field['field_type'] ?? '');
+                if ($fieldType === 'name' && (!is_array($answers[$fieldKey] ?? null) || empty($answers[$fieldKey]))) {
+                    $answers[$fieldKey] = [
+                        'first' => (string) ($this->user['first_name'] ?? ''),
+                        'last' => (string) ($this->user['last_name'] ?? ''),
+                    ];
+                } elseif ($fieldType === 'phone' && empty($answers[$fieldKey])) {
+                    $answers[$fieldKey] = (string) ($this->user['phone'] ?? '');
+                } elseif ($fieldType === 'email' && empty($answers[$fieldKey])) {
+                    $answers[$fieldKey] = (string) ($this->user['email'] ?? '');
+                }
+            }
             $orgId = (int) ($this->user['organisation_id'] ?? 0);
-            $canManageOwnBranches = Authz::isOrganisationAdmin($this->user)
-                || (($this->user['role_slug'] ?? '') === 'attachment_trainer');
-            if ($canManageOwnBranches) {
-                foreach ($form['fields'] as $field) {
-                    if (($field['field_type'] ?? '') !== 'branches') {
-                        continue;
-                    }
-                    $current = $answers[$field['field_key']] ?? null;
-                    if (!is_array($current) || $current === []) {
-                        $answers[$field['field_key']] = Authz::isOrganisationAdmin($this->user)
-                            ? OrganisationBranch::asFormRows($orgId)
-                            : OrganisationBranch::asProviderFormRows((int) $this->user['id']);
-                    }
+            foreach ($form['fields'] as $field) {
+                if (($field['field_type'] ?? '') !== 'branches') {
+                    continue;
                 }
-                if ($form['response']) {
-                    $form['response']['answers'] = $answers;
-                } elseif ($answers) {
-                    $form['response'] = ['answers' => $answers, 'submitted_at' => null];
+                $current = $answers[$field['field_key']] ?? null;
+                if (!is_array($current) || $current === []) {
+                    $answers[$field['field_key']] = Authz::isOrganisationAdmin($this->user)
+                        ? OrganisationBranch::asFormRows($orgId)
+                        : (($this->user['role_slug'] ?? '') === 'attachment_trainer'
+                            ? OrganisationBranch::asProviderFormRows((int) $this->user['id'])
+                            : OrganisationBranch::asUserFormRows((int) $this->user['id']));
                 }
+            }
+            if ($form['response']) {
+                $form['response']['answers'] = $answers;
+            } elseif ($answers) {
+                $form['response'] = ['answers' => $answers, 'submitted_at' => null];
             }
             $withFields[] = $form;
         }
@@ -62,6 +74,8 @@ class ProfileController extends BaseAccountController
         }
 
         if (Request::post('account_update') === '1') {
+            $firstName = trim((string) Request::post('first_name', ''));
+            $lastName = trim((string) Request::post('last_name', ''));
             $email = strtolower(trim((string) Request::post('email', '')));
             $phone = User::normalizePhone((string) Request::post('phone', ''));
             $errors = [];
@@ -87,6 +101,7 @@ class ProfileController extends BaseAccountController
                 flashError(implode(' ', $errors));
                 redirect('/account/profile');
             }
+            User::updateProfileNames((int) $this->user['id'], $firstName, $lastName);
             User::updateCredentials((int) $this->user['id'], $email, $phone);
             flashSuccess('Your sign-in details were updated.');
             redirect('/account/profile');
@@ -100,12 +115,17 @@ class ProfileController extends BaseAccountController
         }
 
         $fields = FormField::forForm($formId);
+        $saveField = trim((string) Request::post('save_field', ''));
+        $fieldKeys = array_map(static fn(array $field): string => (string) ($field['field_key'] ?? ''), $fields);
+        if ($saveField !== '' && !in_array($saveField, $fieldKeys, true)) {
+            $saveField = '';
+        }
         $posted = Request::post('answers', []);
         if (!is_array($posted)) {
             $posted = [];
         }
         $existing = FormResponse::findForUserForm((int) $this->user['id'], $formId);
-        $collected = FormAnswerService::collect($fields, $posted, $existing['answers'] ?? [], $this->user);
+        $collected = FormAnswerService::collect($fields, $posted, $existing['answers'] ?? [], $this->user, $saveField !== '' ? $saveField : null);
 
         if ($collected['errors']) {
             flashError(implode(' ', $collected['errors']));
@@ -124,21 +144,21 @@ class ProfileController extends BaseAccountController
             // Memberships table is created by Super Admin → Updates.
         }
         $orgId = (int) ($this->user['organisation_id'] ?? 0);
-        if (Authz::isOrganisationAdmin($this->user) || (($this->user['role_slug'] ?? '') === 'attachment_trainer')) {
-            foreach ($fields as $field) {
-                if (($field['field_type'] ?? '') !== 'branches') {
-                    continue;
-                }
-                $rows = $collected['answers'][$field['field_key']] ?? [];
-                if (is_array($rows)) {
-                    if (Authz::isOrganisationAdmin($this->user) && $orgId > 0) {
-                        OrganisationBranch::syncFromFormRows($orgId, $rows);
-                    } elseif (($this->user['role_slug'] ?? '') === 'attachment_trainer') {
-                        OrganisationBranch::syncProviderFormRows((int) $this->user['id'], $rows);
-                    }
-                }
-                break;
+        foreach ($fields as $field) {
+            if (($field['field_type'] ?? '') !== 'branches') {
+                continue;
             }
+            $rows = $collected['answers'][$field['field_key']] ?? [];
+            if (is_array($rows)) {
+                if (Authz::isOrganisationAdmin($this->user) && $orgId > 0) {
+                    OrganisationBranch::syncFromFormRows($orgId, $rows);
+                } elseif (($this->user['role_slug'] ?? '') === 'attachment_trainer') {
+                    OrganisationBranch::syncProviderFormRows((int) $this->user['id'], $rows);
+                } else {
+                    OrganisationBranch::syncUserFormRows((int) $this->user['id'], $rows);
+                }
+            }
+            break;
         }
         foreach ($fields as $field) {
             if (($field['field_type'] ?? '') !== 'name') {
@@ -154,8 +174,7 @@ class ProfileController extends BaseAccountController
             }
             break;
         }
-        $fresh = array_merge($this->user);
-        if (!AccountRedirect::needsProfile($fresh)) {
+        if ($saveField === '' && !AccountRedirect::needsProfile($this->user)) {
             flashSuccess('Your details were saved. Welcome to your dashboard.');
             redirect('/account/dashboard');
         }
