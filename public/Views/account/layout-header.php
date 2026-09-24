@@ -63,6 +63,11 @@ $isStudent = $isStudent ?? false;
               <span class="text-lg">📚</span> Courses
             </a>
           <?php endif; ?>
+          <?php if (($currentUser['role_slug'] ?? '') === 'trainer'): ?>
+            <a href="<?= url('/account/wallet') ?>" class="srms-nav-link <?= ($activeNav ?? '') === 'wallet' ? 'is-active' : '' ?>">
+              <span class="text-lg">💰</span> Earnings
+            </a>
+          <?php endif; ?>
           <?php if ($isBranchAdmin): ?>
             <a href="<?= url('/account/branch-admin') ?>" class="srms-nav-link <?= ($activeNav ?? '') === 'branch_admin' ? 'is-active' : '' ?>">
               <span class="text-lg">🎓</span> Attachees

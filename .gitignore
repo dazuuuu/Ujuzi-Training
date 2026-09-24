@@ -7,7 +7,7 @@ coverage/
 *.log
 .env*
 !.env.example
-!app/collections_apps/.env.example
+!app/logic_ujuzi/.env.example
 public/assets/uploads/*
 !public/assets/uploads/products/
 !public/assets/uploads/products/.gitkeep

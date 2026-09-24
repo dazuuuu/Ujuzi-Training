@@ -21,6 +21,7 @@ $navItems = [
     ['id' => 'course-organisations', 'href' => url('/admin/registered-users?role_slug=organisation_admin'), 'label' => 'Organisations providing courses'],
     ['id' => 'forms', 'href' => url('/admin/forms'), 'label' => 'Forms'],
     ['id' => 'updates', 'href' => url('/admin/updates'), 'label' => 'Updates'],
+    ['id' => 'finance', 'href' => url('/admin/finance'), 'label' => 'Finance'],
     ['id' => 'documents', 'href' => url('/admin/documents'), 'label' => 'Documents'],
     ['id' => 'data-cleanup', 'href' => url('/admin/data-cleanup'), 'label' => 'Data Cleanup'],
     ['id' => 'navigation', 'href' => url('/admin/navigation'), 'label' => 'Navigation'],

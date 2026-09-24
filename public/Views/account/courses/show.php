@@ -68,8 +68,8 @@ require __DIR__ . '/../layout-header.php';
           </form>
         <?php endif; ?>
         <?php if ($isStudent && !$isEnrolled): ?>
-          <?php if ($paymentsEnabled && (float) ($course['enrollment_fee_ksh'] ?? 0) > 0): ?>
-            <a href="<?= url('/account/courses/' . (int) $course['id'] . '/checkout') ?>" class="btn-primary">Enroll for course</a>
+          <?php if ((float) ($course['enrollment_fee_ksh'] ?? 0) > 0): ?>
+            <a href="<?= url('/account/courses/' . (int) $course['id'] . '/checkout') ?>" class="btn-primary">Enroll &amp; pay (min 20%)</a>
           <?php else: ?>
             <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/enroll') ?>">
               <?= csrfField() ?>
@@ -78,6 +78,13 @@ require __DIR__ . '/../layout-header.php';
           <?php endif; ?>
         <?php elseif ($isStudent): ?>
           <span class="btn-secondary" style="padding:0.45rem 0.8rem;">Enrolled</span>
+          <?php
+            $feeKsh = (float) ($course['enrollment_fee_ksh'] ?? 0);
+            $paidKshShow = $feeKsh > 0 ? \App\Services\WalletService::paidForCourse((int) $currentUser['id'], (int) $course['id']) : 0;
+          ?>
+          <?php if ($feeKsh > 0 && $paidKshShow < $feeKsh): ?>
+            <a href="<?= url('/account/courses/' . (int) $course['id'] . '/checkout') ?>" class="btn-primary">Pay balance (Ksh <?= number_format($feeKsh - $paidKshShow, 2) ?>)</a>
+          <?php endif; ?>
         <?php endif; ?>
         <a href="<?= url('/account/courses') ?>" class="btn-secondary">Back</a>
       </div>

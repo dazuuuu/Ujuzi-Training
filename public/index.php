@@ -37,6 +37,8 @@ use App\Controllers\Account\AttachmentController;
 use App\Controllers\Account\BranchAdminController;
 use App\Controllers\Account\CourseBranchAdminController;
 use App\Controllers\Account\OrganisationProfileController;
+use App\Controllers\Account\WalletController;
+use App\Controllers\Admin\FinanceController;
 use App\Controllers\Account\CourseOrganisationController;
 use App\Controllers\Account\RecommendationLetterController;
 use App\Controllers\Admin\DocumentController;
@@ -108,6 +110,9 @@ $router->post('/admin/forms/{id}/delete', [FormController::class, 'destroy']);
 // --- Super admin: settings ---
 $router->get('/admin/settings', [SettingsController::class, 'index']);
 $router->post('/admin/settings', [SettingsController::class, 'update']);
+$router->get('/admin/finance', [FinanceController::class, 'index']);
+$router->get('/admin/finance/organisations/{id}', [FinanceController::class, 'organisation']);
+$router->post('/admin/finance/rate', [FinanceController::class, 'updateRate']);
 $router->get('/admin/navigation', [NavigationController::class, 'index']);
 $router->post('/admin/navigation/{portal}', [NavigationController::class, 'update']);
 
@@ -201,6 +206,8 @@ $router->get('/account/branches/{id}/edit', [AccountBranchController::class, 'ed
 $router->post('/account/branches/{id}', [AccountBranchController::class, 'update']);
 $router->post('/account/branches/{id}/delete', [AccountBranchController::class, 'destroy']);
 
+$router->get('/account/wallet', [WalletController::class, 'index']);
+$router->post('/account/wallet/deposit', [WalletController::class, 'deposit']);
 $router->get('/account/courses', [CourseController::class, 'index']);
 $router->get('/account/courses/create', [CourseController::class, 'create']);
 $router->post('/account/courses', [CourseController::class, 'store']);
