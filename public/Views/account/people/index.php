@@ -1,6 +1,7 @@
 <?php
 /** Requires $users, $manageableRoles, $directoryMode in scope. */
 require __DIR__ . '/../layout-header.php';
+$attachmentApplications = $attachmentApplications ?? [];
 ?>
 
 <div class="space-y-6">
@@ -11,37 +12,102 @@ require __DIR__ . '/../layout-header.php';
       <p class="mt-1 text-sm font-medium text-neutral-600"><?= $directoryMode === 'trainer' ? 'Students who have started one of your courses.' : ($directoryMode === 'attachment_trainer' ? 'Students who selected you as their attachment provider.' : 'People connected to ' . ($currentUser['organisation_name'] ?? 'your organisation') . '.') ?></p>
     </div>
     <?php if ($directoryMode !== 'trainer' && $directoryMode !== 'attachment_trainer'): ?>
+      <a href="<?= url('/account/people/import') ?>" class="btn-secondary">Import CSV</a>
       <a href="<?= url('/account/people/create') ?>" class="btn-primary">Add person</a>
     <?php endif; ?>
   </section>
 
-  <div class="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
-    <table class="w-full min-w-[640px] text-left text-sm">
-      <thead class="text-[11px] uppercase tracking-wider" style="background:#e8f5ee;color:var(--ke-green-dark)">
+  <?php if ($directoryMode === 'attachment_trainer' && !$attachmentApplications): ?>
+    <p class="rounded-xl border border-dashed p-4 text-sm font-bold" style="border-color:var(--ke-line);color:var(--ke-muted)">No student has chosen your organisation yet.</p>
+  <?php endif; ?>
+
+  <?php if ($directoryMode === 'attachment_trainer' && $attachmentApplications): ?>
+    <section class="space-y-3">
+      <div>
+        <h2 class="font-serif-heading text-xl font-bold">Attachment applications</h2>
+        <p class="mt-1 text-sm font-medium text-neutral-600">Students who chose a branch are handled by that branch's admin. Students who chose your organisation directly (no branch) are accepted and completed here — completing one automatically generates the student's recommendation letter.</p>
+      </div>
+      <div class="overflow-x-auto rounded-xl border border-neutral-300 bg-white shadow-sm">
+        <table class="excel-table admin-data-table">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Branch</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($attachmentApplications as $application):
+              $status = (string) ($application['status'] ?? 'pending');
+              $studentName = trim((string) ($application['first_name'] ?? '') . ' ' . (string) ($application['last_name'] ?? '')) ?: (string) ($application['email'] ?? 'Student');
+            ?>
+              <tr>
+                <td class="font-black"><?= e($studentName) ?></td>
+                <td><?= e($application['branch_title'] ?? 'Organisation') ?><?= !empty($application['branch_location']) ? ' - ' . e($application['branch_location']) : '' ?></td>
+                <td><span class="text-[11px] font-black uppercase" style="color:var(--ke-green)"><?= e(ucfirst($status)) ?></span></td>
+                <td>
+                  <?php if (!empty($application['branch_id'])): ?>
+                    <span class="text-xs font-bold text-neutral-500">Handled by branch admin</span>
+                  <?php elseif ($status === 'pending'): ?>
+                    <form method="post" action="<?= url('/account/attachments/' . (int) $application['id'] . '/accept') ?>"><?= csrfField() ?><button class="btn-primary" style="padding:0.25rem 0.5rem;font-size:0.7rem;">Accept</button></form>
+                  <?php elseif ($status === 'accepted'): ?>
+                    <form method="post" action="<?= url('/account/attachments/' . (int) $application['id'] . '/complete') ?>" onsubmit="return confirm('Mark this attachment complete? This generates their recommendation letter right away.');"><?= csrfField() ?><button class="btn-primary" style="padding:0.25rem 0.5rem;font-size:0.7rem;">Mark complete</button></form>
+                  <?php elseif ($status === 'recommended'): ?>
+                    <span class="text-xs font-bold" style="color:var(--ke-green)">Letter ready.</span>
+                  <?php endif; ?>
+                </td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  <?php endif; ?>
+
+  <?php if ($directoryMode !== 'attachment_trainer'): ?>
+  <div class="live-search-bar">
+    <input type="text" data-live-search="table.excel-table" placeholder="Search by name, role, or email/phone..." autocomplete="off" />
+  </div>
+
+  <div class="overflow-x-auto rounded-xl border border-neutral-300 bg-white shadow-sm">
+    <table class="excel-table admin-data-table">
+      <thead>
         <tr>
-          <th class="px-5 py-3">Name</th>
-          <th class="px-5 py-3">Role</th>
-          <th class="px-5 py-3">Sign-in</th>
-          <th class="px-5 py-3"></th>
+          <th>Name</th>
+          <th>Role</th>
+          <th>Sign-in</th>
+          <th>Status</th>
+          <th></th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-neutral-100">
+      <tbody>
         <?php if (!$users): ?>
-          <tr><td colspan="4" class="px-5 py-8 text-center font-bold text-neutral-600">No people in your scope yet.</td></tr>
+          <tr><td colspan="5" class="px-5 py-8 text-center font-bold text-neutral-700">No people in your scope yet.</td></tr>
         <?php endif; ?>
         <?php foreach ($users as $person): ?>
           <tr>
-            <td class="px-5 py-4 font-black"><?= e(userDisplayName($person)) ?></td>
-            <td class="px-5 py-4 font-bold"><?= e($person['role_name']) ?></td>
-            <td class="px-5 py-4 text-xs font-semibold text-neutral-700"><?= e($person['email'] ?: $person['phone'] ?: '—') ?></td>
-            <td class="px-5 py-4">
-              <a href="<?= url('/account/people/' . (int) $person['id']) ?>" class="btn-secondary" style="padding:0.35rem 0.65rem;">View</a>
+            <td class="font-black"><?= e(userDisplayName($person)) ?></td>
+            <td><?= e($person['role_name']) ?></td>
+            <td><?= e($person['email'] ?: $person['phone'] ?: '—') ?></td>
+            <td>
+              <span class="text-[11px] font-black uppercase" style="color: <?= ($person['account_status'] ?? 'active') === 'active' ? 'var(--ke-green)' : 'var(--ke-red)' ?>">
+                <?= e(ucfirst((string) ($person['account_status'] ?? 'active'))) ?>
+              </span>
+            </td>
+            <td>
+              <?php if ($directoryMode === 'attachment_trainer' || $directoryMode === 'trainer'): ?>
+                <span class="text-xs font-bold text-neutral-500">Tracked above</span>
+              <?php else: ?>
+                <a href="<?= url('/account/people/' . (int) $person['id']) ?>" class="btn-secondary" style="padding:0.35rem 0.65rem;">View</a>
+              <?php endif; ?>
             </td>
           </tr>
         <?php endforeach; ?>
       </tbody>
     </table>
   </div>
+  <?php endif; ?>
 </div>
 
 <?php require __DIR__ . '/../layout-footer.php'; ?>

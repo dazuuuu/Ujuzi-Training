@@ -10,6 +10,9 @@ $location = (string) ($branch['location'] ?? '');
 <?php endif; ?>
 <<?= $headingTag ?> class="font-serif-heading text-lg font-bold"><?= e($title) ?></<?= $headingTag ?>>
 <p class="text-sm font-medium text-neutral-700"><?= e($location) ?></p>
+<?php if (!empty($branch['branch_admin_name']) || !empty($branch['branch_admin_email']) || !empty($branch['branch_admin_phone'])): ?>
+  <p class="mt-1 text-xs font-semibold text-neutral-600">Branch admin: <?= e($branch['branch_admin_name'] ?: ($branch['branch_admin_email'] ?: $branch['branch_admin_phone'])) ?></p>
+<?php endif; ?>
 <?php if ($extras): ?>
   <dl class="mt-2 space-y-1 text-xs font-semibold text-neutral-600">
     <?php foreach ($extras as $label => $value): ?>

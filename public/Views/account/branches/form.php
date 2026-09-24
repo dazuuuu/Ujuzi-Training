@@ -24,6 +24,21 @@ require __DIR__ . '/../layout-header.php';
       <label class="text-[11px] font-bold uppercase text-neutral-600">Location</label>
       <input type="text" name="location" required value="<?= e($form['location'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" placeholder="e.g. Westlands, Nairobi" />
     </div>
+    <div class="grid gap-3 sm:grid-cols-3">
+      <div>
+        <label class="text-[11px] font-bold uppercase text-neutral-600">Branch admin name</label>
+        <input type="text" name="branch_admin_name" value="<?= e($form['branch_admin_name'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
+      </div>
+      <div>
+        <label class="text-[11px] font-bold uppercase text-neutral-600">Branch admin email</label>
+        <input type="email" name="branch_admin_email" value="<?= e($form['branch_admin_email'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
+        <p class="mt-1 text-[11px] font-medium text-neutral-500">If this email already has an account, they're linked as branch admin. Otherwise a login is created automatically with a default password, emailed to them (and shareable via WhatsApp) — they'll set their own password on first sign-in.</p>
+      </div>
+      <div>
+        <label class="text-[11px] font-bold uppercase text-neutral-600">Branch admin phone</label>
+        <input type="text" name="branch_admin_phone" value="<?= e($form['branch_admin_phone'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
+      </div>
+    </div>
     <div class="space-y-3 rounded-lg border border-neutral-200 p-3">
       <p class="text-[11px] font-bold uppercase text-neutral-600">Extra details</p>
       <p class="field-hint">These match extra values Super Admin adds on the Organisation branches form field. You can also add more labels here.</p>

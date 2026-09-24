@@ -34,6 +34,12 @@ require __DIR__ . '/../layout-header.php';
       <input type="checkbox" name="is_active" value="1" <?= !empty($form['is_active']) ? 'checked' : '' ?> class="h-4 w-4" />
       Visible to approved tutors
     </label>
+    <input type="hidden" name="is_open" value="0" />
+    <label class="flex items-center gap-2 text-sm font-bold">
+      <input type="checkbox" name="is_open" value="1" <?= !empty($form['is_open']) ? 'checked' : '' ?> class="h-4 w-4" />
+      Open to all students
+    </label>
+    <p class="text-xs font-medium text-neutral-500">Off: only students specifically approved for this category see its courses. On: every approved student of your organisation sees them.</p>
   </div>
 
   <div class="flex items-center gap-3">

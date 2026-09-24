@@ -17,6 +17,8 @@ $maxSelect = max(0, (int) ($field['max_select'] ?? 0));
 $selectAll = !empty($field['select_all']);
 $class = 'w-full mt-1 bg-white border border-neutral-300 rounded-lg p-2.5 text-sm';
 $otherToken = FormAnswerService::OTHER_VALUE;
+$locked = FormAnswerService::isIdentityFieldLocked($type, $currentUser ?? null);
+$lockedClass = 'w-full mt-1 bg-neutral-100 border border-neutral-200 rounded-lg p-2.5 text-sm text-neutral-600';
 
 if ($type === 'heading') {
     echo '<h3 class="font-serif-heading text-lg font-bold pt-2">' . e($field['label']) . '</h3>';
@@ -75,10 +77,22 @@ switch ($type) {
     case 'name':
         $first = is_array($value) ? (string) ($value['first'] ?? '') : '';
         $last = is_array($value) ? (string) ($value['last'] ?? '') : '';
+        $other = is_array($value) ? (string) ($value['other'] ?? '') : '';
+        if ($locked) {
+            $first = $first !== '' ? $first : (string) ($currentUser['first_name'] ?? '');
+            $last = $last !== '' ? $last : (string) ($currentUser['last_name'] ?? '');
+        }
+        $other = $other !== '' ? $other : (string) ($currentUser['other_names'] ?? '');
+        $nameAttrs = $locked ? ' readonly' : ($required ? ' required' : '');
+        $nameClass = $locked ? $lockedClass : $class;
         echo '<div class="name-grid">';
-        echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">First name</label><input type="text" name="' . e($name) . '[first]" value="' . e($first) . '" ' . ($required ? 'required' : '') . ' class="' . $class . '" /></div>';
-        echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Last name</label><input type="text" name="' . e($name) . '[last]" value="' . e($last) . '" class="' . $class . '" /></div>';
+        echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">First name</label><input type="text" name="' . e($name) . '[first]" value="' . e($first) . '"' . $nameAttrs . ' class="' . $nameClass . '" /></div>';
+        echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Last name</label><input type="text" name="' . e($name) . '[last]" value="' . e($last) . '"' . ($locked ? ' readonly' : '') . ' class="' . $nameClass . '" /></div>';
+        echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Other names (optional)</label><input type="text" name="' . e($name) . '[other]" value="' . e($other) . '" class="' . $class . '" /></div>';
         echo '</div>';
+        if ($locked) {
+            echo '<p class="field-hint">First and last name were set when your account was created — contact your organisation admin to change them.</p>';
+        }
         break;
 
     case 'address':
@@ -191,7 +205,13 @@ switch ($type) {
         break;
 
     case 'email':
-        echo '<input type="email" name="' . e($name) . '" value="' . e((string) $value) . '" ' . ($required ? 'required' : '') . ' placeholder="' . e($placeholder) . '" class="' . $class . '" />';
+        if ($locked) {
+            $value = $value !== '' && $value !== null ? $value : (string) ($currentUser['email'] ?? '');
+            echo '<input type="email" name="' . e($name) . '" value="' . e((string) $value) . '" readonly class="' . $lockedClass . '" />';
+            echo '<p class="field-hint">Your sign-in email can\'t be changed here.</p>';
+        } else {
+            echo '<input type="email" name="' . e($name) . '" value="' . e((string) $value) . '" ' . ($required ? 'required' : '') . ' placeholder="' . e($placeholder) . '" class="' . $class . '" />';
+        }
         break;
 
     case 'phone':
@@ -399,23 +419,25 @@ switch ($type) {
 
     case 'category':
         $user = $currentUser ?? \App\Core\UserSession::current();
-        $groups = \App\Models\OrganisationCategory::groupedForUser($user ?: null);
-        $current = is_array($value) ? (string) ($value[0] ?? '') : (string) $value;
-        if (!$groups) {
-            echo '<p class="mt-2 text-sm font-bold" style="color:var(--ke-muted)">No categories are available yet. An organisation admin must list categories, and you must be an approved tutor for that organisation.</p>';
+        $approvedOrgIds = $user ? \App\Core\Authz::approvedOrganisationIds($user) : [];
+        $resolvedOrgId = !empty($user['organisation_id']) && in_array((int) $user['organisation_id'], $approvedOrgIds, true)
+            ? (int) $user['organisation_id']
+            : (int) ($approvedOrgIds[0] ?? 0);
+        $cats = $resolvedOrgId > 0 ? \App\Models\OrganisationCategory::forOrganisation($resolvedOrgId, true) : [];
+        $currentIds = is_array($value) ? array_map('intval', $value) : (($value !== '' && $value !== null) ? [(int) $value] : []);
+        if (!$cats) {
+            echo '<p class="mt-2 text-sm font-bold" style="color:var(--ke-muted)">No categories are available yet. Ask your organisation admin to add one from Categories.</p>';
             break;
         }
-        echo '<select name="' . e($name) . '" ' . ($required ? 'required' : '') . ' class="' . $class . '"><option value="">Choose category</option>';
-        foreach ($groups as $orgName => $cats) {
-            echo '<optgroup label="' . e($orgName) . '">';
-            foreach ($cats as $cat) {
-                $isOn = $current === (string) $cat['id'] ? 'selected' : '';
-                echo '<option value="' . (int) $cat['id'] . '" ' . $isOn . '>' . e($cat['name']) . '</option>';
-            }
-            echo '</optgroup>';
+        echo '<div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">';
+        foreach ($cats as $cat) {
+            $isOn = in_array((int) $cat['id'], $currentIds, true) ? 'checked' : '';
+            echo '<label class="flex items-center gap-2 rounded-lg border border-neutral-200 p-2 text-sm">'
+                . '<input type="checkbox" name="' . e($name) . '[]" value="' . (int) $cat['id'] . '" class="h-4 w-4" ' . $isOn . ' />'
+                . e($cat['name']) . '</label>';
         }
-        echo '</select>';
-        echo '<p class="field-hint">Only categories from organisations that have approved you are shown.</p>';
+        echo '</div>';
+        echo '<p class="field-hint">Choose one or more categories your organisation offers.</p>';
         break;
 
     default:

@@ -14,43 +14,43 @@ require __DIR__ . '/../layout-header.php';
   </section>
 
   <div class="overflow-x-auto rounded-xl border border-neutral-300 bg-white shadow-sm">
-    <table class="w-full min-w-[760px] text-left text-sm admin-data-table">
-      <thead class="bg-neutral-100 text-[11px] uppercase tracking-wider text-black">
+    <table class="excel-table admin-data-table">
+      <thead>
         <tr>
-          <th class="px-5 py-3">Form</th>
-          <th class="px-5 py-3">Purpose</th>
-          <th class="px-5 py-3">Assigned to</th>
-          <th class="px-5 py-3">Fields</th>
-          <th class="px-5 py-3">Status</th>
-          <th class="px-5 py-3"></th>
+          <th>Form</th>
+          <th>Purpose</th>
+          <th>Assigned to</th>
+          <th>Fields</th>
+          <th>Status</th>
+          <th></th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-neutral-100">
+      <tbody>
         <?php if (!$forms): ?>
           <tr><td colspan="6" class="px-5 py-8 text-center font-bold text-neutral-700">No forms yet. Create a profile form or a course creation form.</td></tr>
         <?php endif; ?>
         <?php foreach ($forms as $form): ?>
           <tr>
-            <td class="px-5 py-4">
-              <p class="font-black text-black"><?= e($form['title']) ?></p>
+            <td class="font-black">
+              <?= e($form['title']) ?>
               <p class="text-xs font-semibold text-neutral-600"><?= e($form['description'] ?: 'No description') ?></p>
             </td>
-            <td class="px-5 py-4 text-xs font-bold text-neutral-800"><?= ($form['purpose'] ?? 'profile') === 'course' ? 'Course creation' : 'Profile details' ?></td>
-            <td class="px-5 py-4 text-xs font-bold text-neutral-800">
+            <td><?= ($form['purpose'] ?? 'profile') === 'course' ? 'Course creation' : 'Profile details' ?></td>
+            <td>
               <?php if (empty($form['roles'])): ?>
                 Unassigned
               <?php else: ?>
                 <?= e(implode(', ', array_column($form['roles'], 'name'))) ?>
               <?php endif; ?>
             </td>
-            <td class="px-5 py-4 font-bold"><?= (int) $form['field_count'] ?></td>
-            <td class="px-5 py-4 font-bold"><?= !empty($form['is_active']) ? 'Active' : 'Inactive' ?></td>
-            <td class="px-5 py-4">
-              <div class="flex items-center gap-3">
-                <a href="<?= url('/admin/forms/' . (int) $form['id'] . '/edit') ?>" class="btn-secondary" style="padding:0.4rem 0.7rem;">Edit</a>
+            <td><?= (int) $form['field_count'] ?></td>
+            <td><?= !empty($form['is_active']) ? 'Active' : 'Inactive' ?></td>
+            <td>
+              <div class="excel-row-actions">
+                <a href="<?= url('/admin/forms/' . (int) $form['id'] . '/edit') ?>" class="btn-secondary" style="padding:0.35rem 0.5rem;font-size:0.7rem;">Edit</a>
                 <form method="post" action="<?= url('/admin/forms/' . (int) $form['id'] . '/delete') ?>" onsubmit="return confirm('Delete this form and its saved answers?');">
                   <?= csrfField() ?>
-                  <button type="submit" class="btn-danger" style="padding:0.4rem 0.7rem;">Delete</button>
+                  <button type="submit" class="btn-danger" style="padding:0.35rem 0.5rem;font-size:0.7rem;">Delete</button>
                 </form>
               </div>
             </td>

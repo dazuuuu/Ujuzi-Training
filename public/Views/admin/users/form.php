@@ -22,6 +22,10 @@ $action = $user ? url('/admin/users/' . (int) $user['id']) : url('/admin/users')
         <input type="text" name="last_name" value="<?= e($form['last_name'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 bg-white p-2.5 text-sm focus:border-black focus:outline-none" />
       </div>
       <div>
+        <label class="text-[11px] font-bold uppercase text-neutral-600">Other names (optional)</label>
+        <input type="text" name="other_names" value="<?= e($form['other_names'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 bg-white p-2.5 text-sm focus:border-black focus:outline-none" />
+      </div>
+      <div>
         <label class="text-[11px] font-bold uppercase text-neutral-600">Email</label>
         <input type="email" name="email" value="<?= e($form['email'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 bg-white p-2.5 text-sm focus:border-black focus:outline-none" />
       </div>

@@ -18,7 +18,7 @@
   <main class="mx-auto grid min-h-screen max-w-6xl items-center gap-8 px-4 py-8 lg:grid-cols-[0.9fr_1.1fr]">
     <section class="rounded-2xl p-8 text-white" style="background:var(--ke-black)">
       <div class="mb-10 flex h-14 w-14 items-center justify-center rounded-xl text-white" style="background:var(--ke-red)">
-        <?= pentagonLogoSvg('w-8 h-8 text-white') ?>
+        <?= defaultLogoSvg('w-8 h-8 text-white') ?>
       </div>
       <p class="text-xs font-black uppercase tracking-widest" style="color:#b8e0cc">First Run Setup</p>
       <h1 class="mt-3 font-serif-heading text-4xl font-black leading-tight">Prepare your LMS.</h1>

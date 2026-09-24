@@ -172,7 +172,7 @@ button:disabled,
 }
 
 .name-grid {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
 }
 
 .address-grid {
@@ -1732,6 +1732,163 @@ body.admin-panel .admin-data-table a:hover {
 body.admin-panel .admin-data-table .btn-danger:hover {
   color: var(--ke-white) !important;
   text-decoration: none;
+}
+
+/* Excel-style consolidated table — single source of truth for every data table site-wide. */
+.excel-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.8rem;
+  background: #ffffff;
+  table-layout: auto;
+}
+
+.excel-table th,
+.excel-table td {
+  border-right: 1px solid #d8dde3;
+  border-bottom: 1px solid #d8dde3;
+  padding: 0.5rem 0.75rem;
+  vertical-align: middle;
+}
+
+/* Row-number + corner gutter, generated purely in CSS (no markup changes needed per table). */
+.excel-table thead tr::before,
+.excel-table tbody tr::before {
+  display: table-cell;
+  width: 2.25rem;
+  min-width: 2.25rem;
+  border-right: 1px solid #d8dde3;
+  border-bottom: 1px solid #d8dde3;
+  background: #eef1f4;
+  color: #57606a;
+  font-weight: 700;
+  font-size: 0.7rem;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.excel-table thead tr::before {
+  content: "";
+}
+
+.excel-table tbody {
+  counter-reset: excel-row;
+}
+
+.excel-table tbody tr::before {
+  counter-increment: excel-row;
+  content: counter(excel-row);
+}
+
+.excel-table thead th {
+  background: #eef1f4;
+  color: #24292f;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.68rem;
+  text-align: left;
+  white-space: nowrap;
+  border-top: 1px solid #d8dde3;
+}
+
+.excel-table thead tr:first-child th,
+.excel-table thead tr:first-child::before {
+  border-top: 1px solid #d8dde3;
+}
+
+.excel-table thead tr.excel-table-group th {
+  text-align: center;
+  background: #e2e7ec;
+}
+
+.excel-table tbody tr {
+  background: #ffffff;
+}
+
+.excel-table tbody tr:nth-child(even) {
+  background: #f7f9fb;
+}
+
+.excel-table tbody tr:hover {
+  background: #e8f2ff;
+}
+
+.excel-table tbody tr:hover::before {
+  background: #cfe3fb;
+  color: #1c4e80;
+}
+
+.excel-table tbody td:first-child {
+  font-weight: 800;
+  color: #1c1c1c;
+}
+
+.excel-table tbody td:last-child,
+.excel-table thead th:last-child {
+  border-right: 1px solid #d8dde3;
+}
+
+.excel-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-2px);
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s ease;
+}
+
+/* Same layout as .excel-row-actions, but always visible — for primary,
+   required actions (Approve/Reject) that must not be hidden until hover. */
+.excel-row-actions-visible {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.excel-table tbody tr:hover .excel-row-actions,
+.excel-table tbody tr:focus-within .excel-row-actions {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+/* Live "find as you type" search bar */
+.live-search-bar {
+  position: relative;
+  max-width: 420px;
+}
+
+.live-search-bar input {
+  width: 100%;
+  padding: 0.6rem 0.9rem 0.6rem 2.25rem;
+  border-radius: 999px;
+  border: 1px solid var(--ke-line, #d9c2c7);
+  background: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.live-search-bar::before {
+  content: '⌕';
+  position: absolute;
+  left: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1rem;
+  color: #8a6b73;
+  pointer-events: none;
+}
+
+.live-search-empty {
+  display: none;
+  padding: 1.5rem;
+  text-align: center;
+  font-weight: 700;
+  color: #6b7280;
 }
 
 .course-grid {

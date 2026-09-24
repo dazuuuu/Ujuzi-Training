@@ -3,6 +3,15 @@
 require __DIR__ . '/../layout-header.php';
 $logo = $settings['store_logo'] ?? null;
 $platformName = $settings['platform_name'] ?? appName();
+$coursePaymentsEnabled = ($settings['course_payments_enabled'] ?? '0') === '1';
+$coursePaymentProvider = $settings['course_payment_provider'] ?? 'mpesa';
+$courseKshUsdRate = $settings['course_ksh_usd_rate'] ?? '130';
+$darajaEnvironment = $settings['daraja_environment'] ?? 'sandbox';
+$hasDarajaConsumerKey = !empty($settings['daraja_consumer_key']);
+$hasDarajaConsumerSecret = !empty($settings['daraja_consumer_secret']);
+$hasDarajaPasskey = !empty($settings['daraja_passkey']);
+$hasStripeSecretKey = !empty($settings['stripe_secret_key']);
+$hasStripeWebhookSecret = !empty($settings['stripe_webhook_secret']);
 ?>
 
 <div class="max-w-3xl space-y-6">
@@ -31,7 +40,7 @@ $platformName = $settings['platform_name'] ?? appName();
             <img src="<?= e(imageUrl($logo)) ?>" alt="Current logo" class="max-h-full max-w-full object-contain" />
           <?php else: ?>
             <div class="flex h-12 w-12 items-center justify-center rounded-lg text-white" style="background:var(--ke-green)">
-              <?= pentagonLogoSvg('w-7 h-7 text-white') ?>
+              <?= defaultLogoSvg('w-7 h-7 text-white') ?>
             </div>
           <?php endif; ?>
         </div>
@@ -51,6 +60,97 @@ $platformName = $settings['platform_name'] ?? appName();
         <?php endif; ?>
       </div>
     </div>
+  </form>
+
+  <form method="post" action="<?= url('/admin/settings') ?>" class="rounded-xl border bg-white p-6 shadow-sm space-y-6" style="border:2px solid var(--ke-green)">
+    <?= csrfField() ?>
+    <input type="hidden" name="save_course_payments" value="1" />
+    <div class="flex flex-col gap-4 border-b border-neutral-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">Course payments</p>
+        <h2 class="mt-2 text-2xl font-black text-black">Enrollment checkout</h2>
+        <p class="mt-1 text-sm font-medium text-neutral-700">Open payments when credentials are ready. Close payments for testing so students can enroll without checkout.</p>
+      </div>
+      <button type="submit" class="btn-primary">Save payments</button>
+    </div>
+    <fieldset class="grid gap-3 sm:grid-cols-2">
+      <label class="rounded-lg border p-4 text-sm font-bold" style="border-color:<?= $coursePaymentsEnabled ? 'var(--ke-green)' : 'var(--ke-line)' ?>">
+        <input type="radio" name="course_payments_enabled" value="1" <?= $coursePaymentsEnabled ? 'checked' : '' ?> class="mr-2 h-4 w-4" />
+        Payments open
+        <span class="mt-1 block text-xs font-medium text-neutral-600">Paid courses go through the selected checkout provider.</span>
+      </label>
+      <label class="rounded-lg border p-4 text-sm font-bold" style="border-color:<?= !$coursePaymentsEnabled ? 'var(--ke-green)' : 'var(--ke-line)' ?>">
+        <input type="radio" name="course_payments_enabled" value="0" <?= !$coursePaymentsEnabled ? 'checked' : '' ?> class="mr-2 h-4 w-4" />
+        Payments closed
+        <span class="mt-1 block text-xs font-medium text-neutral-600">Testing mode: students can enroll in paid courses without paying.</span>
+      </label>
+    </fieldset>
+    <fieldset class="grid gap-3 sm:grid-cols-2">
+      <label class="rounded-lg border p-4 text-sm font-bold" style="border-color:var(--ke-line)">
+        <input type="radio" name="course_payment_provider" value="mpesa" <?= $coursePaymentProvider !== 'stripe' ? 'checked' : '' ?> class="mr-2 h-4 w-4" />
+        M-Pesa Daraja
+        <span class="mt-1 block text-xs font-medium text-neutral-600">Prepared for Daraja integration. Checkout currently confirms in sandbox mode.</span>
+      </label>
+      <label class="rounded-lg border p-4 text-sm font-bold" style="border-color:var(--ke-line)">
+        <input type="radio" name="course_payment_provider" value="stripe" <?= $coursePaymentProvider === 'stripe' ? 'checked' : '' ?> class="mr-2 h-4 w-4" />
+        Stripe sandbox
+        <span class="mt-1 block text-xs font-medium text-neutral-600">Shows KSH fee and estimated USD charge before sandbox confirmation.</span>
+      </label>
+    </fieldset>
+    <div>
+      <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">KSH per USD conversion rate</label>
+      <input type="number" name="course_ksh_usd_rate" min="1" step="0.01" value="<?= e($courseKshUsdRate) ?>" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold" />
+      <p class="mt-2 text-xs font-medium text-neutral-600">Used only for Stripe sandbox checkout display until live payment APIs are connected.</p>
+    </div>
+    <section class="rounded-xl border border-neutral-300 bg-neutral-50 p-5 space-y-5">
+      <div>
+        <p class="text-xs font-black uppercase tracking-widest text-neutral-600">Secure credentials</p>
+        <h3 class="mt-1 text-xl font-black text-black">Daraja and Stripe keys</h3>
+        <p class="mt-1 text-xs font-medium text-neutral-600">Secret fields stay saved when left blank.</p>
+      </div>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Daraja environment</label>
+          <select name="daraja_environment" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold">
+            <option value="sandbox" <?= $darajaEnvironment !== 'live' ? 'selected' : '' ?>>Sandbox</option>
+            <option value="live" <?= $darajaEnvironment === 'live' ? 'selected' : '' ?>>Live</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Daraja shortcode</label>
+          <input type="text" name="daraja_shortcode" value="<?= e($settings['daraja_shortcode'] ?? '') ?>" autocomplete="off" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold" />
+        </div>
+        <div>
+          <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Daraja consumer key</label>
+          <input type="password" name="daraja_consumer_key" value="" placeholder="<?= $hasDarajaConsumerKey ? 'Saved - leave blank to keep' : 'Consumer key' ?>" autocomplete="new-password" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold" />
+        </div>
+        <div>
+          <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Daraja consumer secret</label>
+          <input type="password" name="daraja_consumer_secret" value="" placeholder="<?= $hasDarajaConsumerSecret ? 'Saved - leave blank to keep' : 'Consumer secret' ?>" autocomplete="new-password" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold" />
+        </div>
+        <div>
+          <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Daraja passkey</label>
+          <input type="password" name="daraja_passkey" value="" placeholder="<?= $hasDarajaPasskey ? 'Saved - leave blank to keep' : 'Lipa na M-Pesa passkey' ?>" autocomplete="new-password" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold" />
+        </div>
+        <div>
+          <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Daraja callback URL</label>
+          <input type="url" name="daraja_callback_url" value="<?= e($settings['daraja_callback_url'] ?? '') ?>" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold" />
+        </div>
+        <div>
+          <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Stripe publishable key</label>
+          <input type="text" name="stripe_publishable_key" value="<?= e($settings['stripe_publishable_key'] ?? '') ?>" autocomplete="off" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold" />
+        </div>
+        <div>
+          <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Stripe secret key</label>
+          <input type="password" name="stripe_secret_key" value="" placeholder="<?= $hasStripeSecretKey ? 'Saved - leave blank to keep' : 'Secret key' ?>" autocomplete="new-password" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold" />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Stripe webhook secret</label>
+          <input type="password" name="stripe_webhook_secret" value="" placeholder="<?= $hasStripeWebhookSecret ? 'Saved - leave blank to keep' : 'Webhook secret' ?>" autocomplete="new-password" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold" />
+        </div>
+      </div>
+    </section>
+    <button type="submit" class="btn-primary">Save payments</button>
   </form>
 
   <form method="post" action="<?= url('/admin/settings') ?>" class="rounded-xl border bg-white p-6 shadow-sm space-y-6" style="border:2px solid var(--ke-green)">
@@ -104,6 +204,21 @@ $platformName = $settings['platform_name'] ?? appName();
     </div>
     <p class="text-xs font-medium text-neutral-600">Gmail example: host <span class="font-mono">smtp.gmail.com</span>, port <span class="font-mono">587</span>, encryption TLS, username your full Gmail, password a Google App Password.</p>
     <button type="submit" class="btn-primary">Save SMTP</button>
+  </form>
+
+  <form method="post" action="<?= url('/admin/settings') ?>" class="rounded-xl border bg-white p-6 shadow-sm space-y-4" style="border:2px solid var(--ke-green)">
+    <?= csrfField() ?>
+    <input type="hidden" name="save_whatsapp" value="1" />
+    <div>
+      <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">WhatsApp</p>
+      <h2 class="mt-2 text-2xl font-black text-black">Sharing number</h2>
+      <p class="mt-1 text-sm font-medium text-neutral-700">When an admin creates a login for someone, they get a "Share via WhatsApp" link as a fallback to email — opened from this number's WhatsApp.</p>
+    </div>
+    <div>
+      <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">WhatsApp number (with country code, digits only)</label>
+      <input type="text" name="whatsapp_share_number" value="<?= e($settings['whatsapp_share_number'] ?? '') ?>" placeholder="2547XXXXXXXX" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold" />
+    </div>
+    <button type="submit" class="btn-primary">Save WhatsApp number</button>
   </form>
 </div>
 

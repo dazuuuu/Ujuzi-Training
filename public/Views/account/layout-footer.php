@@ -6,6 +6,40 @@
   <?php if ($loggedInUser): ?></div></div><?php endif; ?>
   <script>
   (function () {
+    var sidebar = document.getElementById('srmsSidebar');
+    var backdrop = document.getElementById('srmsSidebarBackdrop');
+    var toggle = document.getElementById('srmsMenuToggle');
+    var closeBtn = document.getElementById('srmsSidebarClose');
+    function openSidebar() {
+      if (sidebar) sidebar.classList.add('is-open');
+      if (backdrop) backdrop.classList.add('is-open');
+      document.body.classList.add('srms-nav-open');
+    }
+    function closeSidebar() {
+      if (sidebar) sidebar.classList.remove('is-open');
+      if (backdrop) backdrop.classList.remove('is-open');
+      document.body.classList.remove('srms-nav-open');
+    }
+    if (toggle && sidebar) {
+      toggle.addEventListener('click', function () {
+        if (sidebar.classList.contains('is-open')) closeSidebar(); else openSidebar();
+      });
+    }
+    if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+    if (backdrop) backdrop.addEventListener('click', closeSidebar);
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') closeSidebar();
+    });
+    if (sidebar) {
+      sidebar.querySelectorAll('a').forEach(function (link) {
+        link.addEventListener('click', closeSidebar);
+      });
+    }
+    window.addEventListener('resize', function () {
+      if (window.innerWidth > 900) closeSidebar();
+    });
+  })();
+  (function () {
     function escapeHtml(value) {
       var div = document.createElement('div');
       div.textContent = String(value == null ? '' : value);
@@ -243,6 +277,58 @@
     document.querySelectorAll('.js-org-search').forEach(initialiseOrganisationSearch);
     document.querySelectorAll('.js-provider-search').forEach(renderProvider);
     refreshAllBranchSelects(document);
+  })();
+
+  (function () {
+    document.addEventListener('click', function (event) {
+      var removeBtn = event.target.closest('.category-chip-remove');
+      if (!removeBtn) return;
+      var picker = removeBtn.closest('.category-picker');
+      var chip = removeBtn.closest('.category-chip');
+      if (!picker || !chip) return;
+      var id = chip.getAttribute('data-id');
+      var all = [];
+      try { all = JSON.parse(picker.getAttribute('data-all') || '[]'); } catch (e) { all = []; }
+      var match = all.find(function (cat) { return String(cat.id) === String(id); });
+      var select = picker.querySelector('.category-add');
+      if (select && match) {
+        var option = document.createElement('option');
+        option.value = match.id;
+        option.textContent = match.name;
+        select.appendChild(option);
+      }
+      chip.remove();
+      var chips = picker.querySelector('.category-chips');
+      if (chips && !chips.querySelector('.category-chip')) {
+        var hint = document.createElement('span');
+        hint.className = 'text-xs font-bold text-neutral-500 category-empty-hint';
+        hint.textContent = 'No categories selected.';
+        chips.appendChild(hint);
+      }
+    });
+
+    document.addEventListener('change', function (event) {
+      var select = event.target.closest('.category-add');
+      if (!select || !select.value) return;
+      var picker = select.closest('.category-picker');
+      if (!picker) return;
+      var all = [];
+      try { all = JSON.parse(picker.getAttribute('data-all') || '[]'); } catch (e) { all = []; }
+      var match = all.find(function (cat) { return String(cat.id) === String(select.value); });
+      if (!match) return;
+      var chips = picker.querySelector('.category-chips');
+      var hint = chips.querySelector('.category-empty-hint');
+      if (hint) hint.remove();
+      var chip = document.createElement('span');
+      chip.className = 'category-chip inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2 py-1 text-[11px] font-bold whitespace-nowrap';
+      chip.setAttribute('data-id', match.id);
+      chip.innerHTML = match.name.replace(/[<>&]/g, function (c) { return { '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]; })
+        + ' <button type="button" class="category-chip-remove font-black text-neutral-500 hover:text-rose-600" aria-label="Remove">×</button>'
+        + '<input type="hidden" name="category_ids[]" value="' + match.id + '" />';
+      chips.appendChild(chip);
+      select.querySelector('option[value="' + select.value + '"]').remove();
+      select.value = '';
+    });
   })();
   </script>
 </body>

@@ -5,39 +5,50 @@ $invites = $invites ?? [];
 $adminUsersByOrganisation = $adminUsersByOrganisation ?? [];
 ?>
 
-<div class="space-y-6">
+<div class="space-y-6" data-live-search-scope>
   <section class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
     <div>
       <p class="text-xs font-black uppercase tracking-widest text-neutral-600">Tenants</p>
       <h2 class="mt-2 text-2xl font-black text-black">Organisations</h2>
-      <p class="mt-1 text-sm font-medium text-neutral-700">Every LMS user belongs to an organisation. Generate a 5-minute, one-use registration URL to invite an organisation admin, or edit the organisation.</p>
+      <p class="mt-1 text-sm font-medium text-neutral-700">Every LMS user belongs to an organisation. Hover a row to invite an admin or edit the organisation.</p>
     </div>
     <a href="<?= url('/admin/organisations/create') ?>" class="btn-primary">Add organisation</a>
   </section>
 
+  <div class="live-search-bar">
+    <input type="text" data-live-search="table.excel-table" placeholder="Search organisations by name or admin email..." autocomplete="off" />
+  </div>
+
   <div class="overflow-x-auto rounded-xl border border-neutral-300 bg-white shadow-sm">
-    <table class="w-full min-w-[640px] text-left text-sm admin-data-table">
-      <thead class="bg-neutral-100 text-[11px] uppercase tracking-wider text-black">
+    <table class="excel-table admin-data-table">
+      <thead>
         <tr>
-          <th class="px-5 py-3">Name</th>
-          <th class="px-5 py-3">Admin login</th>
-          <th class="px-5 py-3">Status</th>
-          <th class="px-5 py-3">Created</th>
-          <th class="px-5 py-3"></th>
+          <th>Name</th>
+          <th>Admin login</th>
+          <th>Status</th>
+          <th>Created</th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-neutral-100">
+      <tbody>
         <?php if (!$organisations): ?>
-          <tr><td colspan="5" class="px-5 py-8 text-center font-bold text-neutral-700">No organisations yet.</td></tr>
+          <tr><td colspan="4" class="px-5 py-8 text-center font-bold text-neutral-700">No organisations yet.</td></tr>
         <?php endif; ?>
         <?php foreach ($organisations as $org): ?>
           <?php $adminUsers = $adminUsersByOrganisation[(int) $org['id']] ?? []; ?>
           <tr>
-            <td class="px-5 py-4">
-              <p class="font-black text-black"><?= e($org['name']) ?></p>
+            <td>
+              <a href="<?= url('/admin/organisations/' . (int) $org['id'] . '/edit') ?>" class="font-black text-black no-underline hover:underline"><?= e($org['name']) ?></a>
               <p class="text-xs font-semibold text-neutral-600"><?= e($org['description'] ?: 'No description') ?></p>
+              <div class="excel-row-actions mt-1">
+                <a href="<?= url('/admin/organisations/' . (int) $org['id'] . '/edit#invite') ?>" class="btn-primary" style="padding:0.25rem 0.5rem;font-size:0.7rem;">Invite admin</a>
+                <a href="<?= url('/admin/organisations/' . (int) $org['id'] . '/edit') ?>" class="btn-secondary" style="padding:0.25rem 0.5rem;font-size:0.7rem;">Edit</a>
+                <form method="post" action="<?= url('/admin/organisations/' . (int) $org['id'] . '/delete') ?>" onsubmit="return confirm('Delete \'<?= e($org['name']) ?>\' permanently? This also deletes its courses, categories, branches, and memberships. This cannot be undone.');">
+                  <?= csrfField() ?>
+                  <button type="submit" class="btn-danger" style="padding:0.25rem 0.5rem;font-size:0.7rem;">Delete</button>
+                </form>
+              </div>
             </td>
-            <td class="px-5 py-4">
+            <td>
               <?php if ($adminUsers): ?>
                 <?php foreach ($adminUsers as $adminUser): ?>
                   <p class="text-xs font-bold text-neutral-700"><?= e($adminUser['email'] ?? '') ?></p>
@@ -46,14 +57,8 @@ $adminUsersByOrganisation = $adminUsersByOrganisation ?? [];
                 <p class="text-xs font-black uppercase" style="color:var(--ke-red)">No admin account</p>
               <?php endif; ?>
             </td>
-            <td class="px-5 py-4 font-bold"><?= !empty($org['is_active']) ? 'Active' : 'Inactive' ?></td>
-            <td class="px-5 py-4 font-semibold text-neutral-700"><?= e(date('M j, Y', strtotime($org['created_at']))) ?></td>
-            <td class="px-5 py-4">
-              <div class="flex flex-wrap items-center gap-2">
-                <a href="<?= url('/admin/organisations/' . (int) $org['id'] . '/edit#invite') ?>" class="btn-primary" style="padding:0.35rem 0.65rem;">Invite admin</a>
-                <a href="<?= url('/admin/organisations/' . (int) $org['id'] . '/edit') ?>" class="btn-secondary" style="padding:0.35rem 0.65rem;">Edit</a>
-              </div>
-            </td>
+            <td><?= !empty($org['is_active']) ? 'Active' : 'Inactive' ?></td>
+            <td><?= e(date('M j, Y', strtotime($org['created_at']))) ?></td>
           </tr>
         <?php endforeach; ?>
       </tbody>

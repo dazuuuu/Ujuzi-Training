@@ -9,9 +9,9 @@ require __DIR__ . '/layout-header.php';
       $mode = $mode ?? '';
       $badge = match ($mode) {
         'student' => 'Student registration',
-        'trainer' => 'Trainer / tutor / teacher',
-        'attachment_trainer' => 'Attachment trainer registration',
-        default => 'Organisation admin',
+        'trainer' => 'Tutor registration',
+        'attachment_trainer' => 'Organisation providing Attachment registration',
+        default => 'Organisations providing courses',
       };
     ?>
     <span class="text-xs font-bold uppercase tracking-widest block mb-1" style="color:var(--ke-green)"><?= e($badge) ?></span>

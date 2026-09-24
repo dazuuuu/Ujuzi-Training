@@ -2,6 +2,11 @@
 /** Requires $stats, $roleCounts, $recentUsers, $forms in scope. */
 require __DIR__ . '/layout-header.php';
 $today = date('j M Y');
+$attachmentStats = $attachmentStats ?? [];
+$attachmentRecent = $attachmentRecent ?? [];
+$attachmentOrgCount = $attachmentOrgCount ?? 0;
+$branchCount = $branchCount ?? 0;
+$branchAdminCount = $branchAdminCount ?? 0;
 $kpis = [
     [
         'label' => 'Users',
@@ -69,6 +74,72 @@ $maxRole = max(1, ...array_map(fn($row) => (int) $row['total'], $roleCounts ?: [
       </a>
     <?php endforeach; ?>
   </section>
+
+  <?php if ($attachmentStats): ?>
+    <section class="rounded-xl border border-neutral-300 bg-white p-5 shadow-sm">
+      <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p class="text-[11px] font-black uppercase tracking-widest text-neutral-600">Attachment tracking</p>
+          <h3 class="mt-1 text-xl font-black text-black">Provider workflow</h3>
+        </div>
+        <a href="<?= url('/admin/users') ?>" class="btn-secondary" style="padding:0.4rem 0.7rem;">View users</a>
+      </div>
+      <div class="mt-4 grid gap-3 sm:grid-cols-5">
+        <?php foreach (['pending' => 'Pending', 'accepted' => 'Accepted', 'completed' => 'Finished', 'recommended' => 'Certified', 'rejected' => 'Rejected'] as $key => $label): ?>
+          <div class="rounded-lg border border-neutral-200 p-3">
+            <p class="text-[10px] font-black uppercase text-neutral-500"><?= e($label) ?></p>
+            <p class="mt-2 text-2xl font-black"><?= number_format((int) ($attachmentStats[$key] ?? 0)) ?></p>
+          </div>
+        <?php endforeach; ?>
+      </div>
+      <div class="mt-3 grid gap-3 sm:grid-cols-3">
+        <div class="rounded-lg border border-neutral-200 p-3">
+          <p class="text-[10px] font-black uppercase text-neutral-500">Attachment providers</p>
+          <p class="mt-2 text-2xl font-black"><?= number_format($attachmentOrgCount) ?></p>
+        </div>
+        <div class="rounded-lg border border-neutral-200 p-3">
+          <p class="text-[10px] font-black uppercase text-neutral-500">Branches</p>
+          <p class="mt-2 text-2xl font-black"><?= number_format($branchCount) ?></p>
+        </div>
+        <div class="rounded-lg border border-neutral-200 p-3">
+          <p class="text-[10px] font-black uppercase text-neutral-500">Branch admins assigned</p>
+          <p class="mt-2 text-2xl font-black"><?= number_format($branchAdminCount) ?></p>
+        </div>
+      </div>
+      <?php if ($attachmentRecent): ?>
+        <div class="mt-4">
+          <p class="text-[11px] font-black uppercase tracking-widest text-neutral-600">Recent activity</p>
+          <div class="mt-2 overflow-x-auto rounded-lg border border-neutral-200">
+            <table class="excel-table admin-data-table">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Course</th>
+                  <th>Provider</th>
+                  <th>Branch</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($attachmentRecent as $row):
+                  $studentName = trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? '')) ?: (string) ($row['email'] ?? '');
+                  $providerName = trim((string) ($row['provider_first_name'] ?? '') . ' ' . (string) ($row['provider_last_name'] ?? '')) ?: (string) ($row['provider_email'] ?? '');
+                ?>
+                  <tr>
+                    <td class="font-black"><?= e($studentName) ?></td>
+                    <td><?= e($row['course_title'] ?? '') ?></td>
+                    <td><?= e($providerName) ?></td>
+                    <td><?= e($row['branch_title'] ?? '—') ?></td>
+                    <td class="font-bold uppercase"><?= e($row['status'] ?? '') ?></td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      <?php endif; ?>
+    </section>
+  <?php endif; ?>
 
   <section class="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
     <div class="rounded-xl border border-neutral-300 bg-white shadow-sm">

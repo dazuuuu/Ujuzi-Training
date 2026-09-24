@@ -1,5 +1,24 @@
 <?php
 /** Requires $forms, $currentUser in scope. */
+$organisationMemberships = is_array($organisationMemberships ?? null) ? $organisationMemberships : [];
+$organisationStatusLabels = [
+    'approved' => 'Approved',
+    'pending' => 'Waiting for approval',
+    'rejected' => 'Rejected',
+];
+$organisationSummary = [];
+foreach ($organisationMemberships as $membership) {
+    $name = trim((string) ($membership['organisation_name'] ?? ''));
+    if ($name === '') {
+        continue;
+    }
+    $status = (string) ($membership['status'] ?? '');
+    $label = $organisationStatusLabels[$status] ?? ucfirst($status);
+    $organisationSummary[] = $label !== '' ? $name . ' - ' . $label : $name;
+}
+if ($organisationSummary === [] && !empty($currentUser['organisation_name'])) {
+    $organisationSummary[] = (string) $currentUser['organisation_name'];
+}
 require __DIR__ . '/layout-header.php';
 ?>
 
@@ -17,28 +36,24 @@ require __DIR__ . '/layout-header.php';
           <h2 class="font-serif-heading text-lg font-bold">Account details</h2>
           <p class="mt-1 text-xs font-semibold" style="color:var(--ke-muted)">Update your name and sign-in details separately from the assigned registration forms.</p>
         </div>
-        <form method="post" action="<?= url('/account/profile') ?>" class="mt-4 grid gap-3 sm:grid-cols-2">
+        <form method="post" action="<?= url('/account/profile') ?>" class="mt-4 grid gap-3">
           <?= csrfField() ?>
           <input type="hidden" name="account_update" value="1" />
-          <div>
-            <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">First name</label>
-            <input type="text" name="first_name" value="<?= e($currentUser['first_name'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
-          </div>
-          <div>
-            <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Last name</label>
-            <input type="text" name="last_name" value="<?= e($currentUser['last_name'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
-          </div>
-          <div>
-            <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Email</label>
-            <input type="email" name="email" value="<?= e($currentUser['email'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
-          </div>
-          <div>
-            <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Phone</label>
-            <input type="tel" name="phone" value="<?= e($currentUser['phone'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
-          </div>
-          <div class="sm:col-span-2">
-            <button type="submit" class="btn-primary">Save account details</button>
-          </div>
+          <?php if (!empty($currentUser['email'])): ?>
+            <div>
+              <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Email</label>
+              <input type="email" value="<?= e($currentUser['email']) ?>" readonly class="mt-1 w-full rounded-lg border border-neutral-200 bg-neutral-100 p-2.5 text-sm text-neutral-600" />
+              <p class="field-hint">Your sign-in email can't be changed here.</p>
+            </div>
+          <?php else: ?>
+            <div>
+              <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Email</label>
+              <input type="email" name="email" value="" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" placeholder="Add a sign-in email" />
+            </div>
+            <div>
+              <button type="submit" class="btn-primary">Save account details</button>
+            </div>
+          <?php endif; ?>
         </form>
       </section>
 
@@ -96,7 +111,7 @@ require __DIR__ . '/layout-header.php';
           <div class="py-3"><dt class="text-[10px] font-bold uppercase" style="color:var(--ke-muted)">Email</dt><dd class="mt-1 text-sm font-bold break-words"><?= e($currentUser['email'] ?? 'Not provided') ?></dd></div>
           <div class="py-3"><dt class="text-[10px] font-bold uppercase" style="color:var(--ke-muted)">Phone</dt><dd class="mt-1 text-sm font-bold"><?= e($currentUser['phone'] ?? 'Not provided') ?></dd></div>
           <div class="py-3"><dt class="text-[10px] font-bold uppercase" style="color:var(--ke-muted)">Role</dt><dd class="mt-1 text-sm font-bold"><?= e($currentUser['role_name'] ?? '') ?></dd></div>
-          <div class="py-3"><dt class="text-[10px] font-bold uppercase" style="color:var(--ke-muted)">Organisation</dt><dd class="mt-1 text-sm font-bold"><?= e($currentUser['organisation_name'] ?? 'Not selected') ?></dd></div>
+          <div class="py-3"><dt class="text-[10px] font-bold uppercase" style="color:var(--ke-muted)">Organisation</dt><dd class="mt-1 text-sm font-bold break-words"><?= e($organisationSummary ? implode(', ', $organisationSummary) : 'Not selected') ?></dd></div>
           <?php foreach ($forms as $summaryForm): ?>
             <?php foreach ($summaryForm['fields'] as $summaryField): ?>
               <?php if (\App\Models\FormFieldTypes::isLayout($summaryField['field_type'] ?? '')) continue; ?>
