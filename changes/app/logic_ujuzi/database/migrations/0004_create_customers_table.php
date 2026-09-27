@@ -1,0 +1,18 @@
+<?php
+return [
+    'up' => "CREATE TABLE IF NOT EXISTS customers (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        email VARCHAR(255) DEFAULT NULL UNIQUE,
+        phone VARCHAR(30) DEFAULT NULL UNIQUE,
+        first_name VARCHAR(100) DEFAULT NULL,
+        last_name VARCHAR(100) DEFAULT NULL,
+        address VARCHAR(255) DEFAULT NULL,
+        city VARCHAR(100) DEFAULT NULL,
+        postal_code VARCHAR(20) DEFAULT NULL,
+        country VARCHAR(100) DEFAULT NULL,
+        email_verified_at TIMESTAMP NULL DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+    'down' => 'DROP TABLE IF EXISTS customers',
+];

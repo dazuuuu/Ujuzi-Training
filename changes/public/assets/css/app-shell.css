@@ -1,0 +1,349 @@
+/*
+ * App shell — makes the portals and Super Admin look and behave like an
+ * installed app: icon navigation, a bottom tab bar on phones, press feedback,
+ * a loading bar between pages, and safe-area padding for notched screens.
+ */
+
+:root {
+  --app-tabbar-h: 64px;
+  --app-accent: var(--ke-green, #006b3f);
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+
+body.srms-theme,
+body.admin-shell {
+  overscroll-behavior-y: none;
+}
+
+/* Icons sit on the text baseline in every nav. */
+.srms-nav-link,
+.admin-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.srms-nav-link svg,
+.admin-nav-link svg {
+  flex-shrink: 0;
+}
+.srms-brand-icon svg { display: block; margin: 0 auto; }
+.srms-menu-toggle { display: inline-flex; align-items: center; justify-content: center; }
+
+/* Press feedback, like a native button. */
+:where(.btn-primary, .btn-secondary, .btn-danger, .app-tab, .srms-nav-link, .admin-nav-link, .srms-stat-card, .app-press):active {
+  transform: scale(0.97);
+}
+:where(.btn-primary, .btn-secondary, .btn-danger, .app-tab, .srms-nav-link, .admin-nav-link, .srms-stat-card, .app-press) {
+  transition: transform 0.08s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+/* Thin loading bar at the top while the next page loads. */
+.app-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 70;
+  height: 3px;
+  width: 0;
+  opacity: 0;
+  background: var(--app-accent);
+  pointer-events: none;
+  transition: width 0.2s ease, opacity 0.3s ease;
+}
+.app-progress.is-loading {
+  opacity: 1;
+  width: 80%;
+  transition: width 3s cubic-bezier(0.1, 0.7, 0.3, 1), opacity 0.1s;
+}
+
+/* Bottom tab bar — phones and small tablets only. */
+.app-tabbar { display: none; }
+
+@media (max-width: 900px) {
+  .app-tabbar {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 45;
+    justify-content: space-around;
+    gap: 2px;
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    background: rgba(255, 255, 255, 0.97);
+    border-top: 1px solid var(--ke-line, #e5e7eb);
+    box-shadow: 0 -6px 18px rgb(0 0 0 / 0.06);
+    backdrop-filter: saturate(1.4) blur(8px);
+  }
+  .app-tab {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 2px;
+    border: 0;
+    border-radius: 12px;
+    background: none;
+    color: #6b7280;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.1;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .app-tab span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .app-tab.is-active { color: var(--app-accent); }
+  .app-tab.is-active svg { stroke-width: 2.4; }
+  .app-tab:focus-visible { outline: 2px solid var(--app-accent); outline-offset: 2px; }
+
+  /* Keep the last content clear of the tab bar, and start below the notch. */
+  .srms-main,
+  .workspace-content {
+    padding-top: calc(env(safe-area-inset-top) + 16px) !important;
+    padding-bottom: calc(var(--app-tabbar-h) + env(safe-area-inset-bottom) + 12px) !important;
+  }
+
+  /* The top bar wastes space on mobile, hide it entirely in favor of the bottom tab bar. */
+  .srms-topbar, .workspace-topbar, .flag-stripe { 
+    display: none !important; 
+  }
+}
+
+/* Course cards: every card the same size, long text clamped with a toggle. */
+.course-grid {
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  align-items: stretch;
+}
+.course-card {
+  height: 100%;
+}
+.course-card .course-card-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.6em;
+}
+.course-card .course-card-desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.course-card.is-expanded .course-card-desc,
+.course-card.is-expanded .course-card-title {
+  -webkit-line-clamp: unset;
+  display: block;
+}
+.course-card .course-card-actions { margin-top: auto; }
+.course-card-more {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--app-accent);
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.course-badge-new {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--app-accent);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* The course card in partials/course-card.php (Tailwind-styled). */
+.course-tile .course-tile-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.5em;
+}
+.course-tile .course-tile-desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.9em;
+}
+.course-tile.is-expanded .course-tile-title,
+.course-tile.is-expanded .course-tile-desc {
+  display: block;
+  -webkit-line-clamp: unset;
+  min-height: 0;
+}
+.course-tile-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  align-items: stretch;
+}
+
+/* Student dashboard tiles. */
+.app-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem;
+  border: 1px solid var(--ke-line, #e5e7eb);
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+  text-decoration: none;
+  color: inherit;
+}
+.app-tile-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  background: #ecf7f0;
+  color: var(--app-accent);
+}
+.app-tile-label { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #6b7280; }
+.app-tile-value { font-size: 1.4rem; font-weight: 900; color: #111827; line-height: 1.15; }
+.app-tile-sub { font-size: 0.75rem; font-weight: 600; color: #6b7280; }
+
+.app-progressbar { height: 0.5rem; overflow: hidden; border-radius: 999px; background: #e5e7eb; }
+.app-progressbar > span { display: block; height: 100%; border-radius: 999px; background: var(--app-accent); }
+
+/* Super Admin's sidebar collapses below 768px, so its tab bar only shows there. */
+@media (min-width: 768px) {
+  .app-tabbar.is-admin { display: none; }
+}
+@media (min-width: 768px) and (max-width: 900px) {
+  .workspace-content { padding-bottom: 1.5rem !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-progress, .app-progress.is-loading { transition: none; }
+  :where(.btn-primary, .btn-secondary, .btn-danger, .app-tab, .srms-nav-link, .admin-nav-link, .srms-stat-card, .app-press):active { transform: none; }
+}
+
+/*
+ * Utilities the views use that are missing from the prebuilt tailwind.css
+ * (there is no Tailwind build in this repo to regenerate it). Values match
+ * Tailwind's own. Without these the course cards lose their 16:9 cover area
+ * and their green Enroll button, and screen-reader-only labels show.
+ */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
+.aspect-video { aspect-ratio: 16 / 9; }
+.flex-grow { flex-grow: 1; }
+.ml-auto { margin-left: auto; }
+.pt-0 { padding-top: 0; }
+.bottom-0 { bottom: 0; }
+.self-center { align-self: center; }
+.opacity-90 { opacity: 0.9; }
+.whitespace-pre-line { white-space: pre-line; }
+.max-h-12 { max-height: 3rem; }
+.scroll-mt-4 { scroll-margin-top: 1rem; }
+.max-w-\[85\%\] { max-width: 85%; }
+.min-w-\[14rem\] { min-width: 14rem; }
+.align-\[-2px\] { vertical-align: -2px; }
+.backdrop-blur-sm { -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+.bg-black\/80 { background-color: rgb(0 0 0 / 0.8); }
+.bg-green-600 { background-color: #16a34a; }
+.hover\:bg-green-700:hover { background-color: #15803d; }
+.hover\:bg-neutral-200:hover { background-color: #e5e5e5; }
+.from-green-700 { --tw-gradient-from: #15803d; --tw-gradient-to: rgb(21 128 61 / 0); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+.to-green-900 { --tw-gradient-to: #14532d; }
+.bg-gradient-to-br { background-image: linear-gradient(to bottom right, var(--tw-gradient-stops)); }
+@media (min-width: 640px) {
+  .sm\:max-w-sm { max-width: 24rem; }
+  .sm\:max-w-md { max-width: 28rem; }
+}
+@media (min-width: 1024px) {
+  .lg\:col-span-1 { grid-column: span 1 / span 1; }
+}
+
+/*
+ * Super Admin on phones: app.css makes the sidebar sticky with a fixed width,
+ * which beats Tailwind's `fixed` class — so when it slid off-screen it still
+ * held its 224px and left a blank column beside the page. Below 768px it
+ * floats over the page instead and takes no space.
+ */
+@media (max-width: 767px) {
+  .workspace-sidebar.admin-sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    height: 100%;
+    width: 16rem;
+    flex: none;
+    z-index: 50;
+    box-shadow: 8px 0 24px rgb(0 0 0 / 0.12);
+  }
+  .workspace-shell { height: calc(100dvh - 8px); }
+  .workspace-topbar { padding: 0.75rem 1rem !important; }
+  .workspace-content { padding-left: 1rem !important; padding-right: 1rem !important; }
+  .workspace-topbar h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .workspace-topbar .workspace-search { display: none; }
+}
+
+/* Small circular progress (partials/progress-ring.php). */
+.progress-ring { position: relative; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.progress-ring svg { position: absolute; inset: 0; }
+.progress-ring-value { position: relative; font-weight: 900; color: #111827; letter-spacing: -0.02em; }
+
+/* "New" ribbon on courses published in the last 14 days. */
+.course-new-ribbon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 0.3rem;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow: 0 2px 6px rgb(220 38 38 / 0.35);
+}
+
+/* Course learning page: lesson in the middle, course content on the right. */
+.learn-layout { display: grid; gap: 1.5rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1024px) {
+  .learn-layout { grid-template-columns: minmax(0, 1fr) 340px; align-items: start; }
+  .learn-aside { position: sticky; top: 1rem; }
+}
+.learn-card { border: 1px solid var(--ke-line, #e5e7eb); border-radius: 1rem; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / 0.04); }
+.learn-video { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 1rem 1rem 0 0; background: #0f172a; }
+.learn-video iframe, .learn-video video, .learn-video img { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; object-fit: cover; }
+.learn-video video { object-fit: contain; background: #000; }
+.learn-video-empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; color: #cbd5e1; font-weight: 700; font-size: 0.85rem; }
+.learn-section-title { font-size: 0.7rem; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; }
+.learn-prose { font-size: 0.95rem; line-height: 1.7; color: #374151; }
+.learn-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem 0.85rem; border-radius: 0.75rem; text-decoration: none; color: #111827; }
+.learn-item:hover { background: #f4faf6; }
+.learn-item.is-current { background: #ecf7f0; box-shadow: inset 3px 0 0 var(--ke-green, #006b3f); }
+.learn-item.is-locked { color: #9ca3af; }
+.learn-item-mark { display: inline-flex; align-items: center; justify-content: center; width: 1.8rem; height: 1.8rem; flex-shrink: 0; border-radius: 999px; border: 2px solid #d1d5db; font-size: 0.75rem; font-weight: 900; color: #6b7280; background: #fff; }
+.learn-item.is-done .learn-item-mark { border-color: var(--ke-green, #006b3f); background: var(--ke-green, #006b3f); color: #fff; }
+.learn-item.is-current .learn-item-mark { border-color: var(--ke-green, #006b3f); color: var(--ke-green, #006b3f); }
+.learn-item-title { display: block; font-size: 0.875rem; font-weight: 700; line-height: 1.3; }
+.learn-item-meta { display: block; font-size: 0.72rem; font-weight: 600; color: #6b7280; }
+.learn-option { display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.65rem 0.8rem; border: 1px solid #e5e7eb; border-radius: 0.65rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+.learn-option:hover { border-color: var(--ke-green, #006b3f); background: #f8fcf9; }
+.learn-option input { margin-top: 0.2rem; }
