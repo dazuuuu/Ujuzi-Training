@@ -67,9 +67,19 @@ require __DIR__ . '/../layout-header.php';
             <button type="submit" class="btn-danger">Delete</button>
           </form>
         <?php endif; ?>
-        <?php if ($isStudent && !$isEnrolled): ?>
+        <?php if ($canEdit && isset($course['approval_status']) && $course['approval_status'] !== 'approved'): ?>
+    <section class="rounded-xl border p-4 text-sm font-semibold" role="status" style="<?= $course['approval_status'] === 'rejected' ? 'border-color:#fecaca;background:#fef2f2;color:var(--ke-red)' : 'border-color:#fde68a;background:#fffbeb;color:#92400e' ?>">
+      <?php if ($course['approval_status'] === 'rejected'): ?>
+        Super Admin sent this course back<?= !empty($course['approval_note']) ? ': “' . e($course['approval_note']) . '”' : '.' ?> Edit the course to make the changes — saving it sends it for approval again.
+      <?php else: ?>
+        Waiting for Super Admin's approval. Students will see this course once it is approved.
+      <?php endif; ?>
+    </section>
+  <?php endif; ?>
+
+  <?php if ($isStudent && !$isEnrolled): ?>
           <?php if ((float) ($course['enrollment_fee_ksh'] ?? 0) > 0): ?>
-            <a href="<?= url('/account/courses/' . (int) $course['id'] . '/checkout') ?>" class="btn-primary">Enroll &amp; pay (min <?= \App\Services\WalletService::minPaymentPercent() ?>%)</a>
+            <a href="<?= url('/account/courses/' . (int) $course['id'] . '/checkout') ?>" class="btn-primary">Enrol</a>
           <?php else: ?>
             <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/enroll') ?>">
               <?= csrfField() ?>
@@ -112,7 +122,7 @@ require __DIR__ . '/../layout-header.php';
       <h2 class="font-serif-heading text-lg font-bold">Enrollment required</h2>
       <p class="text-sm font-medium" style="color:var(--ke-muted)">Enroll for this course to open the modules, quizzes, and final exam.</p>
       <?php if ($paymentsEnabled && (float) ($course['enrollment_fee_ksh'] ?? 0) > 0): ?>
-        <a href="<?= url('/account/courses/' . (int) $course['id'] . '/checkout') ?>" class="btn-primary">Continue to checkout</a>
+        <a href="<?= url('/account/courses/' . (int) $course['id'] . '/checkout') ?>" class="btn-primary">Enrol and see the payment plan</a>
       <?php else: ?>
         <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/enroll') ?>">
           <?= csrfField() ?>
@@ -151,7 +161,7 @@ require __DIR__ . '/../layout-header.php';
   <section class="rounded-xl border bg-white p-6 shadow-sm space-y-4" style="border-color:var(--ke-line)">
     <div>
       <h2 class="font-serif-heading text-lg font-bold">Modules</h2>
-      <p class="mt-1 text-sm font-medium" style="color:var(--ke-muted)">Each module can include an overview, description, resources, video, and a multiple-choice quiz. Students must score at least 80% before the next module opens.</p>
+      <p class="mt-1 text-sm font-medium" style="color:var(--ke-muted)">Each module can include an overview, description, resources, video, and an optional quiz. Students pass each module (and pay for it) to open the next.</p>
     </div>
     <?php if (!$modules): ?>
       <p class="text-sm font-bold" style="color:var(--ke-muted)">No modules yet.</p>
@@ -247,16 +257,151 @@ require __DIR__ . '/../layout-header.php';
           <?php endif; ?>
         <?php endif; ?>
         <?php if ($canEdit): ?>
-          <a href="<?= url('/account/courses/' . (int) $course['id'] . '?module=' . (int) $module['id']) ?>" class="btn-secondary" style="padding:0.35rem 0.65rem;">Edit module</a>
+          <a href="<?= url('/account/courses/' . (int) $course['id'] . '?module=' . (int) $module['id']) ?>#module-editor" class="btn-secondary" style="padding:0.35rem 0.65rem;">Edit module</a>
         <?php endif; ?>
       </article>
     <?php endforeach; ?>
   </section>
 
+  <?php endif; ?>
+
+  <?php if ($isStudent): ?>
+    <section class="rounded-xl border bg-white p-6 shadow-sm flex items-center justify-between gap-4" style="border-color:var(--ke-line)">
+      <div>
+        <h2 class="font-serif-heading text-lg font-bold">Attachment</h2>
+        <p class="mt-1 text-sm font-medium" style="color:var(--ke-muted)">Choose an organisation and branch for your attachment, and track your progress.</p>
+      </div>
+      <a href="<?= url('/account/attachment-providers') ?>" class="btn-secondary shrink-0">Open</a>
+    </section>
+  <?php endif; ?>
+
+  <?php if ($canEdit): ?>
+    <section id="module-editor" class="rounded-xl border bg-white p-6 shadow-sm space-y-4" style="border-color:<?= $editingModule ? 'var(--ke-green);box-shadow:0 0 0 2px var(--ke-green)' : 'var(--ke-line)' ?>;scroll-margin-top:80px">
+      <h2 class="font-serif-heading text-lg font-bold"><?= $editingModule ? 'Edit module: ' . e($editingModule['title']) : 'Add module' ?></h2>
+      <form method="post" action="<?= $editingModule
+        ? url('/account/courses/' . (int) $course['id'] . '/modules/' . (int) $editingModule['id'])
+        : url('/account/courses/' . (int) $course['id'] . '/modules') ?>" enctype="multipart/form-data" class="space-y-4" id="module-form">
+        <?= csrfField() ?>
+        <div>
+          <label class="text-[11px] font-bold uppercase text-neutral-600">Module title</label>
+          <input type="text" name="title" required value="<?= e($moduleForm['title'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
+        </div>
+        <div>
+          <label class="text-[11px] font-bold uppercase text-neutral-600">Duration</label>
+          <input type="text" name="duration_minutes" value="<?= e(\App\Models\CourseModule::formatDuration((int) ($moduleForm['duration_minutes'] ?? 10))) ?>" placeholder="10 min, 30 min, 1 hr, 2.5 hrs, 2 1/4 hrs" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
+          <p class="field-hint">Examples: 10 min, 30 min, 1 hr, 2 hrs, 2.5 hrs, 2 1/4 hrs.</p>
+        </div>
+        <div>
+          <label class="text-[11px] font-bold uppercase text-neutral-600">Module overview</label>
+          <textarea name="summary" rows="3" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm"><?= e($moduleForm['summary'] ?? '') ?></textarea>
+          <p class="field-hint">A short overview students see on the module card, even before they unlock or pay for it.</p>
+        </div>
+        <div>
+          <label class="text-[11px] font-bold uppercase text-neutral-600">Description</label>
+          <textarea name="description" rows="4" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm"><?= e($moduleForm['description'] ?? '') ?></textarea>
+        </div>
+        <div>
+          <label class="text-[11px] font-bold uppercase text-neutral-600">Module notes</label>
+          <textarea name="notes" rows="4" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm"><?= e($moduleForm['notes'] ?? '') ?></textarea>
+        </div>
+        <div>
+          <label class="text-[11px] font-bold uppercase text-neutral-600">Resources (PDF, Word, images)</label>
+          <input type="file" name="materials[]" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,image/*" class="mt-2 block w-full text-sm" />
+        </div>
+        <fieldset class="rounded-lg border p-4 space-y-3" style="border-color:var(--ke-line)">
+          <legend class="px-1 text-[11px] font-black uppercase" style="color:var(--ke-muted)">Video</legend>
+          <label class="flex items-center gap-2 text-sm font-semibold">
+            <input type="radio" name="video_source" value="upload" <?= ($moduleForm['video_source'] ?? 'upload') !== 'youtube' ? 'checked' : '' ?> class="h-4 w-4 js-video-source" />
+            Upload a video
+          </label>
+          <label class="flex items-center gap-2 text-sm font-semibold">
+            <input type="radio" name="video_source" value="youtube" <?= ($moduleForm['video_source'] ?? '') === 'youtube' ? 'checked' : '' ?> class="h-4 w-4 js-video-source" />
+            YouTube (plays on this page only — learners never see or copy the URL)
+          </label>
+          <div class="js-upload-wrap">
+            <label class="text-[11px] font-bold uppercase text-neutral-600">Video file</label>
+            <input type="file" name="video" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v" class="mt-2 block w-full text-sm" />
+          </div>
+          <div class="js-youtube-wrap">
+            <label class="text-[11px] font-bold uppercase text-neutral-600">YouTube URL (kept private)</label>
+            <input type="url" name="video_url" value="<?= e($moduleForm['video_url'] ?? '') ?>" placeholder="https://www.youtube.com/watch?v=..." class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" autocomplete="off" />
+            <p class="field-hint">The link is stored for embedding only. Learners watch it in-platform and cannot copy it from this page.</p>
+          </div>
+        </fieldset>
+        <fieldset class="rounded-lg border p-4 space-y-3" style="border-color:var(--ke-line)">
+          <legend class="px-1 text-[11px] font-black uppercase" style="color:var(--ke-muted)">End-of-module quiz (optional)</legend>
+          <?php $moduleHasQuiz = !empty($editingModule) ? !empty($moduleForm['quiz_questions']) : !empty($moduleForm['has_quiz']); ?>
+          <label class="flex items-center gap-2 text-sm font-bold text-gray-800">
+            <input type="checkbox" name="has_quiz" value="1" class="h-4 w-4 js-has-quiz" <?= $moduleHasQuiz ? 'checked' : '' ?>> This module has a quiz
+          </label>
+          <div class="js-quiz-body space-y-3" <?= $moduleHasQuiz ? '' : 'hidden' ?>>
+          <p class="text-sm font-medium" style="color:var(--ke-muted)">Add choice, multiple-answer, text, explanation, or code questions. Students must reach the pass mark to open the next module.</p>
+          <div>
+            <label class="text-[11px] font-bold uppercase text-neutral-600">Pass mark (%)</label>
+            <input type="number" name="pass_percent" min="1" max="100" value="<?= (int) ($moduleForm['pass_percent'] ?? 80) ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
+          </div>
+          <div id="quiz-questions" class="space-y-4" data-question-prefix="questions">
+            <?php foreach ($moduleForm['quiz_questions'] as $qIndex => $question):
+              $type = $question['type'] ?? 'single_choice';
+              $options = $question['options'] ?? ['', ''];
+              while (count($options) < 2) {
+                  $options[] = '';
+              }
+              $correctList = is_array($question['correct'] ?? null) ? array_map('intval', $question['correct']) : [(int) ($question['correct'] ?? 0)];
+              $acceptedAnswers = implode("\n", array_map('strval', $question['accepted_answers'] ?? []));
+            ?>
+              <div class="quiz-question rounded-lg border p-3 space-y-3" style="border-color:var(--ke-line)">
+                <label class="text-[11px] font-bold uppercase text-neutral-600">Question</label>
+                <input type="text" name="questions[<?= (int) $qIndex ?>][text]" value="<?= e($question['question'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
+                <label class="text-[11px] font-bold uppercase text-neutral-600">Answer type</label>
+                <select name="questions[<?= (int) $qIndex ?>][type]" class="js-question-type w-full rounded-lg border border-neutral-300 p-2.5 text-sm">
+                  <option value="single_choice" <?= $type === 'single_choice' ? 'selected' : '' ?>>Single correct choice</option>
+                  <option value="multiple_choice" <?= $type === 'multiple_choice' ? 'selected' : '' ?>>Multiple correct choices</option>
+                  <option value="text" <?= $type === 'text' ? 'selected' : '' ?>>Text, explanation, or code</option>
+                </select>
+                <div class="js-choice-options space-y-2">
+                  <?php foreach ($options as $oIndex => $option): ?>
+                    <label class="flex items-center gap-2 text-sm">
+                      <input type="radio" name="questions[<?= (int) $qIndex ?>][correct]" value="<?= (int) $oIndex ?>" <?= in_array((int) $oIndex, $correctList, true) ? 'checked' : '' ?> class="h-4 w-4 js-single-correct" />
+                      <input type="checkbox" name="questions[<?= (int) $qIndex ?>][correct][]" value="<?= (int) $oIndex ?>" <?= in_array((int) $oIndex, $correctList, true) ? 'checked' : '' ?> class="h-4 w-4 js-multiple-correct" />
+                      <input type="text" name="questions[<?= (int) $qIndex ?>][options][]" value="<?= e($option) ?>" placeholder="Choice <?= (int) $oIndex + 1 ?>" class="flex-1 rounded-lg border border-neutral-300 p-2 text-sm" />
+                    </label>
+                  <?php endforeach; ?>
+                  <button type="button" class="btn-secondary js-add-option" style="padding:0.3rem 0.6rem;">Add choice</button>
+                </div>
+                <div class="js-text-answer">
+                  <label class="text-[11px] font-bold uppercase text-neutral-600">Accepted text/code answers</label>
+                  <textarea name="questions[<?= (int) $qIndex ?>][accepted_answers]" rows="3" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" placeholder="One accepted answer per line. Leave blank for reflection/explanation."><?= e($acceptedAnswers) ?></textarea>
+                </div>
+              </div>
+            <?php endforeach; ?>
+          </div>
+          <button type="button" class="btn-secondary js-add-question" id="add-question" data-target="quiz-questions">Add question</button>
+          </div>
+          <p class="text-xs font-semibold js-no-quiz-note" style="color:var(--ke-muted)" <?= $moduleHasQuiz ? 'hidden' : '' ?>>No quiz: students tick "Mark as done" after reading the module.</p>
+        </fieldset>
+        <div class="flex flex-wrap items-center gap-3">
+          <button type="submit" class="btn-primary"><?= $editingModule ? 'Save module' : 'Add module' ?></button>
+          <?php if ($editingModule): ?>
+            <a href="<?= url('/account/courses/' . (int) $course['id']) ?>" class="btn-secondary">Cancel</a>
+          <?php endif; ?>
+        </div>
+      </form>
+      <?php if ($editingModule): ?>
+        <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/modules/' . (int) $editingModule['id'] . '/delete') ?>" onsubmit="return confirm('Delete this module?');">
+          <?= csrfField() ?>
+          <button type="submit" class="btn-danger">Delete module</button>
+        </form>
+      <?php endif; ?>
+    </section>
+  <?php endif; ?>
+
+  <?php // The final exam comes last: after the modules and the module form. ?>
+  <?php if (!($isStudent && !$isEnrolled)): ?>
   <section class="rounded-xl border bg-white p-6 shadow-sm space-y-4" id="final-exam" style="border-color:var(--ke-line)">
     <div>
       <h2 class="font-serif-heading text-lg font-bold">Final exam</h2>
-      <p class="mt-1 text-sm font-medium" style="color:var(--ke-muted)">Learners unlock the final exam after passing every module quiz. Passing it adds this course skill to their one certificate.</p>
+      <p class="mt-1 text-sm font-medium" style="color:var(--ke-muted)">Optional. When the course has one, students take it once they have passed every module and paid. Passing it completes the course and earns its certificate. Without one, students finish by ticking "Complete course".</p>
     </div>
 
     <?php if ($isStudent): ?>
@@ -309,9 +454,16 @@ require __DIR__ . '/../layout-header.php';
     <?php elseif ($canEdit): ?>
       <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/final-exam') ?>" class="space-y-4">
         <?= csrfField() ?>
+        <?php $courseHasFinal = !empty($course['final_exam_questions']); ?>
+        <label class="flex items-center gap-2 text-sm font-bold text-gray-800">
+          <input type="checkbox" name="has_final" value="1" class="h-4 w-4" <?= $courseHasFinal ? 'checked' : '' ?>
+                 onchange="this.form.querySelector('.js-final-body').hidden = !this.checked"> This course has a final exam
+        </label>
+        <div class="js-final-body space-y-4" <?= $courseHasFinal ? '' : 'hidden' ?>>
         <div>
-          <label class="text-[11px] font-bold uppercase text-neutral-600">Pass mark (%)</label>
-          <input type="number" name="final_pass_percent" min="1" max="100" value="<?= $finalPassPercent ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
+          <label class="text-[11px] font-bold uppercase text-neutral-600">Questions each student gets</label>
+          <input type="number" name="final_paper_size" min="1" value="<?= (int) ($course['final_paper_size'] ?? 0) ?: '' ?>" placeholder="All of them" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
+          <p class="field-hint">Write more questions than this to make a question bank. Each student gets their own random selection, in a random order, with the answer choices shuffled. Students need 100% to pass and earn the certificate.</p>
         </div>
         <div id="final-questions" class="space-y-4" data-question-prefix="final_questions">
           <?php foreach ($finalQuestions as $qIndex => $question):
@@ -350,140 +502,26 @@ require __DIR__ . '/../layout-header.php';
           <?php endforeach; ?>
         </div>
         <button type="button" class="btn-secondary js-add-question" data-target="final-questions">Add question</button>
-        <button type="submit" class="btn-primary">Save final exam</button>
+        </div>
+        <button type="submit" class="btn-primary">Save final exam settings</button>
       </form>
     <?php else: ?>
       <p class="text-sm font-bold" style="color:var(--ke-muted)">The final exam is available after all modules are complete.</p>
     <?php endif; ?>
   </section>
   <?php endif; ?>
-
-  <?php if ($isStudent): ?>
-    <section class="rounded-xl border bg-white p-6 shadow-sm flex items-center justify-between gap-4" style="border-color:var(--ke-line)">
-      <div>
-        <h2 class="font-serif-heading text-lg font-bold">Attachment</h2>
-        <p class="mt-1 text-sm font-medium" style="color:var(--ke-muted)">Choose an organisation and branch for your attachment, and track your progress.</p>
-      </div>
-      <a href="<?= url('/account/attachment-providers') ?>" class="btn-secondary shrink-0">Open</a>
-    </section>
-  <?php endif; ?>
-
-  <?php if ($canEdit): ?>
-    <section class="rounded-xl border bg-white p-6 shadow-sm space-y-4" style="border-color:var(--ke-line)">
-      <h2 class="font-serif-heading text-lg font-bold"><?= $editingModule ? 'Edit module' : 'Add module' ?></h2>
-      <form method="post" action="<?= $editingModule
-        ? url('/account/courses/' . (int) $course['id'] . '/modules/' . (int) $editingModule['id'])
-        : url('/account/courses/' . (int) $course['id'] . '/modules') ?>" enctype="multipart/form-data" class="space-y-4" id="module-form">
-        <?= csrfField() ?>
-        <div>
-          <label class="text-[11px] font-bold uppercase text-neutral-600">Module title</label>
-          <input type="text" name="title" required value="<?= e($moduleForm['title'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
-        </div>
-        <div>
-          <label class="text-[11px] font-bold uppercase text-neutral-600">Duration</label>
-          <input type="text" name="duration_minutes" value="<?= e(\App\Models\CourseModule::formatDuration((int) ($moduleForm['duration_minutes'] ?? 10))) ?>" placeholder="10 min, 30 min, 1 hr, 2.5 hrs, 2 1/4 hrs" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
-          <p class="field-hint">Examples: 10 min, 30 min, 1 hr, 2 hrs, 2.5 hrs, 2 1/4 hrs.</p>
-        </div>
-        <div>
-          <label class="text-[11px] font-bold uppercase text-neutral-600">Overview</label>
-          <textarea name="summary" rows="3" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm"><?= e($moduleForm['summary'] ?? '') ?></textarea>
-        </div>
-        <div>
-          <label class="text-[11px] font-bold uppercase text-neutral-600">Description</label>
-          <textarea name="description" rows="4" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm"><?= e($moduleForm['description'] ?? '') ?></textarea>
-        </div>
-        <div>
-          <label class="text-[11px] font-bold uppercase text-neutral-600">Additional notes</label>
-          <textarea name="notes" rows="4" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm"><?= e($moduleForm['notes'] ?? '') ?></textarea>
-        </div>
-        <div>
-          <label class="text-[11px] font-bold uppercase text-neutral-600">Resources (PDF, Word, images)</label>
-          <input type="file" name="materials[]" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,image/*" class="mt-2 block w-full text-sm" />
-        </div>
-        <fieldset class="rounded-lg border p-4 space-y-3" style="border-color:var(--ke-line)">
-          <legend class="px-1 text-[11px] font-black uppercase" style="color:var(--ke-muted)">Video</legend>
-          <label class="flex items-center gap-2 text-sm font-semibold">
-            <input type="radio" name="video_source" value="upload" <?= ($moduleForm['video_source'] ?? 'upload') !== 'youtube' ? 'checked' : '' ?> class="h-4 w-4 js-video-source" />
-            Upload a video
-          </label>
-          <label class="flex items-center gap-2 text-sm font-semibold">
-            <input type="radio" name="video_source" value="youtube" <?= ($moduleForm['video_source'] ?? '') === 'youtube' ? 'checked' : '' ?> class="h-4 w-4 js-video-source" />
-            YouTube (plays on this page only — learners never see or copy the URL)
-          </label>
-          <div class="js-upload-wrap">
-            <label class="text-[11px] font-bold uppercase text-neutral-600">Video file</label>
-            <input type="file" name="video" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v" class="mt-2 block w-full text-sm" />
-          </div>
-          <div class="js-youtube-wrap">
-            <label class="text-[11px] font-bold uppercase text-neutral-600">YouTube URL (kept private)</label>
-            <input type="url" name="video_url" value="<?= e($moduleForm['video_url'] ?? '') ?>" placeholder="https://www.youtube.com/watch?v=..." class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" autocomplete="off" />
-            <p class="field-hint">The link is stored for embedding only. Learners watch it in-platform and cannot copy it from this page.</p>
-          </div>
-        </fieldset>
-        <fieldset class="rounded-lg border p-4 space-y-3" style="border-color:var(--ke-line)">
-          <legend class="px-1 text-[11px] font-black uppercase" style="color:var(--ke-muted)">End-of-module quiz</legend>
-          <p class="text-sm font-medium" style="color:var(--ke-muted)">Add choice, multiple-answer, text, explanation, or code questions. Students must score at least 80% to unlock the next module.</p>
-          <div>
-            <label class="text-[11px] font-bold uppercase text-neutral-600">Pass mark (%)</label>
-            <input type="number" name="pass_percent" min="1" max="100" value="<?= (int) ($moduleForm['pass_percent'] ?? 80) ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
-          </div>
-          <div id="quiz-questions" class="space-y-4" data-question-prefix="questions">
-            <?php foreach ($moduleForm['quiz_questions'] as $qIndex => $question):
-              $type = $question['type'] ?? 'single_choice';
-              $options = $question['options'] ?? ['', ''];
-              while (count($options) < 2) {
-                  $options[] = '';
-              }
-              $correctList = is_array($question['correct'] ?? null) ? array_map('intval', $question['correct']) : [(int) ($question['correct'] ?? 0)];
-              $acceptedAnswers = implode("\n", array_map('strval', $question['accepted_answers'] ?? []));
-            ?>
-              <div class="quiz-question rounded-lg border p-3 space-y-3" style="border-color:var(--ke-line)">
-                <label class="text-[11px] font-bold uppercase text-neutral-600">Question</label>
-                <input type="text" name="questions[<?= (int) $qIndex ?>][text]" value="<?= e($question['question'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
-                <label class="text-[11px] font-bold uppercase text-neutral-600">Answer type</label>
-                <select name="questions[<?= (int) $qIndex ?>][type]" class="js-question-type w-full rounded-lg border border-neutral-300 p-2.5 text-sm">
-                  <option value="single_choice" <?= $type === 'single_choice' ? 'selected' : '' ?>>Single correct choice</option>
-                  <option value="multiple_choice" <?= $type === 'multiple_choice' ? 'selected' : '' ?>>Multiple correct choices</option>
-                  <option value="text" <?= $type === 'text' ? 'selected' : '' ?>>Text, explanation, or code</option>
-                </select>
-                <div class="js-choice-options space-y-2">
-                  <?php foreach ($options as $oIndex => $option): ?>
-                    <label class="flex items-center gap-2 text-sm">
-                      <input type="radio" name="questions[<?= (int) $qIndex ?>][correct]" value="<?= (int) $oIndex ?>" <?= in_array((int) $oIndex, $correctList, true) ? 'checked' : '' ?> class="h-4 w-4 js-single-correct" />
-                      <input type="checkbox" name="questions[<?= (int) $qIndex ?>][correct][]" value="<?= (int) $oIndex ?>" <?= in_array((int) $oIndex, $correctList, true) ? 'checked' : '' ?> class="h-4 w-4 js-multiple-correct" />
-                      <input type="text" name="questions[<?= (int) $qIndex ?>][options][]" value="<?= e($option) ?>" placeholder="Choice <?= (int) $oIndex + 1 ?>" class="flex-1 rounded-lg border border-neutral-300 p-2 text-sm" />
-                    </label>
-                  <?php endforeach; ?>
-                  <button type="button" class="btn-secondary js-add-option" style="padding:0.3rem 0.6rem;">Add choice</button>
-                </div>
-                <div class="js-text-answer">
-                  <label class="text-[11px] font-bold uppercase text-neutral-600">Accepted text/code answers</label>
-                  <textarea name="questions[<?= (int) $qIndex ?>][accepted_answers]" rows="3" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" placeholder="One accepted answer per line. Leave blank for reflection/explanation."><?= e($acceptedAnswers) ?></textarea>
-                </div>
-              </div>
-            <?php endforeach; ?>
-          </div>
-          <button type="button" class="btn-secondary js-add-question" id="add-question" data-target="quiz-questions">Add question</button>
-        </fieldset>
-        <div class="flex flex-wrap items-center gap-3">
-          <button type="submit" class="btn-primary"><?= $editingModule ? 'Save module' : 'Add module' ?></button>
-          <?php if ($editingModule): ?>
-            <a href="<?= url('/account/courses/' . (int) $course['id']) ?>" class="btn-secondary">Cancel</a>
-          <?php endif; ?>
-        </div>
-      </form>
-      <?php if ($editingModule): ?>
-        <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/modules/' . (int) $editingModule['id'] . '/delete') ?>" onsubmit="return confirm('Delete this module?');">
-          <?= csrfField() ?>
-          <button type="submit" class="btn-danger">Delete module</button>
-        </form>
-      <?php endif; ?>
-    </section>
-  <?php endif; ?>
 </div>
 
 <script>
 (function () {
+  // Quiz on/off: hide the questions when the module has no quiz.
+  document.querySelectorAll('.js-has-quiz').forEach(function (box) {
+    box.addEventListener('change', function () {
+      var set = box.closest('fieldset');
+      set.querySelector('.js-quiz-body').hidden = !box.checked;
+      set.querySelector('.js-no-quiz-note').hidden = box.checked;
+    });
+  });
   function syncVideoSource() {
     var youtube = document.querySelector('input[name="video_source"][value="youtube"]');
     var isYoutube = !!(youtube && youtube.checked);

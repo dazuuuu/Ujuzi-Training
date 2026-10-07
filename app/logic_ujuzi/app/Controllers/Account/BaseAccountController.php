@@ -24,6 +24,11 @@ abstract class BaseAccountController
         if (!empty($this->user['must_change_password']) && !in_array(Url::currentPath(), self::FORCED_PASSWORD_ALLOWED_PATHS, true)) {
             redirect('/account/change-password');
         }
+
+        // A locked account (shared email / phone) can only fix its details.
+        if (!empty($this->user['locked_at']) && !in_array(Url::currentPath(), ['/account/locked', '/account/logout'], true)) {
+            redirect('/account/locked');
+        }
     }
 
     protected function render(string $view, array $data = []): void
@@ -51,7 +56,8 @@ abstract class BaseAccountController
             if ($roleSlug === 'organisation_admin' && !empty($this->user['organisation_id'])) {
                 $orgId = (int) $this->user['organisation_id'];
                 return count(OrganisationMembership::pendingTrainersForOrganisation($orgId))
-                    + count(OrganisationMembership::pendingStudentsForOrganisation($orgId));
+                    + count(OrganisationMembership::pendingStudentsForOrganisation($orgId))
+                    + \App\Models\AttachmentAudience::pendingCountForOrganisation($orgId);
             }
             if ($roleSlug === 'branch_admin') {
                 $count = 0;

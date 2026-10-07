@@ -21,11 +21,26 @@ class CertificateController extends BaseAccountController
             redirect('/account/dashboard');
         }
 
+        // Every course has its own certificate. Without ?course the student
+        // sees the list of their certificates, one per finished course.
+        $only = (int) \App\Core\Request::query('course', 0);
+        $course = null;
+        foreach ($completed as $candidate) {
+            if ((int) $candidate['id'] === $only) {
+                $course = $candidate;
+                break;
+            }
+        }
+        if (!$course && count($completed) === 1) {
+            $course = $completed[0];
+        }
+
         $this->render('account.certificate.show', [
-            'pageTitle' => 'Certificate',
+            'pageTitle' => $course ? $course['title'] : 'My Certificates',
             'activeNav' => 'certificate',
-            'payload' => CertificateService::payload($this->user, $completed),
+            'payload' => $course ? CertificateService::payload($this->user, [$course]) : null,
             'completedCourses' => $completed,
+            'singleCourse' => $course,
         ]);
     }
 }

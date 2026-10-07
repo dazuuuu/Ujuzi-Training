@@ -732,3 +732,10 @@ body.srms-nav-open {
 }
 .ujuzi-nav-btn:hover,
 .ujuzi-dropdown:hover .ujuzi-nav-btn { background: #16a34a; color: white; }
+
+/* Strict spreadsheet look: column letters, row numbers, gridlines everywhere. */
+.excel-sheet { font-size: 12px; font-family: Calibri, "Segoe UI", Arial, sans-serif; }
+.excel-sheet th, .excel-sheet td { border: 1px solid #c0c4c9; padding: 2px 6px; }
+.excel-sheet .excel-col-letters th { background: #e8eaed; color: #5f6368; font-weight: 400; text-align: center; font-size: 11px; }
+.excel-sheet .excel-corner, .excel-sheet .excel-row-number { background: #e8eaed; color: #5f6368; font-weight: 400; text-align: center; width: 2.5rem; font-size: 11px; }
+.excel-sheet tbody tr:hover td:not(.excel-row-number) { background: #e8f0fe; }

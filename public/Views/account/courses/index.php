@@ -48,7 +48,7 @@ require __DIR__ . '/../layout-header.php';
             <h2 class="font-serif-heading text-lg font-bold"><?= e($group['title']) ?></h2>
             <p class="mt-1 text-xs font-semibold" style="color:var(--ke-muted)"><?= e($group['note']) ?></p>
           </div>
-          <?php $gridId = 'courses-' . e($group['key'] ?? 'group'); $shown = 6; $total = count($group['courses']); ?>
+          <?php $gridId = 'courses-' . e($group['key'] ?? 'group'); $shown = 10; $total = count($group['courses']); ?>
           <div class="course-tile-grid" id="<?= $gridId ?>">
             <?php foreach ($group['courses'] as $i => $course): ?>
               <?php $extraCard = $i >= $shown; require __DIR__ . '/../partials/course-card.php'; ?>

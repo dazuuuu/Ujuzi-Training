@@ -66,8 +66,10 @@ class AuthController
             $error = 'Your session expired. Please try again.';
         } elseif ($method === 'phone') {
             $phone = User::normalizePhone((string) Request::post('phone', ''));
-            $user = $phone ? User::findByIdentifier('phone', $phone) : null;
-            $error = $this->authenticateUser($user, $resolved['slug'], '');
+            $user = $phone ? User::findByPhone($phone) : null;
+            $error = !$user && $phone !== '' && User::phoneTaken($phone)
+                ? 'More than one account uses this phone number, so it can\'t be used to sign in yet. Sign in with your email to fix your account.'
+                : $this->authenticateUser($user, $resolved['slug'], '');
         } else {
             $email = strtolower(trim((string) Request::post('email', '')));
             $password = (string) Request::post('password', '');

@@ -72,36 +72,7 @@ $registerPath = $registerPath ?? LoginRoles::registerPath((string) ($roleSlug ??
     <div class="mt-8 pt-6 border-t border-gray-100 relative z-20">
       <p class="font-bold text-gray-800 uppercase tracking-wider text-[11px] text-center mb-3">Don't have an account?</p>
 
-      <!-- Sign up accordion dropdown -->
-      <div class="relative" id="loginSignupDropWrapper">
-        <button type="button" id="loginSignupDropBtn"
-          class="w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 border-green-600 text-green-700 font-bold text-sm bg-white hover:bg-green-50 transition">
-          <span>Sign up — choose your role</span>
-          <span id="loginSignupCaret" style="font-size:0.75rem;transition:transform 0.2s;">▼</span>
-        </button>
-        <div id="loginSignupDropMenu" class="hidden mt-2 rounded-xl border border-gray-100 bg-white shadow-lg overflow-hidden">
-          <div style="padding:0.35rem 1rem 0.1rem;font-size:0.6rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#94a3b8;background:#f8fafc;border-bottom:1px solid #f1f5f9;">Course Portals</div>
-          <a href="<?= url('/account/login/organisation-admin') ?>" class="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-red-50 hover:text-red-700 border-b border-gray-50" style="text-decoration:none;">
-            <span class="w-7 h-7 rounded-lg flex items-center justify-center text-sm" style="background:#fef2f2;color:#dc2626;">🏢</span> Organisation (Course Provider)
-          </a>
-          <a href="<?= url('/account/login/course-branch-admin') ?>" class="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-red-50 hover:text-red-700 border-b border-gray-50" style="text-decoration:none;">
-            <span class="w-7 h-7 rounded-lg flex items-center justify-center text-sm" style="background:#fff7ed;color:#ea580c;">🏬</span> Branch Admin (Course Org)
-          </a>
-          <a href="<?= url('/account/register') ?>" class="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-green-50 hover:text-green-700 border-b border-gray-50" style="text-decoration:none;">
-            <span class="w-7 h-7 rounded-lg flex items-center justify-center text-sm" style="background:#f0fdf4;color:#16a34a;">🎓</span> Student
-          </a>
-          <a href="<?= url('/account/register/trainer') ?>" class="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-green-50 hover:text-green-700 border-b border-gray-50" style="text-decoration:none;">
-            <span class="w-7 h-7 rounded-lg flex items-center justify-center text-sm" style="background:#f0fdf4;color:#15803d;">👨&#x200d;🏫</span> Tutor / Teacher
-          </a>
-          <div style="padding:0.35rem 1rem 0.1rem;font-size:0.6rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#94a3b8;background:#f8fafc;border-bottom:1px solid #f1f5f9;">Attachment Portals</div>
-          <a href="<?= url('/account/register/attachment-trainer') ?>" class="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-green-50 hover:text-green-700 border-b border-gray-50" style="text-decoration:none;">
-            <span class="w-7 h-7 rounded-lg flex items-center justify-center text-sm" style="background:#faf5ff;color:#7c3aed;">🤝</span> Organisation (Attachment Provider)
-          </a>
-          <a href="<?= url('/account/login/branch-admin') ?>" class="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50" style="text-decoration:none;">
-            <span class="w-7 h-7 rounded-lg flex items-center justify-center text-sm" style="background:#f1f5f9;color:#334155;">📍</span> Branch (Attachment Org)
-          </a>
-        </div>
-      </div>
+      <a href="<?= url('/account/register/choose') ?>" class="w-full flex items-center justify-center px-4 py-3 rounded-xl border-2 border-green-600 text-green-700 font-bold text-sm bg-white hover:bg-green-50 transition" style="text-decoration:none;">Sign up</a>
 
       <div class="flex flex-col gap-1 mt-4 text-center">
         <a href="<?= url('/account/login') ?>" class="text-xs font-bold text-gray-500 hover:text-red-600 transition">Choose a different role login</a>
@@ -110,20 +81,6 @@ $registerPath = $registerPath ?? LoginRoles::registerPath((string) ($roleSlug ??
   </div>
 </div>
 
-<script>
-(function() {
-  var btn = document.getElementById('loginSignupDropBtn');
-  var menu = document.getElementById('loginSignupDropMenu');
-  var caret = document.getElementById('loginSignupCaret');
-  if (btn && menu) {
-    btn.addEventListener('click', function() {
-      var open = !menu.classList.contains('hidden');
-      menu.classList.toggle('hidden');
-      if (caret) caret.style.transform = open ? '' : 'rotate(180deg)';
-    });
-  }
-})();
-</script>
 
 
 <script>

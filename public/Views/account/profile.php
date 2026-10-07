@@ -57,6 +57,81 @@ require __DIR__ . '/layout-header.php';
         </form>
       </section>
 
+      <?php if (($currentUser['role_slug'] ?? '') !== 'trainer'): ?>
+        <section class="profile-form-card rounded-xl border bg-white p-4 shadow-sm" style="border-color:var(--ke-line)">
+          <form method="post" action="<?= url('/account/profile/photo') ?>" enctype="multipart/form-data" class="flex flex-wrap items-center gap-4">
+            <?= csrfField() ?>
+            <?php if (!empty($currentUser['photo_path'])): ?>
+              <img src="<?= e(imageUrl($currentUser['photo_path'])) ?>" alt="Your profile picture" class="h-16 w-16 shrink-0 rounded-full object-cover">
+            <?php else: ?>
+              <span class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-400"><?= icon('user', 'h-7 w-7') ?></span>
+            <?php endif; ?>
+            <div class="min-w-0 flex-1">
+              <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)" for="photo-upload">Profile picture</label>
+              <input id="photo-upload" type="file" name="photo" accept="image/jpeg,image/png,image/webp" required data-crop="1" class="mt-1 block w-full text-sm">
+            </div>
+            <button type="submit" class="btn-secondary">Save picture</button>
+          </form>
+        </section>
+      <?php endif; ?>
+
+      <?php if (($currentUser['role_slug'] ?? '') === 'trainer'):
+        $missingPublic = \App\Models\User::missingPublicProfile($currentUser);
+      ?>
+        <section class="profile-form-card rounded-xl border bg-white p-4 shadow-sm" style="border-color:var(--ke-line)" id="public-profile">
+          <div class="flex items-start justify-between gap-3 border-b border-neutral-100 pb-3">
+            <div>
+              <h2 class="font-serif-heading text-lg font-bold">What students see</h2>
+              <p class="mt-1 text-xs font-semibold" style="color:var(--ke-muted)">Students enrolled in your courses see this when they open the tutor of a course. A picture, phone number, about you and experience are required before you can create courses.</p>
+            </div>
+            <span class="rounded-full px-2 py-1 text-[10px] font-black uppercase <?= $missingPublic ? '' : 'text-white' ?>" style="<?= $missingPublic ? 'background:#fef2f2;color:var(--ke-red);border:1px solid var(--ke-red)' : 'background:var(--ke-green)' ?>"><?= $missingPublic ? 'Incomplete' : 'Complete' ?></span>
+          </div>
+          <form method="post" action="<?= url('/account/profile/public') ?>" enctype="multipart/form-data" class="mt-4 grid gap-3">
+            <?= csrfField() ?>
+            <div class="flex items-center gap-4">
+              <?php if (!empty($currentUser['photo_path'])): ?>
+                <img src="<?= e(imageUrl($currentUser['photo_path'])) ?>" alt="Your profile picture" class="h-20 w-20 shrink-0 rounded-full object-cover">
+              <?php else: ?>
+                <span class="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-400"><?= icon('user', 'h-8 w-8') ?></span>
+              <?php endif; ?>
+              <div class="min-w-0">
+                <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)" for="pp-photo">Profile picture<?= empty($currentUser['photo_path']) ? ' *' : '' ?></label>
+                <input id="pp-photo" type="file" name="photo" accept="image/jpeg,image/png,image/webp" data-crop="1" class="mt-1 block w-full text-sm">
+              </div>
+            </div>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)" for="pp-phone">Phone number *</label>
+                <input id="pp-phone" type="tel" name="phone" value="<?= e($currentUser['phone'] ?? '') ?>" required class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" placeholder="0712 345 678">
+              </div>
+              <div>
+                <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)" for="pp-headline">Title</label>
+                <input id="pp-headline" type="text" name="headline" maxlength="160" value="<?= e($currentUser['headline'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" placeholder="e.g. Master plumber, 12 years">
+              </div>
+            </div>
+            <div>
+              <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)" for="pp-bio">About you *</label>
+              <textarea id="pp-bio" name="bio" rows="3" required maxlength="3000" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm"><?= e($currentUser['bio'] ?? '') ?></textarea>
+            </div>
+            <div>
+              <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)" for="pp-exp">Experience *</label>
+              <textarea id="pp-exp" name="experience" rows="3" required maxlength="3000" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" placeholder="Where you have worked and what you have taught"><?= e($currentUser['experience'] ?? '') ?></textarea>
+            </div>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)" for="pp-li">LinkedIn</label>
+                <input id="pp-li" type="url" name="linkedin_url" value="<?= e($currentUser['linkedin_url'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" placeholder="https://www.linkedin.com/in/…">
+              </div>
+              <div>
+                <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)" for="pp-social">Other social media</label>
+                <input id="pp-social" type="url" name="social_url" value="<?= e($currentUser['social_url'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" placeholder="https://…">
+              </div>
+            </div>
+            <div><button type="submit" class="btn-primary">Save what students see</button></div>
+          </form>
+        </section>
+      <?php endif; ?>
+
       <?php if (!$forms): ?>
         <div class="rounded-xl border border-dashed p-8 text-sm font-bold" style="border-color:var(--ke-line);color:var(--ke-muted)">No forms have been assigned to your role yet.</div>
       <?php endif; ?>
@@ -107,14 +182,15 @@ require __DIR__ . '/layout-header.php';
         <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">Saved information</p>
         <h2 class="mt-2 font-serif-heading text-lg font-bold">Your details</h2>
         <dl class="mt-4 divide-y divide-neutral-100">
-          <div class="py-3"><dt class="text-[10px] font-bold uppercase" style="color:var(--ke-muted)">Name</dt><dd class="mt-1 text-sm font-bold"><?= e(userDisplayName($currentUser)) ?></dd></div>
+          <div class="py-3"><dt class="text-[10px] font-bold uppercase" style="color:var(--ke-muted)">Name</dt><dd class="mt-1 text-sm font-bold"><?= e(userFullName($currentUser)) ?></dd></div>
           <div class="py-3"><dt class="text-[10px] font-bold uppercase" style="color:var(--ke-muted)">Email</dt><dd class="mt-1 text-sm font-bold break-words"><?= e($currentUser['email'] ?? 'Not provided') ?></dd></div>
-          <div class="py-3"><dt class="text-[10px] font-bold uppercase" style="color:var(--ke-muted)">Phone</dt><dd class="mt-1 text-sm font-bold"><?= e($currentUser['phone'] ?? 'Not provided') ?></dd></div>
+          <div class="py-3"><dt class="text-[10px] font-bold uppercase" style="color:var(--ke-muted)">Phone</dt><dd class="mt-1 text-sm font-bold"><?= e(($currentUser['phone'] ?? '') ?: 'Not provided') ?></dd></div>
           <div class="py-3"><dt class="text-[10px] font-bold uppercase" style="color:var(--ke-muted)">Role</dt><dd class="mt-1 text-sm font-bold"><?= e($currentUser['role_name'] ?? '') ?></dd></div>
           <div class="py-3"><dt class="text-[10px] font-bold uppercase" style="color:var(--ke-muted)">Organisation</dt><dd class="mt-1 text-sm font-bold break-words"><?= e($organisationSummary ? implode(', ', $organisationSummary) : 'Not selected') ?></dd></div>
           <?php foreach ($forms as $summaryForm): ?>
             <?php foreach ($summaryForm['fields'] as $summaryField): ?>
-              <?php if (\App\Models\FormFieldTypes::isLayout($summaryField['field_type'] ?? '')) continue; ?>
+              <?php // Name, email, phone and organisation are shown once above, from the saved account. ?>
+              <?php if (\App\Models\FormFieldTypes::isLayout($summaryField['field_type'] ?? '') || in_array($summaryField['field_type'] ?? '', ['name', 'email', 'phone', 'organisation'], true)) continue; ?>
               <?php $summaryValue = $summaryForm['response']['answers'][$summaryField['field_key']] ?? ''; ?>
               <?php $summaryText = \App\Models\FormField::formatAnswer($summaryField, $summaryValue); ?>
               <div class="py-3"><dt class="text-[10px] font-bold uppercase" style="color:var(--ke-muted)"><?= e($summaryField['label']) ?></dt><dd class="mt-1 text-sm font-bold break-words"><?= e($summaryText) ?></dd></div>

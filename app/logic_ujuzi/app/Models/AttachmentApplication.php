@@ -103,6 +103,52 @@ class AttachmentApplication
         return true;
     }
 
+    /**
+     * Files the student's attachment request for one course. A student makes
+     * one live request per course; only a declined one can be replaced, and
+     * never with an organisation that already declined it. Returns null on
+     * success, else why it was refused.
+     */
+    public static function saveCourseSelection(int $studentUserId, int $courseId, int $categoryId, int $providerUserId, ?int $branchId): ?string
+    {
+        $pdo = Database::connection();
+        $stmt = $pdo->prepare('SELECT id, status, provider_user_id, declined_provider_ids FROM attachment_applications WHERE student_user_id = ? AND course_id = ? LIMIT 1');
+        $stmt->execute([$studentUserId, $courseId]);
+        $existing = $stmt->fetch();
+        if ($existing) {
+            if ($existing['status'] !== self::STATUS_REJECTED) {
+                return 'You already have an attachment request for this course.';
+            }
+            $declined = self::declinedProviderIds($existing);
+            if (in_array($providerUserId, $declined, true)) {
+                return 'This organisation already declined your request for this course. Choose another organisation.';
+            }
+            $pdo->prepare(
+                "UPDATE attachment_applications
+                 SET provider_user_id = ?, branch_id = ?, category_id = ?, status = 'pending', selected_at = NOW(),
+                     accepted_at = NULL, paused_at = NULL, completed_at = NULL, recommended_at = NULL, rejected_at = NULL,
+                     letter_sent_at = NULL, provider_note = NULL, declined_provider_ids = ?
+                 WHERE id = ?"
+            )->execute([$providerUserId, $branchId, $categoryId, implode(',', $declined), (int) $existing['id']]);
+            return null;
+        }
+        $pdo->prepare(
+            'INSERT INTO attachment_applications (student_user_id, course_id, category_id, provider_user_id, branch_id, status, selected_at)
+             VALUES (?, ?, ?, ?, ?, ?, NOW())'
+        )->execute([$studentUserId, $courseId, $categoryId, $providerUserId, $branchId, self::STATUS_PENDING]);
+        return null;
+    }
+
+    /** Organisations that declined this request before, plus the current one if it is declined. @return int[] */
+    public static function declinedProviderIds(array $application): array
+    {
+        $ids = array_filter(array_map('intval', explode(',', (string) ($application['declined_provider_ids'] ?? ''))));
+        if (($application['status'] ?? '') === self::STATUS_REJECTED && !empty($application['provider_user_id'])) {
+            $ids[] = (int) $application['provider_user_id'];
+        }
+        return array_values(array_unique($ids));
+    }
+
     /** Withdraws the student's own request while it is still pending. Returns false otherwise. */
     public static function cancelPending(int $id, int $studentUserId): bool
     {
@@ -119,14 +165,15 @@ class AttachmentApplication
         $stmt = Database::connection()->prepare(
             'SELECT a.*, u.first_name, u.last_name, u.email, o.name AS organisation_name,
                     b.title AS branch_title, b.location AS branch_location,
-                    cat.name AS category_name, co.name AS category_organisation_name
+                    cat.name AS category_name, co.name AS category_organisation_name, c.title AS course_title
              FROM attachment_applications a
              INNER JOIN users u ON u.id = a.provider_user_id
+             LEFT JOIN courses c ON c.id = a.course_id
              LEFT JOIN organisations o ON o.id = u.organisation_id
              LEFT JOIN organisation_branches b ON b.id = a.branch_id
              LEFT JOIN organisation_categories cat ON cat.id = a.category_id
              LEFT JOIN organisations co ON co.id = cat.organisation_id
-             WHERE a.student_user_id = ? AND a.course_id IS NULL
+             WHERE a.student_user_id = ?
              ORDER BY a.selected_at DESC'
         );
         $stmt->execute([$studentUserId]);
@@ -173,7 +220,7 @@ class AttachmentApplication
     public static function forProvider(int $providerUserId): array
     {
         $stmt = Database::connection()->prepare(
-            'SELECT a.*, c.title AS course_title, s.first_name, s.last_name, s.email, s.phone,
+            'SELECT a.*, c.title AS course_title, s.first_name, s.last_name, s.email, s.phone, s.registration_number,
                     r.slug AS role_slug, r.name AS role_name, o.name AS organisation_name,
                     b.title AS branch_title, b.location AS branch_location, cat.name AS category_name
              FROM attachment_applications a
@@ -193,11 +240,17 @@ class AttachmentApplication
     public static function forBranch(int $branchId): array
     {
         $stmt = Database::connection()->prepare(
-            'SELECT a.*, c.title AS course_title, s.first_name, s.last_name, s.email, s.phone,
+            'SELECT a.*, c.title AS course_title, s.first_name, s.last_name, s.other_names, s.email, s.phone, s.registration_number,
                     b.title AS branch_title, b.location AS branch_location,
-                    cat.name AS category_name, co.name AS category_organisation_name
+                    cat.name AS category_name, co.name AS category_organisation_name,
+                    corg.name AS course_organisation_name,
+                    (SELECT sb.title FROM organisation_memberships m2
+                       INNER JOIN organisation_branches sb ON sb.id = m2.branch_id
+                       WHERE m2.user_id = a.student_user_id AND m2.organisation_id = c.organisation_id AND m2.status = \'approved\'
+                       ORDER BY m2.id DESC LIMIT 1) AS student_branch_title
              FROM attachment_applications a
              LEFT JOIN courses c ON c.id = a.course_id
+             LEFT JOIN organisations corg ON corg.id = c.organisation_id
              INNER JOIN users s ON s.id = a.student_user_id
              LEFT JOIN organisation_branches b ON b.id = a.branch_id
              LEFT JOIN organisation_categories cat ON cat.id = a.category_id
@@ -313,7 +366,7 @@ class AttachmentApplication
      */
     public static function report(array $filters): array
     {
-        $where = ['a.course_id IS NULL'];
+        $where = ['1 = 1'];
         $params = [];
         $status = (string) ($filters['status'] ?? '');
         if ($status === self::STATUS_COMPLETED) {
@@ -326,8 +379,9 @@ class AttachmentApplication
         if ($query !== '') {
             $like = '%' . $query . '%';
             $where[] = '(s.first_name LIKE ? OR s.last_name LIKE ? OR s.email LIKE ? OR s.phone LIKE ?
-                        OR po.name LIKE ? OR p.first_name LIKE ? OR b.title LIKE ? OR cat.name LIKE ? OR co.name LIKE ?)';
-            array_push($params, $like, $like, $like, $like, $like, $like, $like, $like, $like);
+                        OR po.name LIKE ? OR p.first_name LIKE ? OR b.title LIKE ? OR cat.name LIKE ? OR co.name LIKE ?
+                        OR s.registration_number LIKE ? OR c.title LIKE ?)';
+            array_push($params, $like, $like, $like, $like, $like, $like, $like, $like, $like, $like, $like);
         }
         foreach (['from' => '>=', 'to' => '<'] as $key => $op) {
             $date = (string) ($filters[$key] ?? '');
@@ -358,13 +412,22 @@ class AttachmentApplication
 
     private static function detailSql(): string
     {
-        return 'SELECT a.*, s.first_name, s.last_name, s.email, s.phone,
+        return 'SELECT a.*, s.first_name, s.last_name, s.other_names, s.email, s.phone, s.registration_number,
                        p.first_name AS provider_first_name, p.last_name AS provider_last_name, p.email AS provider_email,
                        po.name AS provider_organisation_name,
                        b.title AS branch_title, b.location AS branch_location,
-                       cat.name AS category_name, co.name AS category_organisation_name
+                       cat.name AS category_name, co.name AS category_organisation_name,
+                       c.title AS course_title, corg.name AS course_organisation_name,
+                       sm_b.title AS student_branch_title
                 FROM attachment_applications a
                 INNER JOIN users s ON s.id = a.student_user_id
+                LEFT JOIN courses c ON c.id = a.course_id
+                LEFT JOIN organisations corg ON corg.id = c.organisation_id
+                LEFT JOIN organisation_memberships sm ON sm.id = (
+                    SELECT m2.id FROM organisation_memberships m2
+                    WHERE m2.user_id = a.student_user_id AND m2.organisation_id = c.organisation_id AND m2.status = \'approved\'
+                    ORDER BY m2.id DESC LIMIT 1)
+                LEFT JOIN organisation_branches sm_b ON sm_b.id = sm.branch_id
                 INNER JOIN users p ON p.id = a.provider_user_id
                 LEFT JOIN organisations po ON po.id = p.organisation_id
                 LEFT JOIN organisation_branches b ON b.id = a.branch_id
@@ -388,12 +451,16 @@ class AttachmentApplication
         Database::connection()->prepare(
             "UPDATE attachment_applications SET status = ?, provider_note = ?, {$column} = NOW() WHERE id = ?"
         )->execute([$status, $note, $id]);
+        if ($status === self::STATUS_RECOMMENDED) {
+            AttachmentAssessment::share($id); // the course's organisation now sees how they did
+        }
+        \App\Services\Notifier::attachmentStatus($id, $status);
     }
 
     public static function hasCompletedAttachment(int $studentUserId): bool
     {
         $stmt = Database::connection()->prepare(
-            "SELECT 1 FROM attachment_applications WHERE student_user_id = ? AND status = 'recommended' LIMIT 1"
+            "SELECT 1 FROM attachment_applications WHERE student_user_id = ? AND course_id IS NULL AND status = 'recommended' LIMIT 1"
         );
         $stmt->execute([$studentUserId]);
         return (bool) $stmt->fetchColumn();

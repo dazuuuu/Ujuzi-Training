@@ -41,10 +41,13 @@ class AttachmentReviewController extends BaseAccountController
         $fees = WalletService::feeSummaries([$application['student_user_id']])[$application['student_user_id']] ?? null;
 
         $this->render('account.attachment-review.show', [
+            'assessment' => \App\Models\AttachmentAssessment::forApplication((int) $application['id']),
+            'criteria' => \App\Models\AttachmentAssessment::criteriaFor((int) $application['provider_user_id']),
             'pageTitle' => 'Attachment request',
             'activeNav' => $this->backNav(),
             'application' => $application,
             'fees' => $fees,
+            'requestFees' => WalletService::requestFees($application['student_user_id'], $application['category_id'] ?? null, !empty($application['course_id']) ? (int) $application['course_id'] : null),
             'messages' => AttachmentMessage::forApplication($application['id']),
             'actions' => self::ACTIONS[$application['status']] ?? [],
             'backUrl' => $this->backUrl(),
@@ -80,10 +83,14 @@ class AttachmentReviewController extends BaseAccountController
             redirect($here);
         }
 
+        if ($newStatus === App::STATUS_RECOMMENDED && !\App\Models\AttachmentAssessment::isMarked((int) $application['id'])) {
+            flashError(\App\Models\AttachmentAssessment::NOT_MARKED);
+            redirect($here . '#assessment');
+        }
         if ($newStatus === App::STATUS_RECOMMENDED) {
-            $owed = WalletService::studentBalanceOwed($application['student_user_id']);
+            $owed = WalletService::requestFees((int) $application['student_user_id'], !empty($application['category_id']) ? (int) $application['category_id'] : null, !empty($application['course_id']) ? (int) $application['course_id'] : null)['balance'];
             if ($owed > 0) {
-                flashError('This student still owes Ksh ' . number_format($owed, 2) . ' in course fees. They can be marked completed once the balance is Ksh 0.');
+                flashError(WalletService::outstandingMessage($owed));
                 redirect($here);
             }
         }
@@ -94,6 +101,9 @@ class AttachmentReviewController extends BaseAccountController
         }
         AttachmentMessage::add($application['id'], (int) $this->user['id'], AttachmentMessage::SIDE_REVIEWER, $body, $newStatus);
 
+        if (Request::post('return') === 'list') {
+            $here = $this->backUrl();
+        }
         flashSuccess(match ($newStatus) {
             null => 'Note sent to the student.',
             App::STATUS_ACCEPTED => 'Student accepted' . ($body !== '' ? ' and your note sent.' : '.'),
@@ -106,6 +116,23 @@ class AttachmentReviewController extends BaseAccountController
     }
 
     /** Sends the student their recommendation letter again: in their portal, and by email when email is set up. */
+    /** Saves the assessment sheet (criteria, marks, comments, remarks). "generate" fills in the standard criteria. */
+    public function assessment(string $id): void
+    {
+        $application = App::findForReviewer((int) $id, $this->user);
+        $here = '/account/attachment-requests/' . (int) $id . '#assessment';
+        if (!$application || !csrfVerify(Request::post('csrf_token'))) {
+            flashError('That request could not be found, or your session expired.');
+            redirect('/account/branch-admin');
+        }
+        $rows = Request::post('generate') === '1'
+            ? \App\Models\AttachmentAssessment::STANDARD_CRITERIA
+            : (array) Request::post('items', []);
+        \App\Models\AttachmentAssessment::save((int) $application['id'], (int) $application['provider_user_id'], $rows, (string) Request::post('remarks', ''), (int) $this->user['id']);
+        flashSuccess(Request::post('generate') === '1' ? 'Standard criteria added. Change them as you like, then give the marks.' : 'Assessment saved.');
+        redirect($here);
+    }
+
     public function resendLetter(string $id): void
     {
         $application = $this->reviewable((int) $id);

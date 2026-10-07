@@ -49,6 +49,16 @@ require __DIR__ . '/../layout-header.php';
           ?>
         </div>
       <?php endforeach; ?>
+      <div class="rounded-lg border p-4" style="border-color:var(--ke-line)">
+        <label class="text-[11px] font-bold uppercase text-neutral-600" for="course-cover">Cover image<?= empty($course['cover_image']) ? ' *' : '' ?></label>
+        <div class="mt-2 flex flex-wrap items-center gap-3">
+          <?php if (!empty($course['cover_image']) && preg_match('/\.(jpe?g|png|webp|gif)$/i', (string) $course['cover_image'])): ?>
+            <img src="<?= e(imageUrl($course['cover_image'])) ?>" alt="Current cover" class="h-20 w-32 rounded-lg object-cover">
+          <?php endif; ?>
+          <input id="course-cover" type="file" name="course_cover" accept="image/jpeg,image/png,image/webp" <?= empty($course['cover_image']) ? 'required' : '' ?> class="block min-w-0 flex-1 text-sm" />
+        </div>
+        <p class="field-hint">Shown on the course card and on the homepage. A wide picture (16:9) looks best.</p>
+      </div>
       <input type="hidden" name="is_published" value="0" />
       <label class="flex items-center gap-2 text-sm font-bold">
         <input type="checkbox" name="is_published" value="1" <?= empty($course) || !empty($course['is_published']) ? 'checked' : '' ?> class="h-4 w-4" />

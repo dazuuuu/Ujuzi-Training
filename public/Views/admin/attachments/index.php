@@ -75,7 +75,7 @@ $exportUrl = url('/admin/attachments/export') . (($qs = $filters()) !== '' ? '?'
             $st = (string) $a['status'];
           ?>
             <tr>
-              <td class="font-black"><?= e(trim($a['first_name'] . ' ' . $a['last_name']) ?: $a['email']) ?></td>
+              <td class="font-black"><?= e(trim($a['first_name'] . ' ' . $a['last_name']) ?: $a['email']) ?><?php if (!empty($a['registration_number'])): ?><span class="block text-[10px] font-bold text-neutral-500"><?= e($a['registration_number']) ?></span><?php endif; ?></td>
               <td><?= e($a['email']) ?><?= !empty($a['phone']) ? '<br><span class="text-neutral-500">' . e($a['phone']) . '</span>' : '' ?></td>
               <td><?= e($a['category_name'] ?? '—') ?><?= !empty($a['category_organisation_name']) ? '<br><span class="text-neutral-500">' . e($a['category_organisation_name']) . '</span>' : '' ?></td>
               <td><?= e($a['provider_organisation_name'] ?: trim($a['provider_first_name'] . ' ' . $a['provider_last_name'])) ?></td>

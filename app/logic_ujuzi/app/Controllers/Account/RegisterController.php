@@ -83,60 +83,16 @@ class RegisterController
         $this->loginAndLand($userId, 'Welcome. Complete the student registration form assigned to your role.');
     }
 
+    /** Tutors don't sign up: the organisation providing courses registers them from People. */
     public function showTrainer(): void
     {
-        if (UserSession::current()) {
-            redirect(AccountRedirect::home(UserSession::current()));
-        }
-        $this->renderTrainer('');
+        flashError('Tutors are registered by their organisation. Ask your organisation for your sign-in details.');
+        redirect('/account/register/choose');
     }
 
     public function storeTrainer(): void
     {
-        if (UserSession::current()) {
-            redirect(AccountRedirect::home(UserSession::current()));
-        }
-        if (!csrfVerify(Request::post('csrf_token'))) {
-            $this->renderTrainer('Your session expired. Please try again.');
-            return;
-        }
-
-        $email = strtolower(trim((string) Request::post('email', '')));
-        $password = (string) Request::post('password', '');
-        $confirm = (string) Request::post('password_confirmation', '');
-        $error = $this->validateCredentials($email, $password, $confirm);
-        if ($error) {
-            $this->renderTrainer($error, $email);
-            return;
-        }
-
-        $role = Role::findBySlug('trainer');
-        if (!$role) {
-            $this->renderTrainer('Tutor registration is not available yet. Ask Super Admin to finish setup.');
-            return;
-        }
-
-        try {
-            $userId = User::create([
-                'role_id' => (int) $role['id'],
-                'organisation_id' => null,
-                'email' => $email,
-                'phone' => '',
-                'first_name' => '',
-                'last_name' => '',
-                'password' => $password,
-                'is_active' => 1,
-                'email_verified_at' => date('Y-m-d H:i:s'),
-            ]);
-        } catch (\PDOException $e) {
-            if ((string) $e->getCode() === '23000') {
-                $this->renderTrainer('That email is already registered. Sign in instead.', $email);
-                return;
-            }
-            throw $e;
-        }
-
-        $this->loginAndLand($userId, 'Welcome. Complete the tutor registration form and pick the organisation(s) you want to teach for.');
+        $this->showTrainer();
     }
 
     public function showAttachmentTrainer(): void
@@ -350,20 +306,6 @@ class RegisterController
             'heading' => 'Create a student account',
             'blurb' => 'Register with email and password. After you sign in, the first page you see is the registration form Super Admin assigned to students.',
             'loginUrl' => '/account/login/student',
-        ]);
-    }
-
-    private function renderTrainer(string $error, string $email = ''): void
-    {
-        View::render('account.register', [
-            'pageTitle' => 'Tutor registration',
-            'error' => $error,
-            'email' => $email,
-            'mode' => 'trainer',
-            'action' => url('/account/register/trainer'),
-            'heading' => 'Create a tutor account',
-            'blurb' => 'Register as a tutor, trainer, or teacher. After you sign in, fill the assigned form and pick organisation(s). Each organisation must approve you before you appear on their dashboard.',
-            'loginUrl' => '/account/login/trainer',
         ]);
     }
 

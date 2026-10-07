@@ -284,7 +284,16 @@ class OrganisationMembership
             "INSERT IGNORE INTO organisation_memberships (user_id, organisation_id, status)
              VALUES (?, ?, 'pending')"
         );
+        // A tutor belongs to one organisation only.
+        $elsewhere = Database::connection()->prepare(
+            "SELECT 1 FROM organisation_memberships
+             WHERE user_id = ? AND organisation_id <> ? AND status IN ('approved', 'pending') LIMIT 1"
+        );
         foreach ($stmt->fetchAll() as $row) {
+            $elsewhere->execute([(int) $row['user_id'], $organisationId]);
+            if ($elsewhere->fetchColumn()) {
+                continue;
+            }
             $answers = $row['answers'] ?? null;
             if (is_string($answers) && $answers !== '') {
                 $answers = json_decode($answers, true) ?: [];
@@ -309,7 +318,7 @@ class OrganisationMembership
     {
         $details = [];
         $seen = [];
-        self::addProfileDetail($details, $seen, 'Name', userDisplayName($request));
+        self::addProfileDetail($details, $seen, 'Name', userFullName($request));
         self::addProfileDetail($details, $seen, 'Email', (string) ($request['email'] ?? ''));
         self::addProfileDetail($details, $seen, 'Phone', (string) ($request['phone'] ?? ''));
         $forms = Form::forRole((int) ($request['role_id'] ?? 0), true, 'profile');
@@ -320,7 +329,8 @@ class OrganisationMembership
                 continue;
             }
             foreach (FormField::forForm((int) $form['id']) as $field) {
-                if (FormFieldTypes::isLayout($field['field_type'] ?? '') || ($field['field_type'] ?? '') === 'organisation') {
+                // Name, email and phone are already listed once from the account.
+                if (FormFieldTypes::isLayout($field['field_type'] ?? '') || in_array($field['field_type'] ?? '', ['organisation', 'name', 'email', 'phone'], true)) {
                     continue;
                 }
                 $value = $answers[$field['field_key']] ?? '';
@@ -420,6 +430,10 @@ class OrganisationMembership
         if (!$row || (int) $row['organisation_id'] !== $organisationId || $row['status'] !== self::STATUS_PENDING) {
             return false;
         }
+        if (self::isTrainerRole((string) $row['role_slug'])
+            && array_diff(self::approvedOrganisationIds((int) $row['user_id']), [$organisationId])) {
+            return false;
+        }
 
         if ($categoryIds !== null) {
             $categoryJson = $categoryIds ? json_encode(array_values(array_unique(array_map('intval', $categoryIds)))) : null;
@@ -440,6 +454,8 @@ class OrganisationMembership
         if ($user && empty($user['organisation_id'])) {
             User::setOrganisationId((int) $user['id'], $organisationId);
         }
+        $orgName = (string) (Organisation::find($organisationId)['name'] ?? 'The organisation');
+        \App\Services\Notifier::toUser((int) $row['user_id'], $orgName . ' approved you', 'You have been approved', $orgName . ' approved your request. You can now see and enrol for its courses.', 'See courses', '/account/courses');
 
         return true;
     }
@@ -456,6 +472,8 @@ class OrganisationMembership
              SET status = 'rejected', reviewed_at = NOW(), reviewed_by_user_id = ?
              WHERE id = ?"
         )->execute([$reviewerUserId, $id]);
+        $orgName = (string) (Organisation::find($organisationId)['name'] ?? 'The organisation');
+        \App\Services\Notifier::toUser((int) $row['user_id'], 'Your request to ' . $orgName . ' was declined', 'Request declined', $orgName . ' declined your request. You can ask another organisation providing courses.', 'See organisations', '/account/course-organisations');
 
         return true;
     }
@@ -463,10 +481,12 @@ class OrganisationMembership
     public static function syncFromProfileAnswers(int $userId, string $roleSlug, array $fields, array $answers): void
     {
         $orgIds = [];
+        $hasOrganisationField = false;
         foreach ($fields as $field) {
             if (($field['field_type'] ?? '') !== 'organisation') {
                 continue;
             }
+            $hasOrganisationField = true;
             $raw = $answers[$field['field_key']] ?? [];
             if (!is_array($raw)) {
                 $raw = $raw !== '' && $raw !== null ? [$raw] : [];
@@ -479,6 +499,11 @@ class OrganisationMembership
             }
         }
         $orgIds = array_values($orgIds);
+        // A form without an organisation question says nothing about
+        // organisations — it must never clear the student's requests.
+        if (!$hasOrganisationField) {
+            return;
+        }
 
         if (self::isTrainerRole($roleSlug)) {
             self::syncSelections($userId, $orgIds);
@@ -516,6 +541,12 @@ class OrganisationMembership
                 unset($selected[$orgId]);
                 continue;
             }
+            // Requests the student sent from "Organisations providing courses"
+            // (they carry a branch or categories) stay, whatever the form says:
+            // a student can belong to several organisations.
+            if (!empty($row['category_ids']) || !empty($row['branch_id'])) {
+                continue;
+            }
             $pdo->prepare('DELETE FROM organisation_memberships WHERE id = ?')->execute([(int) $row['id']]);
         }
 
@@ -528,11 +559,28 @@ class OrganisationMembership
         }
 
         $primary = (int) ($selectedOrgIds[0] ?? 0);
-        User::assignOrganisation($userId, $primary > 0 ? $primary : null);
+        if ($primary > 0) {
+            User::assignOrganisation($userId, $primary);
+        }
     }
 
+    /**
+     * A tutor belongs to one organisation: the one that registered them, or
+     * failing that the first one they asked to join. Once approved, picking
+     * other organisations on the profile form changes nothing.
+     */
     private static function syncSelections(int $userId, array $selectedOrgIds): void
     {
+        $approved = self::approvedOrganisationIds($userId);
+        if ($approved) {
+            return;
+        }
+        $user = User::find($userId);
+        if ($user && !empty($user['organisation_id'])) {
+            $selectedOrgIds = [(int) $user['organisation_id']];
+        }
+        $selectedOrgIds = array_slice(array_values(array_filter(array_map('intval', $selectedOrgIds))), 0, 1);
+
         $selected = [];
         foreach ($selectedOrgIds as $id) {
             $id = (int) $id;

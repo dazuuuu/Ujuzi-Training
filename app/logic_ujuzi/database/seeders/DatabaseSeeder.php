@@ -1,7 +1,7 @@
 <?php
 /**
  * One-time/idempotent seed: the first admin account
- * (from ADMIN_SEED_EMAIL / ADMIN_SEED_PASSWORD in .env).
+ * (from ADMIN_SEED_EMAIL / ADMIN_SEED_PASSWORD in app/Core/Database.php).
  * Run: php app/logic_ujuzi/database/seeders/DatabaseSeeder.php
  */
 

@@ -7,7 +7,7 @@ require __DIR__ . '/../layout-header.php';
   <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
     <div>
       <p class="text-xs font-black uppercase tracking-widest text-neutral-600"><?= e($person['role_name']) ?></p>
-      <h1 class="mt-2 font-serif-heading text-3xl font-bold"><?= e(userDisplayName($person)) ?><?= !empty($person['other_names']) ? ' <span class="text-lg font-medium text-neutral-500">(' . e($person['other_names']) . ')</span>' : '' ?></h1>
+      <h1 class="mt-2 font-serif-heading text-3xl font-bold"><?= e(userFullName($person)) ?></h1>
       <p class="mt-1 text-sm font-medium text-neutral-600"><?= e($person['email'] ?: $person['phone'] ?: '') ?></p>
     </div>
     <a href="<?= url('/account/people/' . (int) $person['id'] . '/edit') ?>" class="btn-secondary">Edit</a>

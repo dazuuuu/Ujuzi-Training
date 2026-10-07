@@ -40,7 +40,7 @@ $pendingTrainerRequests = is_array($pendingTrainerRequests ?? null) ? $pendingTr
             <tr>
               <td class="font-black"><?= e(userDisplayName($request)) ?></td>
               <td><?= e($request['role_name'] ?? 'Trainer') ?></td>
-              <td><?= e($request['email'] ?: ($request['phone'] ?? '—')) ?></td>
+              <td><?= e(implode(' · ', array_filter([$request['phone'] ?? '', $request['email'] ?? ''])) ?: '—') ?></td>
               <td>
                 <?php if ($requestCategoryNames): ?>
                   <?php foreach ($requestCategoryNames as $name): ?>

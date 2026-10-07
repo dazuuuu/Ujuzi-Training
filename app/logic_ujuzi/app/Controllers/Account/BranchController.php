@@ -72,8 +72,19 @@ class BranchController extends BaseAccountController
             redirect('/account/branches');
         }
         $branch = $this->ownedBranch((int) $id);
-        OrganisationBranch::delete((int) $branch['id']);
-        flashSuccess('Branch deleted.');
+        if (Request::post('cancel') === '1') {
+            \App\Models\BranchDeletionRequest::cancel((int) $branch['id']);
+            flashSuccess('Deletion request withdrawn. The branch stays.');
+            redirect('/account/branches');
+        }
+        // Deleting a branch needs the organisation head (you, now) and Super Admin.
+        try {
+            \App\Models\BranchDeletionRequest::request((int) $branch['id'], (int) $this->user['id'], trim((string) Request::post('reason', '')));
+        } catch (\Throwable $e) {
+            flashError('Branch deletion needs Super Admin to run the latest update first.');
+            redirect('/account/branches');
+        }
+        flashSuccess('Deletion requested. ' . $branch['title'] . ' is deleted once Super Admin approves.');
         redirect('/account/branches');
     }
 

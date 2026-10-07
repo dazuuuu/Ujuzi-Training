@@ -151,6 +151,10 @@ class Authz
 
     public static function canAccessCourse(array $actor, array $course): bool
     {
+        // Students only reach courses Super Admin approved.
+        if (self::isStudent($actor) && isset($course['approval_status']) && $course['approval_status'] !== 'approved') {
+            return false;
+        }
         if (self::isOrganisationAdmin($actor) && (int) $course['organisation_id'] === (int) $actor['organisation_id']) {
             return true;
         }

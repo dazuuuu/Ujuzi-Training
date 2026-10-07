@@ -34,7 +34,7 @@ $categories = is_array($categories ?? null) ? $categories : [];
           ?>
             <tr>
               <td class="font-black"><a href="<?= url('/account/trainer-requests/' . (int) $request['id']) ?>" style="color:var(--ke-green)"><?= e(userDisplayName($request)) ?></a></td>
-              <td><?= e($request['email'] ?: ($request['phone'] ?? '—')) ?></td>
+              <td><?= e(implode(' · ', array_filter([$request['phone'] ?? '', $request['email'] ?? ''])) ?: '—') ?></td>
               <td><?= e($request['branch_title'] ?? '—') ?></td>
               <td><span class="text-[11px] font-black uppercase" style="color:var(--ke-red)">Pending</span></td>
               <td>

@@ -40,6 +40,7 @@ class PeopleController extends BaseAccountController
                 $fees = \App\Services\WalletService::feeSummaries(array_column($attachmentApplications, 'student_user_id'));
                 foreach ($attachmentApplications as &$application) {
                     $application['fees'] = $fees[(int) $application['student_user_id']] ?? null;
+                    $application['request_fees'] = \App\Services\WalletService::requestFees((int) $application['student_user_id'], $application['category_id'] ?? null, !empty($application['course_id']) ? (int) $application['course_id'] : null);
                 }
                 unset($application);
             } catch (\Throwable $e) {
@@ -313,7 +314,7 @@ class PeopleController extends BaseAccountController
             }
         }
         if ($phone !== '') {
-            $existing = User::findByIdentifier('phone', $phone);
+            $existing = User::findByPhone($phone);
             if ($existing && (int) $existing['id'] !== (int) $id) {
                 $errors[] = 'That phone number is already used by another user.';
             }

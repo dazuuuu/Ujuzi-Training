@@ -26,18 +26,69 @@ class User
 
     public static function findByIdentifier(string $type, string $value): ?array
     {
-        $column = $type === 'email' ? 'email' : 'phone';
+        if ($type === 'phone') {
+            return self::findByPhone($value);
+        }
+        $column = 'LOWER(TRIM(u.email))';
+        $value = strtolower(trim($value));
         $stmt = Database::connection()->prepare(
             "SELECT u.*, r.slug AS role_slug, r.name AS role_name, r.has_admin_features, r.is_under_organisation,
                     r.can_manage_users, r.managed_role_slugs, o.name AS organisation_name, o.description AS organisation_description
              FROM users u
              INNER JOIN roles r ON r.id = u.role_id
              LEFT JOIN organisations o ON o.id = u.organisation_id
-             WHERE u.$column = ?"
+             WHERE $column = ? ORDER BY u.id ASC LIMIT 1"
         );
         $stmt->execute([$value]);
         $row = $stmt->fetch();
         return $row ? self::hydrate($row) : null;
+    }
+
+    /**
+     * The account for a phone number, however it was typed: 0714…, 714…,
+     * +254714… and 254714… are the same number (compared on the last 9
+     * digits). Falls back to the phone people answered on their profile form,
+     * which is then saved to their account so the next lookup is direct.
+     */
+    public static function findByPhone(string $phone): ?array
+    {
+        $digits = preg_replace('/\D/', '', $phone);
+        if (strlen($digits) < 9) {
+            return null;
+        }
+        $tail = substr($digits, -9);
+        $pdo = Database::connection();
+        $stmt = $pdo->prepare(
+            "SELECT id FROM users WHERE phone IS NOT NULL AND phone <> ''
+               AND RIGHT(REPLACE(REPLACE(REPLACE(phone, '+', ''), ' ', ''), '-', ''), 9) = ? LIMIT 2"
+        );
+        $stmt->execute([$tail]);
+        $ids = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+        if (count($ids) === 1) {
+            return self::find((int) $ids[0]);
+        }
+        if ($ids) {
+            return null; // two accounts share it: too ambiguous to sign in with
+        }
+        try {
+            $stmt = $pdo->prepare('SELECT DISTINCT user_id FROM form_responses WHERE answers LIKE ? LIMIT 20');
+            $stmt->execute(['%' . $tail . '%']);
+            $found = [];
+            foreach ($stmt->fetchAll(\PDO::FETCH_COLUMN) as $userId) {
+                $user = self::find((int) $userId);
+                $answered = $user ? preg_replace('/\D/', '', self::phoneFromProfile($user)) : '';
+                if ($answered !== '' && substr($answered, -9) === $tail) {
+                    $found[] = $user;
+                }
+            }
+            if (count($found) === 1) {
+                self::syncPhone((int) $found[0]['id'], self::phoneFromProfile($found[0]));
+                return self::find((int) $found[0]['id']);
+            }
+        } catch (\Throwable $e) {
+            // No profile answers to look in.
+        }
+        return null;
     }
 
     public static function all(?int $organisationId = null, ?int $roleId = null): array
@@ -392,11 +443,55 @@ class User
             ->execute([$organisationId && $organisationId > 0 ? $organisationId : null, $id]);
     }
 
-    public static function updateProfileNames(int $id, string $firstName, string $lastName): void
+    /**
+     * Keeps the account phone in step with the phone the person typed on
+     * their profile form (students sign up with email only). Skipped when
+     * another account already uses that number.
+     */
+    public static function syncPhone(int $id, string $phone): void
+    {
+        $phone = self::normalizePhone($phone);
+        if ($phone === '') {
+            return;
+        }
+        try {
+            if (!self::phoneTaken($phone, $id)) {
+                Database::connection()->prepare('UPDATE users SET phone = ? WHERE id = ?')->execute([$phone, $id]);
+            }
+        } catch (\Throwable $e) {
+            // Leave the account phone as it was.
+        }
+    }
+
+    /** The phone answered on the person's profile forms, or ''. */
+    public static function phoneFromProfile(array $user): string
+    {
+        try {
+            foreach (Form::forRole((int) $user['role_id'], true, 'profile') as $form) {
+                $response = FormResponse::findForUserForm((int) $user['id'], (int) $form['id']);
+                $answers = is_array($response['answers'] ?? null) ? $response['answers'] : [];
+                foreach (FormField::forForm((int) $form['id']) as $field) {
+                    if (($field['field_type'] ?? '') === 'phone' && is_scalar($answers[$field['field_key']] ?? null) && trim((string) $answers[$field['field_key']]) !== '') {
+                        return trim((string) $answers[$field['field_key']]);
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            return '';
+        }
+        return '';
+    }
+
+    public static function updateProfileNames(int $id, string $firstName, string $lastName, ?string $otherNames = null): void
     {
         Database::connection()
             ->prepare('UPDATE users SET first_name = ?, last_name = ? WHERE id = ?')
             ->execute([$firstName !== '' ? $firstName : null, $lastName !== '' ? $lastName : null, $id]);
+        if ($otherNames !== null) {
+            Database::connection()
+                ->prepare('UPDATE users SET other_names = ? WHERE id = ?')
+                ->execute([trim($otherNames) !== '' ? trim($otherNames) : null, $id]);
+        }
     }
 
     public static function countByRole(): array
@@ -437,11 +532,53 @@ class User
         return array_map([self::class, 'hydrate'], $stmt->fetchAll());
     }
 
+    /** Whether another account already uses this email (capitals ignored). */
+    public static function emailTaken(string $email, ?int $exceptId = null): bool
+    {
+        $email = strtolower(trim($email));
+        if ($email === '') {
+            return false;
+        }
+        $stmt = Database::connection()->prepare('SELECT 1 FROM users WHERE LOWER(TRIM(email)) = ? AND id <> ? LIMIT 1');
+        $stmt->execute([$email, (int) $exceptId]);
+        return (bool) $stmt->fetchColumn();
+    }
+
+    /** Whether another account already uses this phone number, however it is written (last 9 digits). */
+    public static function phoneTaken(string $phone, ?int $exceptId = null): bool
+    {
+        $digits = preg_replace('/\D/', '', $phone);
+        if (strlen($digits) < 9) {
+            return false;
+        }
+        $stmt = Database::connection()->prepare(
+            "SELECT 1 FROM users WHERE phone IS NOT NULL AND phone <> '' AND id <> ?
+               AND RIGHT(REPLACE(REPLACE(REPLACE(REPLACE(phone, '+', ''), ' ', ''), '-', ''), ')', ''), 9) = ? LIMIT 1"
+        );
+        $stmt->execute([(int) $exceptId, substr($digits, -9)]);
+        return (bool) $stmt->fetchColumn();
+    }
+
+    /**
+     * Every email and phone number belongs to one account only — people sign
+     * in with either. Throws when another account already uses them.
+     */
+    public static function assertUnique(?string $email, ?string $phone, ?int $exceptId = null): void
+    {
+        if ($email !== null && self::emailTaken($email, $exceptId)) {
+            throw new DuplicateIdentifierException('The email ' . trim($email) . ' is already used by another account.');
+        }
+        if ($phone !== null && self::phoneTaken($phone, $exceptId)) {
+            throw new DuplicateIdentifierException('The phone number ' . trim($phone) . ' is already used by another account.');
+        }
+    }
+
     public static function create(array $fields): int
     {
         $pdo = Database::connection();
-        $email = trim((string) ($fields['email'] ?? ''));
+        $email = strtolower(trim((string) ($fields['email'] ?? '')));
         $phone = trim((string) ($fields['phone'] ?? ''));
+        self::assertUnique($email, $phone);
         $passwordHash = null;
         if (!empty($fields['password'])) {
             $passwordHash = password_hash((string) $fields['password'], PASSWORD_DEFAULT);
@@ -466,11 +603,55 @@ class User
         ]);
         $id = (int) $pdo->lastInsertId();
         FormResponse::provisionForUser($id, (int) $fields['role_id']);
+        self::assignRegistrationNumber($id);
         return $id;
+    }
+
+    /**
+     * Gives a student their registration number, e.g. UJ0012709/26: UJ, their
+     * place in the order students registered (001, 002 …), the day and month
+     * they registered, then /year. Does nothing for other roles, for a student
+     * who already has one, or before the registration-number migration ran.
+     */
+    public static function assignRegistrationNumber(int $userId): ?string
+    {
+        $pdo = Database::connection();
+        try {
+            $stmt = $pdo->prepare(
+                "SELECT u.registration_number, u.created_at, r.slug FROM users u INNER JOIN roles r ON r.id = u.role_id WHERE u.id = ?"
+            );
+            $stmt->execute([$userId]);
+            $row = $stmt->fetch();
+        } catch (\PDOException $e) {
+            return null;
+        }
+        if (!$row || $row['slug'] !== 'student') {
+            return null;
+        }
+        if (!empty($row['registration_number'])) {
+            return (string) $row['registration_number'];
+        }
+        $at = strtotime((string) $row['created_at']) ?: time();
+        // The unique key on registration_seq settles two sign-ups at the same moment: retry with the next number.
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $seq = (int) $pdo->query('SELECT COALESCE(MAX(registration_seq), 0) + 1 FROM users')->fetchColumn();
+            $number = 'UJ' . str_pad((string) $seq, 3, '0', STR_PAD_LEFT) . date('d', $at) . date('m', $at) . '/' . date('y', $at);
+            try {
+                $pdo->prepare('UPDATE users SET registration_seq = ?, registration_number = ? WHERE id = ? AND registration_number IS NULL')
+                    ->execute([$seq, $number, $userId]);
+                return $number;
+            } catch (\PDOException $e) {
+                if ($e->getCode() !== '23000') {
+                    throw $e;
+                }
+            }
+        }
+        return null;
     }
 
     public static function update(int $id, array $fields): void
     {
+        self::assertUnique((string) ($fields['email'] ?? ''), (string) ($fields['phone'] ?? ''), $id);
         $status = (string) ($fields['account_status'] ?? (!empty($fields['is_active']) ? 'active' : 'blocked'));
         if (!in_array($status, ['active', 'blocked', 'suspended'], true)) {
             $status = !empty($fields['is_active']) ? 'active' : 'blocked';
@@ -504,6 +685,7 @@ class User
 
     public static function updateCredentials(int $id, ?string $email, ?string $phone): void
     {
+        self::assertUnique($email, $phone, $id);
         Database::connection()->prepare(
             'UPDATE users SET email = ?, phone = ? WHERE id = ?'
         )->execute([
@@ -561,19 +743,68 @@ class User
             ->execute([$mustChange ? 1 : 0, $id]);
     }
 
+    /**
+     * The account this email and password open. While duplicates exist
+     * (locked, waiting to be fixed) several accounts can share an email, so
+     * the password decides which one it is.
+     */
     public static function verifyPassword(string $email, string $password): ?array
     {
-        $user = self::findByIdentifier('email', strtolower(trim($email)));
-        if (!$user || empty($user['has_password'])) {
+        $stmt = Database::connection()->prepare('SELECT id, password_hash FROM users WHERE LOWER(TRIM(email)) = ?');
+        $stmt->execute([strtolower(trim($email))]);
+        foreach ($stmt->fetchAll() as $row) {
+            if ((string) $row['password_hash'] !== '' && password_verify($password, (string) $row['password_hash'])) {
+                return self::find((int) $row['id']);
+            }
+        }
+        return null;
+    }
+
+    /** Locked: another account shares this account's email or phone, until the owner fixes it. */
+    public static function isLocked(array $user): bool
+    {
+        return !empty($user['locked_at']);
+    }
+
+    public static function unlock(int $id): void
+    {
+        Database::connection()->prepare(
+            'UPDATE users SET locked_at = NULL, lock_reason = NULL, pending_email = NULL, email_verify_token = NULL, email_verify_expires = NULL WHERE id = ?'
+        )->execute([$id]);
+    }
+
+    /** Stores the new email waiting to be verified and returns the token for its link. */
+    public static function startEmailChange(int $id, string $email, ?string $phone): string
+    {
+        $token = bin2hex(random_bytes(24));
+        $pdo = Database::connection();
+        $pdo->prepare('UPDATE users SET pending_email = ?, email_verify_token = ?, email_verify_expires = NOW() + INTERVAL 2 DAY WHERE id = ?')
+            ->execute([strtolower(trim($email)), hash('sha256', $token), $id]);
+        if ($phone !== null && trim($phone) !== '') {
+            $pdo->prepare('UPDATE users SET phone = ? WHERE id = ?')->execute([self::normalizePhone($phone), $id]);
+        }
+        return $token;
+    }
+
+    /**
+     * The verify button: makes the pending email the account's email and
+     * unlocks it. Returns the account, or null for an unknown / expired link
+     * or when the email was taken in the meantime.
+     */
+    public static function confirmEmailChange(string $token): ?array
+    {
+        $stmt = Database::connection()->prepare(
+            'SELECT id, pending_email FROM users WHERE email_verify_token = ? AND email_verify_expires > NOW() LIMIT 1'
+        );
+        $stmt->execute([hash('sha256', $token)]);
+        $row = $stmt->fetch();
+        if (!$row || empty($row['pending_email']) || self::emailTaken((string) $row['pending_email'], (int) $row['id'])) {
             return null;
         }
-        $stmt = Database::connection()->prepare('SELECT password_hash FROM users WHERE id = ?');
-        $stmt->execute([(int) $user['id']]);
-        $hash = (string) $stmt->fetchColumn();
-        if ($hash === '' || !password_verify($password, $hash)) {
-            return null;
-        }
-        return $user;
+        Database::connection()->prepare('UPDATE users SET email = ?, email_verified_at = NOW() WHERE id = ?')
+            ->execute([$row['pending_email'], (int) $row['id']]);
+        self::unlock((int) $row['id']);
+        return self::find((int) $row['id']);
     }
 
     public static function passwordError(string $password, string $confirm = ''): ?string
@@ -585,6 +816,41 @@ class User
             return 'Password confirmation does not match.';
         }
         return null;
+    }
+
+    public const PUBLIC_PROFILE_FIELDS = ['photo_path', 'headline', 'bio', 'experience', 'linkedin_url', 'social_url'];
+
+    /** Saves what students see about a tutor. */
+    public static function updatePublicProfile(int $id, array $fields, string $phone): void
+    {
+        $values = [];
+        foreach (self::PUBLIC_PROFILE_FIELDS as $key) {
+            $value = trim((string) ($fields[$key] ?? ''));
+            $values[] = $value !== '' ? $value : null;
+        }
+        self::assertUnique(null, $phone, $id);
+        $values[] = $phone;
+        $values[] = $id;
+        Database::connection()->prepare(
+            'UPDATE users SET photo_path = ?, headline = ?, bio = ?, experience = ?, linkedin_url = ?, social_url = ?, phone = ? WHERE id = ?'
+        )->execute($values);
+    }
+
+    public static function setPhoto(int $id, ?string $path): void
+    {
+        Database::connection()->prepare('UPDATE users SET photo_path = ? WHERE id = ?')->execute([$path, $id]);
+    }
+
+    /** What a tutor must fill in before creating courses: photo, phone, about and experience. */
+    public static function missingPublicProfile(array $user): array
+    {
+        $missing = [];
+        foreach (['photo_path' => 'profile picture', 'phone' => 'phone number', 'bio' => 'about you', 'experience' => 'experience'] as $key => $label) {
+            if (trim((string) ($user[$key] ?? '')) === '') {
+                $missing[] = $label;
+            }
+        }
+        return $missing;
     }
 
     public static function normalizePhone(string $phone): string

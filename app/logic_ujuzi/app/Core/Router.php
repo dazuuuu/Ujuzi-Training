@@ -50,8 +50,17 @@ class Router
                 array_shift($matches);
                 $args = array_combine($route['params'], array_map('urldecode', $matches));
                 [$class, $action] = $route['handler'];
-                $controller = new $class();
-                call_user_func_array([$controller, $action], $args);
+                try {
+                    $controller = new $class();
+                    call_user_func_array([$controller, $action], $args);
+                } catch (\App\Models\DuplicateIdentifierException $e) {
+                    // An email or phone another account already uses: back to the form, saying so.
+                    flashError($e->getMessage() . ' Each email and phone number can belong to one account only.');
+                    $back = (string) ($_SERVER['HTTP_REFERER'] ?? '');
+                    $host = (string) ($_SERVER['HTTP_HOST'] ?? '');
+                    header('Location: ' . ($back !== '' && $host !== '' && parse_url($back, PHP_URL_HOST) === parse_url('//' . $host, PHP_URL_HOST) ? $back : Url::to('/account/dashboard')));
+                    exit;
+                }
                 return;
             }
         }

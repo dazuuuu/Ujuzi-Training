@@ -20,15 +20,21 @@ class AttachmentController extends BaseAccountController
 
         $isEnrolled = $this->isEnrolledForAnyCourse();
         $applications = AttachmentApplication::allForStudent((int) $this->user['id']);
-        $taken = $this->takenCategories($applications);
+        $byCourse = $this->applicationsByCourse($applications);
 
-        // A provider is greyed out once every category it shares with the
-        // student already has a request.
-        $providers = $isEnrolled ? $this->visibleProviders($this->studentCategories()) : [];
-        foreach ($providers as &$provider) {
-            $provider['open_category_ids'] = array_values(array_diff(array_keys($provider['matching_categories']), array_keys($taken)));
+        // Each enrolled course gets its own attachment: its own providers, and
+        // one request. Once a course has a live request the other
+        // organisations for it are greyed out.
+        $courses = [];
+        foreach ($isEnrolled ? $this->studentCourses() : [] as $course) {
+            $application = $byCourse[$course['id']] ?? null;
+            $course['application'] = $application;
+            $course['locked'] = $application && $application['status'] !== AttachmentApplication::STATUS_REJECTED;
+            $course['declined'] = $application ? AttachmentApplication::declinedProviderIds($application) : [];
+            $course['providers'] = $this->providersForCourse($course);
+            $course['fees'] = WalletService::courseStanding((int) $this->user['id'], (int) $course['id']);
+            $courses[] = $course;
         }
-        unset($provider);
 
         $applicationIds = array_column($applications, 'id');
         $unread = [];
@@ -47,14 +53,12 @@ class AttachmentController extends BaseAccountController
             'activeNav' => 'attachment_providers',
             // Attachment opens once the student has enrolled for a course.
             'isEnrolled' => $isEnrolled,
-            'feeStanding' => $this->feeStanding(),
             'applications' => $applications,
-            'takenCategories' => $taken,
-            'providers' => $providers,
+            'courses' => $courses,
         ]);
     }
 
-    /** One provider's page: its details and branches, each branch with a request form. */
+    /** One provider's page for one of the student's courses: its branches as cards, each with its contacts. */
     public function show(string $id): void
     {
         $this->requireStudent();
@@ -63,16 +67,18 @@ class AttachmentController extends BaseAccountController
             redirect('/account/attachment-providers');
         }
 
-        $provider = $this->visibleProvider((int) $id);
-        $applications = AttachmentApplication::allForStudent((int) $this->user['id']);
+        $course = $this->studentCourse((int) Request::query('course', 0));
+        $provider = $this->providerForCourse($course, (int) $id);
+        $application = $this->applicationsByCourse(AttachmentApplication::allForStudent((int) $this->user['id']))[$course['id']] ?? null;
 
         $this->render('account.attachment-providers.show', [
             'pageTitle' => $provider['organisation_name'] ?: userDisplayName($provider),
             'activeNav' => 'attachment_providers',
             'provider' => $provider,
-            'takenCategories' => $this->takenCategories($applications),
-            'chosenBranch' => $this->chosenBranchAt((int) $provider['id'], $applications),
-            'feeStanding' => $this->feeStanding(),
+            'course' => $course,
+            'application' => $application,
+            'declined' => $application ? AttachmentApplication::declinedProviderIds($application) : [],
+            'feeStanding' => WalletService::courseStanding((int) $this->user['id'], (int) $course['id']),
         ]);
     }
 
@@ -88,28 +94,27 @@ class AttachmentController extends BaseAccountController
             redirect('/account/courses');
         }
 
-        $standing = $this->feeStanding();
+        $course = $this->studentCourse((int) Request::post('course_id', 0));
+        // Only this course's own fee counts — never a total across courses.
+        $standing = WalletService::courseStanding((int) $this->user['id'], (int) $course['id']);
         if ($standing['below_minimum']) {
-            flashError('You have paid ' . (int) floor($standing['paid_ratio'] * 100) . '% of your course fees. Pay at least ' . WalletService::minPaymentPercent() . '% before sending an attachment request.');
-            redirect('/account/attachment-providers');
+            flashError('You have paid ' . (int) floor($standing['paid_ratio'] * 100) . '% of the ' . $course['title'] . ' fee. Pay at least ' . WalletService::minPaymentPercent() . '% of it before sending its attachment request.');
+            redirect('/account/attachment-providers#course-' . $course['id']);
         }
 
         $providerId = (int) Request::post('provider_id', 0);
         $branchId = (int) Request::post('branch_id', 0);
         $categoryId = (int) Request::post('category_id', 0);
-        $provider = $this->visibleProvider($providerId);
-        $back = '/account/attachment-providers/' . $providerId;
+        $provider = $this->providerForCourse($course, $providerId);
+        $back = '/account/attachment-providers/' . $providerId . '?course=' . $course['id'];
 
-        // The request is filed under one of the categories this provider
-        // targets and the student is approved for.
-        $category = $provider['matching_categories'][$categoryId] ?? null;
-        if (!$category) {
-            flashError('Choose the course category this attachment is for.');
+        // The category is mandatory: one of this course's categories the provider appears under.
+        if (!isset($provider['matching_categories'][$categoryId])) {
+            flashError('Choose the category this attachment is for.');
             redirect($back);
         }
 
-        // Only organisations with branches ask for one; otherwise the
-        // organisation's own admin reviews the request.
+        // The branch is mandatory when the organisation has branches; its admin reviews the request.
         if ($provider['attachment_branches']) {
             $allowedBranchIds = array_map(
                 static fn(array $branch): int => (int) ($branch['id'] ?? 0),
@@ -123,28 +128,15 @@ class AttachmentController extends BaseAccountController
             $branchId = 0;
         }
 
-        $applications = AttachmentApplication::allForStudent((int) $this->user['id']);
-        $taken = $this->takenCategories($applications)[$categoryId] ?? null;
-        if ($taken) {
-            flashError('You already sent your ' . $category['name'] . ' request to '
-                . ($taken['organisation_name'] ?: 'another organisation')
-                . '. You can make one attachment request per course category.');
-            redirect($back);
-        }
-        // One branch per provider: every request to this provider goes to the same branch.
-        $chosen = $this->chosenBranchAt($providerId, $applications);
-        if ($chosen !== null && $chosen !== $branchId) {
-            flashError('You already chose a branch at this organisation. Send your request to that same branch.');
+        $refused = AttachmentApplication::saveCourseSelection((int) $this->user['id'], (int) $course['id'], $categoryId, $providerId, $branchId > 0 ? $branchId : null);
+        if ($refused !== null) {
+            flashError($refused);
             redirect($back);
         }
 
-        if (!AttachmentApplication::saveCategorySelection((int) $this->user['id'], $providerId, $branchId > 0 ? $branchId : null, $categoryId)) {
-            flashError('You already have a ' . $category['name'] . ' request. You can make one attachment request per course category.');
-            redirect($back);
-        }
-
+        \App\Services\Notifier::newAttachmentRequest((int) $this->user['id'], $providerId, $branchId > 0 ? $branchId : null, (string) $course['title']);
         flashSuccess(($branchId > 0 ? 'Request sent. The branch admin will review and accept you' : 'Request sent. The organisation will review and accept you')
-            . ' for ' . $category['name'] . '.');
+            . ' for ' . $course['title'] . '.');
         redirect('/account/attachment-providers');
     }
 
@@ -277,10 +269,14 @@ class AttachmentController extends BaseAccountController
             flashError('That request could not be updated. Requests for a branch are handled by that branch admin.');
             redirect('/account/people');
         }
+        if ($to === AttachmentApplication::STATUS_RECOMMENDED && !\App\Models\AttachmentAssessment::isMarked($id)) {
+            flashError(\App\Models\AttachmentAssessment::NOT_MARKED);
+            redirect('/account/attachment-requests/' . $id . '#assessment');
+        }
         if ($to === AttachmentApplication::STATUS_RECOMMENDED) {
-            $owed = WalletService::studentBalanceOwed((int) $application['student_user_id']);
+            $owed = WalletService::requestFees((int) $application['student_user_id'], !empty($application['category_id']) ? (int) $application['category_id'] : null, !empty($application['course_id']) ? (int) $application['course_id'] : null)['balance'];
             if ($owed > 0) {
-                flashError('This student still owes Ksh ' . number_format($owed, 2) . ' in course fees. They can be marked completed once the balance is Ksh 0.');
+                flashError(WalletService::outstandingMessage($owed));
                 redirect('/account/people');
             }
         }
@@ -289,27 +285,16 @@ class AttachmentController extends BaseAccountController
         redirect('/account/people');
     }
 
-    /** category id => the student's live request in it (anything but declined). */
-    private function takenCategories(array $applications): array
+    /** course id => the student's request for that course. */
+    private function applicationsByCourse(array $applications): array
     {
-        $taken = [];
+        $out = [];
         foreach ($applications as $application) {
-            if (!empty($application['category_id']) && $application['status'] !== AttachmentApplication::STATUS_REJECTED) {
-                $taken[(int) $application['category_id']] = $application;
+            if (!empty($application['course_id'])) {
+                $out[(int) $application['course_id']] = $application;
             }
         }
-        return $taken;
-    }
-
-    /** The branch the student already chose at this provider (0 = the organisation itself), or null. */
-    private function chosenBranchAt(int $providerId, array $applications): ?int
-    {
-        foreach ($applications as $application) {
-            if ((int) $application['provider_user_id'] === $providerId && $application['status'] !== AttachmentApplication::STATUS_REJECTED) {
-                return (int) ($application['branch_id'] ?? 0);
-            }
-        }
-        return null;
+        return $out;
     }
 
     private function requireStudent(): void
@@ -330,39 +315,36 @@ class AttachmentController extends BaseAccountController
         }
     }
 
-    /** The student's fees across all their courses (see WalletService::feeSummaries()). */
-    private function feeStanding(): array
-    {
-        $id = (int) $this->user['id'];
-        try {
-            return WalletService::feeSummaries([$id])[$id];
-        } catch (\Throwable $e) {
-            return ['courses' => 0, 'fee' => 0.0, 'paid' => 0.0, 'balance' => 0.0, 'is_settled' => true,
-                    'paid_ratio' => 1.0, 'below_minimum' => false, 'items' => []];
-        }
-    }
-
-    /** Categories of the courses the student is enrolled in. */
-    private function studentCategories(): array
+    /** The student's enrolled courses (see AttachmentAudience::studentCourses()). */
+    private function studentCourses(): array
     {
         try {
-            return AttachmentAudience::studentCategories((int) $this->user['id']);
+            return AttachmentAudience::studentCourses((int) $this->user['id']);
         } catch (\Throwable $e) {
             return [];
         }
+    }
+
+    private function studentCourse(int $courseId): array
+    {
+        $course = $this->studentCourses()[$courseId] ?? null;
+        if (!$course) {
+            flashError('Choose one of your courses first.');
+            redirect('/account/attachment-providers');
+        }
+        return $course;
     }
 
     /**
-     * Providers that chose to appear under at least one of the student's
-     * categories, each with 'matching_categories' (id => category row).
+     * Providers approved to appear under at least one of the course's
+     * categories, each with 'matching_categories' (id => name) and
+     * 'is_internal' (it belongs to the course's own organisation). Internal
+     * providers come first.
      */
-    private function visibleProviders(array $studentCategories): array
+    private function providersForCourse(array $course): array
     {
-        if (!$studentCategories) {
-            return [];
-        }
         try {
-            $targets = AttachmentAudience::providersForCategories(array_keys($studentCategories));
+            $targets = AttachmentAudience::providersForCategories(array_keys($course['categories']));
         } catch (\Throwable $e) {
             return [];
         }
@@ -374,21 +356,23 @@ class AttachmentController extends BaseAccountController
             }
             $provider['matching_categories'] = [];
             foreach ($categoryIds as $categoryId) {
-                $provider['matching_categories'][$categoryId] = $studentCategories[$categoryId];
+                $provider['matching_categories'][$categoryId] = $course['categories'][$categoryId];
             }
+            $provider['is_internal'] = (int) ($provider['organisation_id'] ?? 0) === $course['organisation_id'];
             $providers[] = $provider;
         }
+        usort($providers, static fn(array $a, array $b): int => (int) $b['is_internal'] <=> (int) $a['is_internal']);
         return $providers;
     }
 
-    private function visibleProvider(int $providerId): array
+    private function providerForCourse(array $course, int $providerId): array
     {
-        foreach ($this->visibleProviders($this->studentCategories()) as $provider) {
+        foreach ($this->providersForCourse($course) as $provider) {
             if ((int) $provider['id'] === $providerId) {
                 return $provider;
             }
         }
-        flashError('Choose an attachment organisation from the list.');
+        flashError('Choose an attachment organisation from the list for this course.');
         redirect('/account/attachment-providers');
     }
 }

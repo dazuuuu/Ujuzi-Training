@@ -16,6 +16,7 @@ $when = static fn(?string $at): string => $at ? date('j M Y', strtotime($at)) : 
 /** Text the search box matches a row against. */
 $searchText = static fn(array $a): string => strtolower(implode(' ', [
     $studentName($a), $a['email'] ?? '', $a['phone'] ?? '', $a['category_name'] ?? '', $a['branch_title'] ?? '', $a['status'] ?? '',
+    $a['course_title'] ?? '', $a['course_organisation_name'] ?? '', $a['student_branch_title'] ?? '', $a['registration_number'] ?? '',
 ]));
 
 ?>
@@ -72,104 +73,85 @@ $searchText = static fn(array $a): string => strtolower(implode(' ', [
           </form>
         <?php endif; ?>
       </div>
-      <div class="overflow-x-auto rounded-xl border border-neutral-300 bg-white shadow-sm">
-        <table class="excel-table admin-data-table searchable-table">
-          <thead>
-            <tr>
-              <th class="w-8"><?php if ($decidable): ?><input type="checkbox" id="bulk-select-all" aria-label="Select every student waiting for a decision"><?php endif; ?></th>
-              <th>Student</th>
-              <th>Contact</th>
-              <th>Category</th>
-              <th>Branch</th>
-              <th>Requested</th>
-              <th>Fees &amp; course progress</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <?php foreach ($activeApplications as $application):
-              $status = (string) ($application['status'] ?? 'pending');
-              $fees = $application['fees'] ?? null;
-              $owes = $fees && !$fees['is_settled'];
-            ?>
-              <tr data-search="<?= e($searchText($application)) ?>" <?= $fees && $fees['below_minimum'] ? 'style="background:#fffbeb"' : '' ?>>
-                <td>
-                  <?php if (in_array($status, ['pending', 'paused'], true)): ?>
-                    <input type="checkbox" name="ids[]" value="<?= (int) $application['id'] ?>" form="bulk-accept-form" class="bulk-pick" aria-label="Select <?= e($studentName($application)) ?>">
-                  <?php endif; ?>
-                </td>
-                <td class="font-black"><?= e($studentName($application)) ?><?php if ($fees && $fees['below_minimum']): ?> <span title="Paid less than <?= \App\Services\WalletService::minPaymentPercent() ?>% of their fees" aria-label="Fee warning" style="color:#b45309"><?= icon('alert', 'inline h-4 w-4 align-[-2px]') ?></span><?php endif; ?></td>
-                <td><?= e($application['email'] ?: ($application['phone'] ?? '—')) ?></td>
-                <td><?= e($application['category_name'] ?? '—') ?></td>
-                <td><?= e($application['branch_title'] ?? '—') ?></td>
-                <td><?= e($when($application['selected_at'] ?? null)) ?></td>
-                <td><?php require __DIR__ . '/../partials/student-standing.php'; ?></td>
-                <td><span class="text-[11px] font-black uppercase" style="color:<?= in_array($status, ['pending', 'paused'], true) ? 'var(--ke-red)' : 'var(--ke-green)' ?>"><?= e(\App\Models\AttachmentApplication::statusLabel($status)) ?></span></td>
-                <td>
-                  <div class="excel-row-actions-visible">
-                  <?php $newNotes = (int) ($unreadNotes[(int) $application['id']] ?? 0); ?>
-                  <a href="<?= url('/account/attachment-requests/' . (int) $application['id']) ?>" class="btn-secondary" style="padding:0.25rem 0.5rem;font-size:0.7rem;">Open<?= $newNotes ? ' · ' . $newNotes . ' new' : '' ?></a>
-                  <?php if ($status === 'pending'): ?>
-                    <form method="post" action="<?= url('/account/branch-admin/' . (int) $application['id'] . '/accept') ?>"><?= csrfField() ?><button class="btn-primary" style="padding:0.25rem 0.5rem;font-size:0.7rem;">Accept</button></form>
-                  <?php elseif ($status === 'accepted' && $owes): ?>
-                    <button type="button" class="btn-secondary" style="padding:0.25rem 0.5rem;font-size:0.7rem;opacity:.6;cursor:not-allowed;" disabled title="Clear the course-fee balance first">Mark complete</button>
-                  <?php elseif ($status === 'accepted'): ?>
-                    <form method="post" action="<?= url('/account/branch-admin/' . (int) $application['id'] . '/complete') ?>" onsubmit="return confirm('Mark this attachment complete? This generates their recommendation letter right away.');"><?= csrfField() ?><button class="btn-primary" style="padding:0.25rem 0.5rem;font-size:0.7rem;">Mark complete</button></form>
-                  <?php endif; ?>
-                  </div>
-                </td>
-              </tr>
-            <?php endforeach; ?>
-            <tr class="no-results" <?= $activeApplications ? 'hidden' : '' ?>><td colspan="9" class="text-center text-sm font-bold" style="color:var(--ke-muted)"><?= $activeApplications ? 'No match.' : 'No open requests.' ?></td></tr>
-          </tbody>
-        </table>
+      <?php if ($decidable): ?>
+        <label class="inline-flex items-center gap-2 text-xs font-bold text-neutral-600"><input type="checkbox" id="bulk-select-all"> Select every student waiting for a decision</label>
+      <?php endif; ?>
+      <div class="attachee-list searchable-list">
+        <?php foreach ($activeApplications as $application):
+          $status = (string) ($application['status'] ?? 'pending');
+          $fees = $application['fees'] ?? null;
+          $waiting = in_array($status, ['pending', 'paused'], true);
+        ?>
+          <?php $courseBelow = !empty($application['request_fees']['below_minimum']); ?>
+          <article class="attachee-card<?= $courseBelow ? ' is-warning' : '' ?>" data-search="<?= e($searchText($application)) ?>">
+            <header class="attachee-head">
+              <?php if ($waiting): ?>
+                <input type="checkbox" name="ids[]" value="<?= (int) $application['id'] ?>" form="bulk-accept-form" class="bulk-pick mt-1" aria-label="Select <?= e($studentName($application)) ?>">
+              <?php endif; ?>
+              <div class="min-w-0 flex-1">
+                <h3 class="attachee-name"><?= e($studentName($application)) ?></h3>
+                <?php if (!empty($application['registration_number'])): ?><p class="attachee-meta"><?= e($application['registration_number']) ?></p><?php endif; ?>
+              </div>
+              <span class="attachee-status<?= $waiting ? ' is-waiting' : '' ?>"><?= e(\App\Models\AttachmentApplication::statusLabel($status)) ?></span>
+            </header>
+            <?php require __DIR__ . '/../partials/attachee-details.php'; ?>
+            <dl class="attachee-facts"><div><dt>Requested</dt><dd><?= e($when($application['selected_at'] ?? null)) ?></dd></div></dl>
+            <details class="attachee-fees">
+              <summary>Fees &amp; course progress<?php if ($courseBelow): ?> <span class="ml-1 inline-flex items-center gap-1 whitespace-nowrap align-middle" style="color:#b45309"><?= icon('alert', 'h-4 w-4') ?> this course below <?= \App\Services\WalletService::minPaymentPercent() ?>%</span><?php endif; ?></summary>
+              <div class="pt-2"><?php require __DIR__ . '/../partials/student-standing.php'; ?></div>
+            </details>
+            <footer class="attachee-actions">
+              <?php $newNotes = (int) ($unreadNotes[(int) $application['id']] ?? 0); ?>
+              <a href="<?= url('/account/attachment-requests/' . (int) $application['id']) ?>" class="btn-secondary">Open<?= $newNotes ? ' · ' . $newNotes . ' new' : '' ?></a>
+              <?php if ($status === 'pending'): ?>
+                <form method="post" action="<?= url('/account/branch-admin/' . (int) $application['id'] . '/accept') ?>"><?= csrfField() ?><button class="btn-primary">Accept</button></form>
+              <?php elseif ($status === 'accepted'): ?>
+                <?php // Always clickable: with a balance the server refuses and says how much is owed. ?>
+                <form method="post" action="<?= url('/account/branch-admin/' . (int) $application['id'] . '/complete') ?>" onsubmit="return confirm('Mark this attachment complete? This generates their recommendation letter right away.');"><?= csrfField() ?><button class="btn-primary">Mark complete</button></form>
+              <?php endif; ?>
+              <?php if (in_array($status, ['pending', 'paused', 'accepted'], true)): $rejectId = (int) $application['id']; require __DIR__ . '/../partials/reject-request.php'; endif; ?>
+            </footer>
+          </article>
+        <?php endforeach; ?>
+        <p class="no-results attachee-empty" <?= $activeApplications ? 'hidden' : '' ?>><?= $activeApplications ? 'No match.' : 'No open requests.' ?></p>
       </div>
     </section>
 
     <section class="space-y-3">
       <h2 class="font-serif-heading text-lg font-bold">Completed attachees <span class="text-sm font-bold text-neutral-500">(<?= count($completedApplications) ?>)</span></h2>
-      <div class="overflow-x-auto rounded-xl border border-neutral-300 bg-white shadow-sm">
-        <table class="excel-table admin-data-table searchable-table">
-          <thead>
-            <tr>
-              <th>Student</th>
-              <th>Contact</th>
-              <th>Category</th>
-              <th>Branch</th>
-              <th>Accepted</th>
-              <th>Completed</th>
-              <th>Fees &amp; course progress</th>
-              <th>Letter</th>
-            </tr>
-          </thead>
-          <tbody>
-            <?php foreach ($completedApplications as $application): ?>
-              <tr data-search="<?= e($searchText($application)) ?>">
-                <td class="font-black"><?= e($studentName($application)) ?></td>
-                <td><?= e($application['email'] ?: ($application['phone'] ?? '—')) ?></td>
-                <td><?= e($application['category_name'] ?? '—') ?></td>
-                <td><?= e($application['branch_title'] ?? '—') ?></td>
-                <td><?= e($when($application['accepted_at'] ?? null)) ?></td>
-                <td><?= e($when($application['recommended_at'] ?? ($application['completed_at'] ?? null))) ?></td>
-                <td><?php $fees = $application['fees'] ?? null; require __DIR__ . '/../partials/student-standing.php'; ?></td>
-                <td>
-                  <span class="text-xs font-bold" style="color:var(--ke-green)">Letter ready</span>
-                  <?php $newNotes = (int) ($unreadNotes[(int) $application['id']] ?? 0); ?>
-                  <a href="<?= url('/account/attachment-requests/' . (int) $application['id']) ?>" class="btn-secondary ml-1" style="padding:0.25rem 0.5rem;font-size:0.7rem;">Open / resend<?= $newNotes ? ' · ' . $newNotes . ' new' : '' ?></a>
-                </td>
-              </tr>
-            <?php endforeach; ?>
-            <tr class="no-results" <?= $completedApplications ? 'hidden' : '' ?>><td colspan="8" class="text-center text-sm font-bold" style="color:var(--ke-muted)"><?= $completedApplications ? 'No match.' : 'No completed attachees yet.' ?></td></tr>
-          </tbody>
-        </table>
+      <div class="attachee-list searchable-list">
+        <?php foreach ($completedApplications as $application): $fees = $application['fees'] ?? null; ?>
+          <article class="attachee-card" data-search="<?= e($searchText($application)) ?>">
+            <header class="attachee-head">
+              <div class="min-w-0 flex-1">
+                <h3 class="attachee-name"><?= e($studentName($application)) ?></h3>
+                <?php if (!empty($application['registration_number'])): ?><p class="attachee-meta"><?= e($application['registration_number']) ?></p><?php endif; ?>
+              </div>
+              <span class="attachee-status">Letter ready</span>
+            </header>
+            <?php require __DIR__ . '/../partials/attachee-details.php'; ?>
+            <dl class="attachee-facts">
+              <div><dt>Accepted</dt><dd><?= e($when($application['accepted_at'] ?? null)) ?></dd></div>
+              <div><dt>Completed</dt><dd><?= e($when($application['recommended_at'] ?? ($application['completed_at'] ?? null))) ?></dd></div>
+            </dl>
+            <details class="attachee-fees">
+              <summary>Fees &amp; course progress</summary>
+              <div class="pt-2"><?php require __DIR__ . '/../partials/student-standing.php'; ?></div>
+            </details>
+            <footer class="attachee-actions">
+              <?php $newNotes = (int) ($unreadNotes[(int) $application['id']] ?? 0); ?>
+              <a href="<?= url('/account/attachment-requests/' . (int) $application['id']) ?>" class="btn-secondary">Open / resend letter<?= $newNotes ? ' · ' . $newNotes . ' new' : '' ?></a>
+            </footer>
+          </article>
+        <?php endforeach; ?>
+        <p class="no-results attachee-empty" <?= $completedApplications ? 'hidden' : '' ?>><?= $completedApplications ? 'No match.' : 'No completed attachees yet.' ?></p>
       </div>
     </section>
 
     <script>
     (function () {
       // Bulk accept: keep the count and the select-all box in step with the ticks.
-      var picks = function () { return Array.prototype.slice.call(document.querySelectorAll('.bulk-pick')).filter(function (b) { return !b.closest('tr').hidden; }); };
+      var picks = function () { return Array.prototype.slice.call(document.querySelectorAll('.bulk-pick')).filter(function (b) { return !b.closest('[data-search]').hidden; }); };
       var all = document.getElementById('bulk-select-all');
       var button = document.getElementById('bulk-accept-button');
       function sync() {
@@ -186,8 +168,8 @@ $searchText = static fn(array $a): string => strtolower(implode(' ', [
       var input = document.getElementById('attachee-search');
       input.addEventListener('input', function () {
         var q = input.value.trim().toLowerCase();
-        document.querySelectorAll('.searchable-table tbody').forEach(function (body) {
-          var rows = body.querySelectorAll('tr[data-search]');
+        document.querySelectorAll('.searchable-list').forEach(function (body) {
+          var rows = body.querySelectorAll('[data-search]');
           var shown = 0;
           rows.forEach(function (row) {
             var match = q === '' || row.dataset.search.indexOf(q) !== -1;
@@ -197,7 +179,7 @@ $searchText = static fn(array $a): string => strtolower(implode(' ', [
           var empty = body.querySelector('.no-results');
           if (empty && rows.length) {
             empty.hidden = shown > 0;
-            empty.firstElementChild.textContent = 'No match.';
+            empty.textContent = 'No match.';
           }
         });
       });

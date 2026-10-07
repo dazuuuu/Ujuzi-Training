@@ -17,6 +17,22 @@ require __DIR__ . '/../layout-header.php';
   </div>
 </div>
 
+<?php if ($template): ?>
+  <?php
+    $docTemplate = $template;
+    $docIsPdf = $isPdf;
+    $docLayout = \App\Services\DocumentLayout::get('recommendation_letter');
+    $docValues = [
+      'name' => $payload['learner'] ?? '',
+      'course' => $payload['course'] ?? '',
+      'organisation' => ($payload['organisation'] ?? '') ?: ($payload['provider'] ?? ''),
+      'branch' => $payload['branch'] ?? '',
+      'registration_number' => $payload['registration_number'] ?? '',
+      'date' => $payload['issued'] ?? '',
+  ];
+    require __DIR__ . '/../../partials/document-stage.php';
+  ?>
+<?php else: ?>
 <section class="certificate-stage <?= $template ? 'has-template' : 'no-template' ?>">
   <?php if ($template && $isImage): ?>
     <img class="certificate-bg" src="<?= e(imageUrl($template)) ?>" alt="">
@@ -26,6 +42,9 @@ require __DIR__ . '/../layout-header.php';
   <div class="certificate-overlay">
     <p class="certificate-kicker"><?= e(appName()) ?></p>
     <h2 class="certificate-name"><?= e($payload['learner'] ?? '') ?></h2>
+    <?php if (!empty($payload['registration_number'])): ?>
+      <p class="certificate-org">Reg. No. <?= e($payload['registration_number']) ?></p>
+    <?php endif; ?>
     <?php if (!empty($payload['course'])): ?>
       <p class="certificate-org">Attachment: <?= e($payload['course']) ?></p>
     <?php endif; ?>
@@ -36,5 +55,6 @@ require __DIR__ . '/../layout-header.php';
     <p class="certificate-date">Issued <?= e($payload['issued'] ?? '') ?></p>
   </div>
 </section>
+<?php endif; ?>
 
 <?php require __DIR__ . '/../layout-footer.php'; ?>

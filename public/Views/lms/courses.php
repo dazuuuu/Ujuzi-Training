@@ -157,7 +157,9 @@
     .courses-header h2{font-family:'Manrope',sans-serif;font-size:1.4rem;font-weight:800;color:#111827;}
     .courses-header span{font-size:.83rem;color:#6b7280;}
 
-    .courses-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
+    .courses-grid{display:grid;grid-template-columns:repeat(var(--cat-cols,3),minmax(0,1fr));gap:24px;}
+    .cat-size-sm .courses-grid{gap:14px;font-size:.9em;}
+    .cat-size-lg .courses-grid{gap:30px;font-size:1.06em;}
 
     /* ── Course card ── */
     .c-card{
@@ -307,7 +309,7 @@
        RESPONSIVE
     ═══════════════════════════════════ */
     @media(max-width:1024px){
-      .courses-grid{grid-template-columns:repeat(2,1fr);}
+      .courses-grid{grid-template-columns:repeat(min(var(--cat-cols,3),2),minmax(0,1fr));}
       .lp-footer-grid{grid-template-columns:1fr 1fr;}
       .lp-nav-search{display:none;}
     }
@@ -318,7 +320,7 @@
       .lp-footer-grid{grid-template-columns:1fr 1fr;}
     }
     @media(max-width:600px){
-      .courses-grid{grid-template-columns:1fr;}
+      .courses-grid{grid-template-columns:minmax(0,1fr);}
       .c-modal-body{padding:20px 20px 18px;}
       .c-modal-title{font-size:1.25rem;}
     }
@@ -327,239 +329,24 @@
       .courses-container{padding:32px 5%;}
     }
   </style>
+<?php require __DIR__ . '/partials/pb-styles.php'; ?>
 </head>
 <body>
 
 <!-- ════════════════════════════════════════
      NAVBAR
 ════════════════════════════════════════ -->
-<header style="position:relative;">
-  <nav class="lp-nav">
-    <!-- Logo -->
-    <a href="<?= url('/') ?>" class="lp-nav-logo">
-      <span>🎓</span><?= e(appName()) ?>
-    </a>
+<?php require __DIR__ . '/partials/public-nav.php'; ?>
 
-    <!-- Desktop centre links -->
-    <div class="lp-nav-center">
-      <a href="<?= url('/') ?>">Home</a>
-      <a href="<?= url('/courses') ?>" class="active">Courses</a>
-      <a href="<?= url('/about') ?>">About Us</a>
-    </div>
-
-    <!-- Desktop search -->
-    <div class="lp-nav-search">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      <input type="text" placeholder="Search courses..." id="courseSearchNav">
-    </div>
-
-    <!-- Desktop actions -->
-    <div class="lp-nav-actions">
-      <a href="<?= url('/account/login') ?>" class="btn-login">Log In</a>
-      <div class="lp-dropdown" id="signupDrop">
-        <button class="btn-get-started" id="signupDropBtn">Get Started ▾</button>
-        <div class="lp-dropdown-menu">
-          <div class="lp-drop-label">Course Portals</div>
-          <a href="<?= url('/account/login/organisation-admin') ?>"><span class="drop-icon" style="background:#fef2f2;">🏢</span>Organisation (Course Provider)</a>
-          <a href="<?= url('/account/login/course-branch-admin') ?>"><span class="drop-icon" style="background:#fff7ed;">🏬</span>Branch Admin (Course Org)</a>
-          <a href="<?= url('/account/register') ?>" class="green"><span class="drop-icon" style="background:#f0fdf4;">🎓</span>Student</a>
-          <a href="<?= url('/account/register/trainer') ?>" class="green"><span class="drop-icon" style="background:#f0fdf4;">👨‍🏫</span>Tutor / Teacher</a>
-          <div class="lp-drop-label">Attachment Portals</div>
-          <a href="<?= url('/account/register/attachment-trainer') ?>"><span class="drop-icon" style="background:#faf5ff;">🤝</span>Organisation (Attachment)</a>
-          <a href="<?= url('/account/login/branch-admin') ?>"><span class="drop-icon" style="background:#f1f5f9;">📍</span>Branch (Attachment Org)</a>
-        </div>
-      </div>
-    </div>
-
-    <!-- Hamburger -->
-    <button class="lp-mobile-toggle" id="mobileToggle" aria-label="Open menu">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-      </svg>
-    </button>
-  </nav>
-
-  <!-- Mobile overlay -->
-  <div class="lp-mobile-overlay" id="mobileOverlay"></div>
-
-  <!-- Mobile drawer -->
-  <div class="lp-mobile-nav" id="mobileNav" role="dialog" aria-modal="true" aria-label="Navigation menu">
-    <div class="lp-mobile-header">
-      <a href="<?= url('/') ?>" class="lp-nav-logo" style="font-size:1.1rem;">
-        <span style="width:30px;height:30px;font-size:.95rem;">🎓</span><?= e(appName()) ?>
-      </a>
-      <button class="lp-mobile-close" id="mobileClose" aria-label="Close menu">✕</button>
-    </div>
-    <div class="lp-mobile-body">
-      <!-- Search inside mobile nav -->
-      <div style="display:flex;align-items:center;background:#f3f4f6;border-radius:99px;padding:0 14px;gap:8px;height:40px;margin-bottom:8px;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input type="text" placeholder="Search courses..." id="courseSearchMobile" style="border:none;background:transparent;outline:none;font-size:.85rem;color:#374151;width:100%;">
-      </div>
-      <a href="<?= url('/') ?>">🏠 Home</a>
-      <a href="<?= url('/courses') ?>" style="color:#dc2626;">📚 Courses</a>
-      <a href="<?= url('/about') ?>">ℹ️ About Us</a>
-      <div class="lp-mobile-section">Sign Up As</div>
-      <a href="<?= url('/account/login/organisation-admin') ?>">🏢 Organisation (Course Provider)</a>
-      <a href="<?= url('/account/login/course-branch-admin') ?>">🏬 Branch Admin (Course Org)</a>
-      <a href="<?= url('/account/register') ?>">🎓 Student</a>
-      <a href="<?= url('/account/register/trainer') ?>">👨‍🏫 Tutor / Teacher</a>
-      <div class="lp-mobile-section">Attachment Portals</div>
-      <a href="<?= url('/account/register/attachment-trainer') ?>">🤝 Organisation (Attachment)</a>
-      <a href="<?= url('/account/login/branch-admin') ?>">📍 Branch (Attachment Org)</a>
-    </div>
-    <div class="lp-mobile-footer">
-      <a href="<?= url('/account/login') ?>" class="btn-login" style="text-align:center;">Log In</a>
-      <a href="<?= url('/account/register') ?>" class="btn-get-started" style="text-align:center;">Get Started Free →</a>
-    </div>
-  </div>
-</header>
-
-<!-- ════════════════════════════════════════
-     BANNER
-════════════════════════════════════════ -->
-<section class="courses-banner">
-  <h1>Explore All Courses</h1>
-  <p>Browse our library of expert-led courses. Learn new skills and advance your career today.</p>
-  <div class="courses-search-bar">
-    <input type="text" placeholder="What do you want to learn today?" id="courseSearch">
-    <button onclick="filterCourses()">Search</button>
-  </div>
-</section>
-
-<!-- ════════════════════════════════════════
-     COURSES GRID
-════════════════════════════════════════ -->
-<div class="courses-container">
-  <div class="courses-header">
-    <h2>Public Courses</h2>
-    <span id="courseCount"><?= count($courses) ?> courses available</span>
-  </div>
-
-  <div class="courses-grid" id="coursesGrid">
-    <?php if (empty($courses)): ?>
-      <div class="empty-state">
-        <span class="icon">📚</span>
-        <h3>No Public Courses Yet</h3>
-        <p>Public courses will appear here once organisations publish them. Sign in to access your organisation's private courses.</p>
-        <a href="<?= url('/account/login') ?>" class="btn-green">Sign In to Access Courses</a>
-      </div>
-    <?php else: ?>
-      <?php
-      $gradients = [
-        'linear-gradient(135deg,#0f172a,#1d4ed8)',
-        'linear-gradient(135deg,#166534,#16a34a)',
-        'linear-gradient(135deg,#4c1d95,#7c3aed)',
-        'linear-gradient(135deg,#7c2d12,#ea580c)',
-        'linear-gradient(135deg,#0f172a,#166534)',
-        'linear-gradient(135deg,#7f1d1d,#dc2626)',
-      ];
-      $icons = ['💻','📊','🎨','📣','📈','🌱','🔬','🎵','✈️','🏗️'];
-      $avColors = ['#dc2626','#16a34a','#7c3aed','#ea580c','#0891b2','#ca8a04'];
-
-      foreach ($courses as $idx => $course):
-        $grad = $gradients[$idx % count($gradients)];
-        $icon = $icons[$idx % count($icons)];
-        $avColor = $avColors[$idx % count($avColors)];
-        $tutorName = trim(($course['first_name'] ?? '') . ' ' . ($course['last_name'] ?? ''));
-        if (!$tutorName) $tutorName = $course['trainer_name'] ?? ($course['created_by_name'] ?? 'Expert Instructor');
-        $catName = $course['category_name'] ?? 'General';
-        $orgName = $course['organisation_name'] ?? '';
-        $feeKsh = (float) ($course['enrollment_fee_ksh'] ?? 0);
-        $price = $feeKsh > 0 ? 'Ksh ' . number_format($feeKsh) : 'Free';
-        $isFree = $feeKsh == 0;
-        $coverImage = $course['cover_image'] ?? null;
-        $description = $course['description'] ?? '';
-        $videoUrl = $course['introduction_embed_url'] ?? ($course['introduction_video_url'] ?? null);
-        $lessonCount = $course['lesson_count'] ?? null;
-        $durationHours = $course['duration_hours'] ?? null;
-        $courseId = $course['id'] ?? $idx;
-      ?>
-        <div class="c-card"
-             data-cat="<?= e($catName) ?>"
-             data-title="<?= e(strtolower($course['title'] ?? '')) ?>"
-             style="cursor:default;">
-
-          <!-- Image / thumbnail -->
-          <div class="c-card-img" style="background:<?= $grad ?>;">
-            <?php if ($coverImage): ?>
-              <img src="<?= e(imageUrl($coverImage)) ?>" alt="<?= e($course['title'] ?? '') ?>" loading="lazy">
-            <?php else: ?>
-              <div class="c-card-img-placeholder"><?= $icon ?></div>
-            <?php endif; ?>
-            <!-- Play overlay hint (if has video) -->
-            <?php if ($videoUrl): ?>
-              <div class="c-card-play-overlay">
-                <div class="c-card-play-btn">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#dc2626"><path d="M5 3l14 9-14 9V3z"/></svg>
-                </div>
-              </div>
-            <?php endif; ?>
-            <!-- Badges -->
-            <span class="c-card-badge <?= $isFree ? '' : 'paid' ?>"><?= $isFree ? 'Free' : 'Paid' ?></span>
-            <?php if ($orgName): ?>
-              <span class="c-card-org-badge"><?= e($orgName) ?></span>
-            <?php endif; ?>
-          </div>
-
-          <!-- Card body -->
-          <div class="c-card-body">
-            <div class="c-card-cat"><?= e($catName) ?></div>
-            <div class="c-card-title"><?= e($course['title'] ?? 'Untitled Course') ?></div>
-            <?php if ($description): ?>
-              <div class="c-card-desc"><?= e($description) ?></div>
-            <?php endif; ?>
-            <div class="c-card-tutor">
-              <div class="c-card-av" style="background:<?= $avColor ?>;"><?= strtoupper(substr($tutorName,0,1)) ?></div>
-              <?= e($tutorName) ?>
-            </div>
-            <?php if ($lessonCount || $durationHours): ?>
-            <div class="c-card-meta">
-              <?php if ($lessonCount): ?><span>📖 <?= $lessonCount ?> lessons</span><?php endif; ?>
-              <?php if ($durationHours): ?><span>⏱ <?= $durationHours ?>h</span><?php endif; ?>
-            </div>
-            <?php endif; ?>
-          </div>
-
-          <!-- Card footer -->
-          <div class="c-card-footer">
-            <div class="c-card-price <?= $isFree ? 'free' : '' ?>"><?= $price ?></div>
-            <div class="c-card-actions">
-              <button class="btn-view-more"
-                      onclick="openCourseModal(<?= $courseId ?>)"
-                      data-id="<?= $courseId ?>">
-                View More
-              </button>
-              <a href="<?= url('/account/login') ?>" class="btn-enroll">Enroll</a>
-            </div>
-          </div>
-        </div>
-
-        <!-- Hidden data for modal -->
-        <script type="application/json" id="course-data-<?= $courseId ?>">
-        <?= json_encode([
-          'id'          => $courseId,
-          'title'       => $course['title'] ?? 'Untitled Course',
-          'description' => $description,
-          'category'    => $catName,
-          'organisation'=> $orgName,
-          'tutor'       => $tutorName,
-          'tutorColor'  => $avColor,
-          'price'       => $price,
-          'isFree'      => $isFree,
-          'cover'       => $coverImage ? imageUrl($coverImage) : null,
-          'gradient'    => $grad,
-          'icon'        => $icon,
-          'videoUrl'    => $videoUrl,
-          'lessons'     => $lessonCount,
-          'hours'       => $durationHours,
-          'loginUrl'    => url('/account/login'),
-        ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>
-        </script>
-      <?php endforeach; ?>
-    <?php endif; ?>
-  </div>
-</div>
+<?php
+$pbPage = 'courses';
+$pbSlots = [
+    'catalog' => static function (array $pbSection) use ($courses): void {
+        require __DIR__ . '/partials/course-catalog.php';
+    },
+];
+require __DIR__ . '/partials/pb-sections.php';
+?>
 
 <!-- ════════════════════════════════════════
      COURSE DETAIL MODAL
@@ -588,79 +375,9 @@
 <!-- ════════════════════════════════════════
      FOOTER
 ════════════════════════════════════════ -->
-<footer class="lp-footer">
-  <div class="lp-footer-inner">
-    <div class="lp-footer-grid">
-      <div class="lp-footer-brand">
-        <div class="lp-nav-logo" style="color:#fff;font-size:1.1rem;"><span style="background:#dc2626;">🎓</span><?= e(appName()) ?></div>
-        <p>Empowering learners with quality education and practical skills for a better future.</p>
-      </div>
-      <div class="lp-footer-col">
-        <h4>Quick Links</h4>
-        <ul>
-          <li><a href="<?= url('/') ?>">Home</a></li>
-          <li><a href="<?= url('/courses') ?>">Courses</a></li>
-          <li><a href="<?= url('/about') ?>">About Us</a></li>
-          <li><a href="<?= url('/account/login') ?>">Sign In</a></li>
-        </ul>
-      </div>
-      <div class="lp-footer-col">
-        <h4>Sign Up</h4>
-        <ul>
-          <li><a href="<?= url('/account/register') ?>">Student</a></li>
-          <li><a href="<?= url('/account/register/trainer') ?>">Tutor / Teacher</a></li>
-          <li><a href="<?= url('/account/register/attachment-trainer') ?>">Attachment Provider</a></li>
-          <li><a href="<?= url('/account/forgot-password') ?>">Forgot Password</a></li>
-        </ul>
-      </div>
-      <div class="lp-footer-col">
-        <h4>Support</h4>
-        <ul>
-          <li><a href="#">Help Center</a></li>
-          <li><a href="#">Terms &amp; Conditions</a></li>
-          <li><a href="#">Privacy Policy</a></li>
-          <?php if (!empty($needsSetup)): ?>
-            <li><a href="<?= url('/setup') ?>" class="red">Run Setup</a></li>
-          <?php else: ?>
-            <li><a href="<?= url('/admin/login') ?>" class="red">Super Admin</a></li>
-          <?php endif; ?>
-        </ul>
-      </div>
-    </div>
-    <div class="lp-footer-bottom">
-      <p>&copy; <?= date('Y') ?> <?= e(appName()) ?>. All Rights Reserved.</p>
-      <p>Made with ❤️ for Education</p>
-    </div>
-  </div>
-</footer>
+<?php require __DIR__ . '/partials/public-footer.php'; ?>
 
 <script>
-/* ── Nav hamburger ── */
-(function(){
-  var toggle = document.getElementById('mobileToggle');
-  var nav    = document.getElementById('mobileNav');
-  var overlay= document.getElementById('mobileOverlay');
-  var closeBtn = document.getElementById('mobileClose');
-  function openMenu(){ nav.classList.add('open'); overlay.classList.add('open'); document.body.style.overflow='hidden'; }
-  function closeMenu(){ nav.classList.remove('open'); overlay.classList.remove('open'); document.body.style.overflow=''; }
-  toggle.addEventListener('click', openMenu);
-  closeBtn.addEventListener('click', closeMenu);
-  overlay.addEventListener('click', closeMenu);
-})();
-
-/* ── Get-Started dropdown ── */
-(function(){
-  var btn = document.getElementById('signupDropBtn');
-  var drop = document.getElementById('signupDrop');
-  if(btn) btn.addEventListener('click', function(e){
-    e.stopPropagation();
-    drop.classList.toggle('open');
-  });
-  document.addEventListener('click', function(e){
-    if(drop && !drop.contains(e.target)) drop.classList.remove('open');
-  });
-})();
-
 /* ── Search filter ── */
 function filterCourses(){
   var inputs = ['courseSearch','courseSearchNav','courseSearchMobile'];

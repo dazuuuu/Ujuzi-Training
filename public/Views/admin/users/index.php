@@ -14,9 +14,65 @@ require __DIR__ . '/../layout-header.php';
   </section>
 
   <div class="live-search-bar">
-    <input type="text" data-live-search="table.excel-table" placeholder="Search by name, role, organisation, email or phone..." autocomplete="off" />
+    <input type="text" data-live-search="table.excel-table" placeholder="Search by name, reg. no., role, organisation, email or phone..." autocomplete="off" />
   </div>
 
+  <?php if (!empty($isStudentSheet)):
+    $sheetUsers = $groupedUsers ? array_values($groupedUsers)[0]['users'] : [];
+    $columns = ['Reg. No.', 'First name', 'Other names', 'Last name', 'Email', 'Phone', 'Organisation', 'Registered', 'Status', 'Actions'];
+  ?>
+  <section class="space-y-3" data-live-search-group>
+    <div class="flex items-center justify-between gap-3">
+      <span class="text-xs font-bold text-neutral-600"><?= count($sheetUsers) ?> students</span>
+      <a href="<?= url('/admin/users?role_slug=student&export=xlsx' . (!empty($filters['q']) ? '&q=' . urlencode($filters['q']) : '')) ?>" class="btn-secondary">Download Excel</a>
+    </div>
+    <div class="overflow-x-auto rounded-md border border-neutral-400 bg-white">
+      <table class="excel-table excel-sheet">
+        <thead>
+          <tr class="excel-col-letters">
+            <th class="excel-corner"></th>
+            <?php foreach ($columns as $i => $column): ?><th><?= chr(65 + $i) ?></th><?php endforeach; ?>
+          </tr>
+          <tr>
+            <th class="excel-row-number">1</th>
+            <?php foreach ($columns as $column): ?><th><?= e($column) ?></th><?php endforeach; ?>
+          </tr>
+        </thead>
+        <tbody>
+          <?php if (!$sheetUsers): ?>
+            <tr><td class="excel-row-number">2</td><td colspan="<?= count($columns) ?>" class="text-center font-bold text-neutral-700">No students yet.</td></tr>
+          <?php endif; ?>
+          <?php foreach ($sheetUsers as $i => $person): $status = (string) ($person['account_status'] ?? (!empty($person['is_active']) ? 'active' : 'blocked')); ?>
+            <tr>
+              <td class="excel-row-number"><?= $i + 2 ?></td>
+              <td class="font-mono"><?= e($person['registration_number'] ?? '') ?></td>
+              <td><a href="<?= url('/admin/users/' . (int) $person['id']) ?>" class="text-black no-underline hover:underline"><?= e($person['first_name'] ?? '') ?></a></td>
+              <td><?= e($person['other_names'] ?? '') ?></td>
+              <td><?= e($person['last_name'] ?? '') ?></td>
+              <td><?= e($person['email'] ?? '') ?></td>
+              <td><?= e($person['phone'] ?? '') ?></td>
+              <td><?= e($person['organisation_name'] ?? '') ?></td>
+              <td><?= !empty($person['created_at']) ? e(date('Y-m-d', strtotime((string) $person['created_at']))) : '' ?></td>
+              <td><?= e(ucfirst($status)) ?><?php if (!empty($person['locked_at'])): ?> <span title="<?= e($person['lock_reason'] ?? '') ?>" style="color:#b45309;font-weight:800">· Locked</span><?php endif; ?></td>
+              <td>
+                <div class="excel-row-actions" style="margin-top:0">
+                  <a href="<?= url('/admin/users/' . (int) $person['id']) ?>" class="btn-secondary">View</a>
+                  <?php if (!empty($person['locked_at'])): ?><form method="post" action="<?= url('/admin/users/' . (int) $person['id'] . '/unlock') ?>"><?= csrfField() ?><button type="submit" class="btn-secondary" style="color:#b45309;">Unlock</button></form><?php endif; ?>
+                  <a href="<?= url('/admin/users/' . (int) $person['id'] . '/edit') ?>" class="btn-secondary">Edit</a>
+                  <?php if ($status !== 'active'): ?>
+                    <form method="post" action="<?= url('/admin/users/' . (int) $person['id'] . '/status') ?>"><?= csrfField() ?><input type="hidden" name="status" value="active" /><button type="submit" class="btn-secondary" style="color:#047857;">Activate</button></form>
+                  <?php else: ?>
+                    <form method="post" action="<?= url('/admin/users/' . (int) $person['id'] . '/status') ?>"><?= csrfField() ?><input type="hidden" name="status" value="suspended" /><button type="submit" class="btn-secondary" style="color:#c2410c;">Suspend</button></form>
+                  <?php endif; ?>
+                </div>
+              </td>
+            </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+  </section>
+  <?php else: ?>
   <?php foreach ($groupedUsers as $group): ?>
   <section class="space-y-3" data-live-search-group>
     <div class="flex items-center justify-between">
@@ -67,7 +123,9 @@ require __DIR__ . '/../layout-header.php';
               <td><?= e($person['organisation_name'] ?? '—') ?></td>
               <td><?= e($person['email'] ?: '—') ?></td>
               <td><?= e($person['phone'] ?: '—') ?></td>
-              <td><?= e(ucfirst((string) ($person['account_status'] ?? (!empty($person['is_active']) ? 'active' : 'blocked')))) ?></td>
+              <td><?= e(ucfirst((string) ($person['account_status'] ?? (!empty($person['is_active']) ? 'active' : 'blocked')))) ?><?php if (!empty($person['locked_at'])): ?> <span title="<?= e($person['lock_reason'] ?? '') ?>" style="color:#b45309;font-weight:800">· Locked</span>
+                <form method="post" action="<?= url('/admin/users/' . (int) $person['id'] . '/unlock') ?>" class="inline"><?= csrfField() ?><button type="submit" class="btn-secondary" style="padding:0.2rem 0.5rem;font-size:0.68rem;color:#b45309;">Unlock</button></form>
+              <?php endif; ?></td>
             </tr>
           <?php endforeach; ?>
         </tbody>
@@ -75,7 +133,8 @@ require __DIR__ . '/../layout-header.php';
     </div>
   </section>
   <?php endforeach; ?>
-  <?php if (!$groupedUsers): ?>
+  <?php endif; ?>
+  <?php if (!$groupedUsers && empty($isStudentSheet)): ?>
     <div class="rounded-xl border border-neutral-300 bg-white p-8 text-center font-bold text-neutral-700">No registered users yet.</div>
   <?php endif; ?>
 </div>

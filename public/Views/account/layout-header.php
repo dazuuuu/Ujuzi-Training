@@ -27,6 +27,7 @@ $isStudent = $isStudent ?? (($loggedInUser['role_slug'] ?? '') === 'student');
   <link rel="stylesheet" href="<?= asset('assets/css/app.css') ?>">
   <link rel="stylesheet" href="<?= asset('assets/css/srms.css') ?>">
   <link rel="stylesheet" href="<?= asset('assets/css/app-shell.css') ?>">
+  <?= \App\Services\SiteTheme::head('portal') ?>
 </head>
 <body class="antialiased h-dvh overflow-hidden flex flex-col srms-theme">
   <?php if ($loggedInUser): ?>
@@ -35,7 +36,7 @@ $isStudent = $isStudent ?? (($loggedInUser['role_slug'] ?? '') === 'student');
     <aside class="srms-sidebar" id="srmsSidebar">
       <div class="srms-brand-header">
         <button type="button" class="srms-sidebar-close" id="srmsSidebarClose" aria-label="Close menu"><?= icon('x') ?></button>
-        <div class="srms-brand-icon"><?= icon('graduation', 'h-7 w-7') ?></div>
+        <div class="srms-brand-icon<?= storeLogoPath() ? ' has-logo' : '' ?>"><?= storeLogoPath() ? storeLogoHtml('srms-brand-logo') : icon('graduation', 'h-7 w-7') ?></div>
         <div class="srms-brand-title"><?= e(appName()) ?></div>
         <div class="srms-brand-subtitle"><?= e($loggedInUser['role_name'] ?? 'Account') ?></div>
       </div>
@@ -70,6 +71,12 @@ $isStudent = $isStudent ?? (($loggedInUser['role_slug'] ?? '') === 'student');
             <a href="<?= url('/account/branch-admin') ?>" class="srms-nav-link <?= ($activeNav ?? '') === 'branch_admin' ? 'is-active' : '' ?>">
               <?= icon('graduation') ?> Attachees
             </a>
+            <a href="<?= url('/account/reports') ?>" class="srms-nav-link <?= ($activeNav ?? '') === 'reports' ? 'is-active' : '' ?>">
+              <?= icon('chart') ?> Reports
+            </a>
+            <a href="<?= url('/account/student-lookup') ?>" class="srms-nav-link <?= ($activeNav ?? '') === 'verify_certificate' ? 'is-active' : '' ?>">
+              <?= icon('search') ?> Student lookup
+            </a>
           <?php endif; ?>
           <?php if ($canManageUsers): ?>
             <a href="<?= url('/account/people') ?>" class="srms-nav-link <?= ($activeNav ?? '') === 'people' ? 'is-active' : '' ?>">
@@ -97,10 +104,9 @@ $isStudent = $isStudent ?? (($loggedInUser['role_slug'] ?? '') === 'student');
           <span><?= e($pageTitle ?? 'Dashboard') ?></span>
         </div>
         <div class="srms-topbar-right">
-          <div class="srms-search">
-            <span class="text-neutral-400"><?= icon('search', 'h-4 w-4') ?></span>
-            <input type="text" placeholder="Search anything...">
-          </div>
+          <button type="button" class="ss-trigger" data-ss-open aria-label="Search courses, organisations and pages" aria-haspopup="dialog">
+            <?= icon('search', 'h-5 w-5') ?><span class="ss-trigger-text">Search courses, attachment…</span><kbd class="ss-kbd">Ctrl K</kbd>
+          </button>
           <?php
             $pendingRequestCount = (int) ($pendingRequestCount ?? 0);
             $bellHref = $isOrgAdmin ? '/account/trainer-requests' : ($isBranchAdmin ? '/account/branch-admin' : ($isCourseBranchAdmin ? '/account/course-branch-admin' : ($isAttachmentProvider ? '/account/people' : '/account/dashboard')));
@@ -111,17 +117,35 @@ $isStudent = $isStudent ?? (($loggedInUser['role_slug'] ?? '') === 'student');
               <span class="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full"><?= $pendingRequestCount > 9 ? '9+' : $pendingRequestCount ?></span>
             <?php endif; ?>
           </a>
-          <div class="srms-user-profile">
-            <div class="srms-user-info text-right hidden sm:block">
-              <div class="srms-user-name">Hello, <?= e(userDisplayName($loggedInUser)) ?></div>
-              <div class="srms-user-role"><?= e($loggedInUser['role_name'] ?? '') ?></div>
+          <details class="user-menu">
+            <summary class="srms-user-profile" aria-label="Account menu">
+              <span class="srms-user-info text-right hidden sm:block">
+                <span class="srms-user-name block"><?= e(userDisplayName($loggedInUser)) ?></span>
+                <span class="srms-user-role block"><?= e($loggedInUser['role_name'] ?? '') ?></span>
+              </span>
+              <?php if (!empty($loggedInUser['photo_path'])): ?>
+                <img src="<?= e(imageUrl($loggedInUser['photo_path'])) ?>" alt="" class="srms-avatar object-cover">
+              <?php else: ?>
+                <span class="srms-avatar"><?= e(strtoupper(substr((string) ($loggedInUser['first_name'] ?: $loggedInUser['email'] ?: 'U'), 0, 1))) ?></span>
+              <?php endif; ?>
+              <span class="hidden text-neutral-500 sm:block"><?= icon('chevron-down', 'h-4 w-4') ?></span>
+            </summary>
+            <div class="user-menu-panel" role="menu">
+              <div class="user-menu-head">
+                <p class="truncate text-sm font-black text-gray-800"><?= e(userDisplayName($loggedInUser)) ?></p>
+                <p class="truncate text-xs font-semibold text-neutral-500"><?= e($loggedInUser['email'] ?? '') ?></p>
+                <?php if (!empty($loggedInUser['registration_number'])): ?>
+                  <p class="mt-1 text-xs font-black tracking-wide" style="color:var(--ke-green)"><?= e($loggedInUser['registration_number']) ?></p>
+                <?php endif; ?>
+              </div>
+              <a href="<?= url('/account/profile') ?>" role="menuitem"><?= icon('user', 'h-4 w-4') ?> Profile</a>
+              <a href="<?= url('/account/change-password') ?>" role="menuitem"><?= icon('key', 'h-4 w-4') ?> Change password</a>
+              <a href="<?= url('/account/logout') ?>" role="menuitem" class="is-danger"><?= icon('logout', 'h-4 w-4') ?> Logout</a>
             </div>
-            <div class="srms-avatar">
-              <?= e(strtoupper(substr((string) ($loggedInUser['first_name'] ?? $loggedInUser['email'] ?? 'U'), 0, 1))) ?>
-            </div>
-          </div>
+          </details>
         </div>
       </header>
+      <?php require __DIR__ . '/partials/smart-search.php'; ?>
       <?php
         // Phone tab bar: Dashboard, the first three menu items, and More (the full menu).
         $tabShort = [
@@ -130,6 +154,7 @@ $isStudent = $isStudent ?? (($loggedInUser['role_slug'] ?? '') === 'student');
             'trainer_requests' => 'Requests', 'organisation' => 'Organisation', 'people' => 'People',
             'categories' => 'Categories', 'branches' => 'Branches', 'attachment_audience' => 'Appear',
             'course_branch_admin' => 'Requests', 'branch_admin' => 'Attachees',
+            'attachment_partners' => 'Partners', 'verify_certificate' => 'Lookup',
         ];
         $tabItems = [['dashboard', 'dashboard', 'Home', '/account/dashboard']];
         if ($navPortal) {
@@ -139,7 +164,7 @@ $isStudent = $isStudent ?? (($loggedInUser['role_slug'] ?? '') === 'student');
         } else {
             if ($canViewCourses) { $tabItems[] = ['courses', 'book', 'Courses', '/account/courses']; }
             if (($currentUser['role_slug'] ?? '') === 'trainer') { $tabItems[] = ['wallet', 'wallet', 'Earnings', '/account/wallet']; }
-            if ($isBranchAdmin) { $tabItems[] = ['branch_admin', 'graduation', 'Attachees', '/account/branch-admin']; }
+            if ($isBranchAdmin) { $tabItems[] = ['branch_admin', 'graduation', 'Attachees', '/account/branch-admin']; $tabItems[] = ['verify_certificate', 'search', 'Lookup', '/account/student-lookup']; }
             if ($canManageUsers) { $tabItems[] = ['people', 'users', 'People', '/account/people']; }
         }
         $tabItems = array_slice($tabItems, 0, 4);
@@ -158,76 +183,8 @@ $isStudent = $isStudent ?? (($loggedInUser['role_slug'] ?? '') === 'student');
       </nav>
       <div class="app-progress" id="appProgress" aria-hidden="true"></div>
   <?php else: ?>
-  <header class="w-full py-4 bg-white border-b border-gray-100 sticky top-0 z-50">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between">
-      <a href="<?= url('/') ?>" class="inline-flex items-center gap-2 group">
-        <div class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-600 text-white shadow-sm shrink-0">
-          <?= storeLogoHtml('w-full h-full object-contain rounded-lg', 'w-4 h-4 text-white') ?>
-        </div>
-        <div class="flex flex-col text-left leading-none">
-          <span class="font-serif-heading text-xl font-bold tracking-tight text-gray-900"><?= e(appName()) ?>.</span>
-        </div>
-      </a>
-      <nav class="hidden md:flex items-center gap-5 text-sm font-semibold text-gray-700">
-        <a href="<?= url('/') ?>" class="hover:text-red-600 transition">Home</a>
-        <a href="<?= url('/courses') ?>" class="hover:text-red-600 transition">Courses</a>
-        <a href="<?= url('/about') ?>" class="hover:text-red-600 transition">About Us</a>
-        <a href="<?= url('/account/login') ?>" class="hover:text-red-600 transition">Sign in</a>
-        <div class="ujuzi-dropdown">
-          <button class="ujuzi-nav-btn" type="button" id="layoutSignupBtn">Sign up ▾</button>
-          <div class="ujuzi-dropdown-menu" id="layoutSignupMenu">
-            <div class="menu-section-label">Course Portals</div>
-            <a href="<?= url('/account/login/organisation-admin') ?>"><span class="menu-icon" style="background:#fef2f2;color:#dc2626;">🏢</span><span>Organisation (Course Provider)</span></a>
-            <a href="<?= url('/account/login/course-branch-admin') ?>"><span class="menu-icon" style="background:#fff7ed;color:#ea580c;">🏬</span><span>Branch Admin (Course Org)</span></a>
-            <a href="<?= url('/account/register') ?>"><span class="menu-icon" style="background:#f0fdf4;color:#16a34a;">🎓</span><span>Student</span></a>
-            <a href="<?= url('/account/register/trainer') ?>"><span class="menu-icon" style="background:#f0fdf4;color:#15803d;">👨‍🏫</span><span>Tutor / Teacher</span></a>
-            <div class="menu-section-label">Attachment Portals</div>
-            <a href="<?= url('/account/register/attachment-trainer') ?>"><span class="menu-icon" style="background:#faf5ff;color:#7c3aed;">🤝</span><span>Organisation (Attachment Provider)</span></a>
-            <a href="<?= url('/account/login/branch-admin') ?>"><span class="menu-icon" style="background:#f1f5f9;color:#334155;">📍</span><span>Branch (Attachment Org)</span></a>
-          </div>
-        </div>
-      </nav>
-      <div class="flex items-center gap-4">
-        <a href="<?= url('/account/register') ?>" class="srms-btn-red hidden sm:inline-flex">Enroll Now</a>
-        <button class="md:hidden text-gray-700 text-2xl" id="publicMenuToggle">☰</button>
-      </div>
-    </div>
-  </header>
-  
-  <!-- Public Mobile Menu -->
-  <div id="publicMobileMenu" class="hidden md:hidden bg-white border-b border-gray-100 shadow-lg px-4 py-4 space-y-2 absolute w-full z-40">
-    <a href="<?= url('/') ?>" class="block font-semibold text-gray-700 hover:text-red-600 py-1">Home</a>
-    <a href="<?= url('/courses') ?>" class="block font-semibold text-gray-700 hover:text-red-600 py-1">Courses</a>
-    <a href="<?= url('/about') ?>" class="block font-semibold text-gray-700 hover:text-red-600 py-1">About Us</a>
-    <a href="<?= url('/account/login') ?>" class="block font-semibold text-gray-700 hover:text-red-600 py-1">Sign in</a>
-    <div class="border-t border-gray-100 pt-3 mt-2">
-      <p class="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Sign up as:</p>
-      <a href="<?= url('/account/login/organisation-admin') ?>" class="block text-sm font-semibold text-gray-600 hover:text-red-600 py-1">🏢 Organisation (Course Provider)</a>
-      <a href="<?= url('/account/login/course-branch-admin') ?>" class="block text-sm font-semibold text-gray-600 hover:text-red-600 py-1">🏬 Branch Admin (Course Org)</a>
-      <a href="<?= url('/account/register') ?>" class="block text-sm font-semibold text-gray-600 hover:text-green-600 py-1">🎓 Student</a>
-      <a href="<?= url('/account/register/trainer') ?>" class="block text-sm font-semibold text-gray-600 hover:text-green-600 py-1">👨‍🏫 Tutor / Teacher</a>
-      <a href="<?= url('/account/register/attachment-trainer') ?>" class="block text-sm font-semibold text-gray-600 hover:text-green-600 py-1">🤝 Organisation (Attachment Provider)</a>
-      <a href="<?= url('/account/login/branch-admin') ?>" class="block text-sm font-semibold text-gray-600 hover:text-green-600 py-1">📍 Branch (Attachment Org)</a>
-    </div>
-    <a href="<?= url('/account/register') ?>" class="block srms-btn-red w-full text-center mt-4">Enroll Now</a>
-  </div>
-  
-  <script>
-    const publicMenuToggle = document.getElementById('publicMenuToggle');
-    const publicMobileMenu = document.getElementById('publicMobileMenu');
-    if (publicMenuToggle && publicMobileMenu) {
-      publicMenuToggle.addEventListener('click', function() {
-        publicMobileMenu.classList.toggle('hidden');
-      });
-    }
-    (function() {
-      var db = document.getElementById('layoutSignupBtn'), dm = document.getElementById('layoutSignupMenu');
-      if (db && dm) {
-        db.addEventListener('click', function(e){ e.stopPropagation(); dm.style.display = dm.style.display==='block'?'none':'block'; });
-        document.addEventListener('click', function(){ if(dm) dm.style.display='none'; });
-      }
-    })();
-  </script>
+  <?php // Signed-out pages share the public navbar Super Admin edits under Public pages. ?>
+  <div class="shrink-0"><?php require __DIR__ . '/../lms/partials/public-nav.php'; ?></div>
   <?php endif; ?>
 
 

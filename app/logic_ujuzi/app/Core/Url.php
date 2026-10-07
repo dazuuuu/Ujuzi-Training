@@ -17,7 +17,7 @@ class Url
             return;
         }
 
-        // Explicit override: set APP_URL in .env to the exact URL the app is
+        // Explicit override: set APP_URL in app/Core/Database.php to the exact URL the app is
         // hosted at (e.g. https://dazuaihub.com/Ujuzi/public). This is the
         // single place to fix broken links/permalinks after hosting — when
         // it's set, every link, form action, and asset URL the app generates

@@ -250,23 +250,25 @@ class CourseModule
         ];
     }
 
+    /**
+     * Adds is_unlocked / is_passed / is_done to each module. A module is done
+     * once its quiz is passed (at the pass mark) or, without a quiz, ticked
+     * "Mark as done". The next module opens only when the one before it is
+     * done; paying for it is checked separately.
+     */
     public static function withUnlockState(array $modules, array $progressByModule): array
     {
-        $previousPassed = true;
+        $previousDone = true;
         $out = [];
-        foreach ($modules as $index => $module) {
+        foreach (array_values($modules) as $index => $module) {
             $progress = $progressByModule[(int) $module['id']] ?? null;
-            $hasQuiz = !empty($module['quiz_questions']);
-            $passed = $progress && !empty($progress['passed']);
-            if (!$hasQuiz) {
-                $passed = true;
-            }
-            $module['is_unlocked'] = $index === 0 || $previousPassed;
-            $module['is_passed'] = $passed;
+            $module['is_unlocked'] = $index === 0 || $previousDone;
+            $module['is_passed'] = $progress && !empty($progress['passed']);
+            $module['is_done'] = $progress !== null && !empty($progress['passed']);
             $module['progress'] = $progress;
-            $module['has_quiz'] = $hasQuiz;
+            $module['has_quiz'] = !empty($module['quiz_questions']);
             $out[] = $module;
-            $previousPassed = $module['is_unlocked'] && $passed;
+            $previousDone = $module['is_unlocked'] && $module['is_done'];
         }
         return $out;
     }

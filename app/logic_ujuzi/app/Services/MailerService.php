@@ -10,7 +10,7 @@ use PHPMailer\PHPMailer\Exception as PHPMailerException;
 class MailerException extends \Exception {}
 
 /**
- * SMTP mailer (PHPMailer). Prefers Super Admin → Settings, then .env.
+ * SMTP mailer (PHPMailer). Prefers Super Admin → Settings, then app/Core/Database.php.
  */
 class MailerService
 {
@@ -80,9 +80,9 @@ class MailerService
         $mail = self::configured();
         try {
             $mail->addAddress($toEmail);
-            $isReset = $purpose === 'password_reset';
+            $isReset = in_array($purpose, ['password_reset', 'password_change'], true);
             $mail->isHTML(true);
-            $mail->Subject = $isReset ? 'Your password reset code' : 'Your ' . Env::get('APP_NAME', 'Ujuzi Training') . ' login code';
+            $mail->Subject = $purpose === 'password_change' ? 'Your password change code' : ($isReset ? 'Your password reset code' : 'Your ' . Env::get('APP_NAME', 'Ujuzi Training') . ' login code');
             $mail->Body = self::otpHtml($code, $isReset);
             $mail->AltBody = ($isReset ? 'Your password reset code is: ' : 'Your login code is: ') . $code . ' (expires in 10 minutes).';
             $mail->send();
@@ -131,6 +131,39 @@ class MailerService
             $mail->Body = self::recommendationLetterHtml($studentName, $providerName, $letterUrl, $note);
             $mail->AltBody = 'Hello ' . $studentName . ', ' . $providerName . ' has sent you your attachment recommendation letter. Open it here: ' . $letterUrl
                 . ($note !== '' ? "\n\n" . $note : '');
+            $mail->send();
+        } catch (PHPMailerException $e) {
+            throw new MailerException('Could not send email: ' . $mail->ErrorInfo);
+        }
+    }
+
+    /** A general notice: a heading, a message and a button to open the page it is about. */
+    public static function sendNotice(string $toEmail, string $subject, string $heading, string $message, string $buttonLabel, string $url): void
+    {
+        $mail = self::configured();
+        try {
+            $mail->addAddress($toEmail);
+            $mail->isHTML(true);
+            $mail->Subject = $subject;
+            $app = htmlspecialchars(Env::get('APP_NAME', 'Ujuzi Training'));
+            $safeUrl = htmlspecialchars($url);
+            $mail->Body = '
+        <div style="font-family: Arial, sans-serif; background:#f3f7f2; padding:32px;">
+          <div style="max-width:460px;margin:0 auto;background:#ffffff;border:1px solid #c5d4cb;border-radius:12px;overflow:hidden;">
+            <div style="background:#111111;padding:20px 24px;border-bottom:6px solid #bb0000;">
+              <span style="color:#ffffff;font-weight:bold;letter-spacing:2px;font-size:14px;">' . $app . '</span>
+            </div>
+            <div style="padding:28px 24px;">
+              <h1 style="font-size:18px;color:#111111;margin:0 0 8px;">' . htmlspecialchars($heading) . '</h1>
+              <p style="font-size:13px;color:#2f3f37;line-height:1.5;margin:0 0 20px;">' . nl2br(htmlspecialchars($message)) . '</p>
+              <p style="text-align:center;margin:0 0 20px;">
+                <a href="' . $safeUrl . '" style="display:inline-block;background:#006b3f;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 18px;border-radius:8px;">' . htmlspecialchars($buttonLabel) . '</a>
+              </p>
+              <p style="font-size:12px;color:#888;margin:0;">You are getting this because of activity on your ' . $app . ' account.</p>
+            </div>
+          </div>
+        </div>';
+            $mail->AltBody = $heading . "\n\n" . $message . "\n\n" . $url;
             $mail->send();
         } catch (PHPMailerException $e) {
             throw new MailerException('Could not send email: ' . $mail->ErrorInfo);

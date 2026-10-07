@@ -49,7 +49,7 @@ $statusLabels = $isAttachmentProviderView ? [
         <details class="rounded-xl border border-neutral-200 bg-white shadow-sm group">
           <summary class="cursor-pointer list-none p-4 flex items-center justify-between gap-3">
             <div>
-              <h3 class="font-bold text-gray-800"><?= e($organisation['name']) ?></h3>
+              <h3 class="font-bold text-gray-800"><?= e($organisation['name']) ?> <a href="<?= url('/account/organisations/' . (int) $organisation['id']) ?>" class="ml-1 text-xs font-black underline" style="color:var(--ke-green)" onclick="event.stopPropagation()">Details</a></h3>
               <?php if (!empty($organisation['description'])): ?>
                 <p class="text-xs text-gray-500 mt-1"><?= e($organisation['description']) ?></p>
               <?php endif; ?>

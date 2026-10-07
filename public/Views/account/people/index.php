@@ -80,7 +80,7 @@ $attachmentApplications = $attachmentApplications ?? [];
                     <input type="checkbox" name="ids[]" value="<?= (int) $application['id'] ?>" form="bulk-accept-form" class="bulk-pick" aria-label="Select <?= e($studentName) ?>">
                   <?php endif; ?>
                 </td>
-                <td class="font-black"><?= e($studentName) ?></td>
+                <td class="font-black"><?= e($studentName) ?><?php if (!empty($application['registration_number'])): ?><span class="block text-[10px] font-bold text-neutral-500"><?= e($application['registration_number']) ?></span><?php endif; ?><?php $requestFees = $application['request_fees'] ?? null; require __DIR__ . '/../partials/request-fees.php'; ?></td>
                 <td><?= e($application['category_name'] ?? '—') ?></td>
                 <td><?= e($application['branch_title'] ?? 'Organisation') ?><?= !empty($application['branch_location']) ? ' - ' . e($application['branch_location']) : '' ?></td>
                 <td><?php require __DIR__ . '/../partials/student-standing.php'; ?></td>
@@ -93,13 +93,12 @@ $attachmentApplications = $attachmentApplications ?? [];
                     <span class="text-xs font-bold text-neutral-500">Handled by branch admin</span>
                   <?php elseif ($status === 'pending'): ?>
                     <form method="post" action="<?= url('/account/attachments/' . (int) $application['id'] . '/accept') ?>"><?= csrfField() ?><button class="btn-primary" style="padding:0.25rem 0.5rem;font-size:0.7rem;">Accept</button></form>
-                  <?php elseif ($status === 'accepted' && $owes): ?>
-                    <button type="button" class="btn-secondary" style="padding:0.25rem 0.5rem;font-size:0.7rem;opacity:.6;cursor:not-allowed;" disabled title="Clear the course-fee balance first">Mark complete</button>
                   <?php elseif ($status === 'accepted'): ?>
                     <form method="post" action="<?= url('/account/attachments/' . (int) $application['id'] . '/complete') ?>" onsubmit="return confirm('Mark this attachment complete? This generates their recommendation letter right away.');"><?= csrfField() ?><button class="btn-primary" style="padding:0.25rem 0.5rem;font-size:0.7rem;">Mark complete</button></form>
                   <?php elseif ($status === 'recommended'): ?>
                     <span class="text-xs font-bold" style="color:var(--ke-green)">Letter ready.</span>
                   <?php endif; ?>
+                  <?php if (empty($application['branch_id']) && in_array($status, ['pending', 'paused', 'accepted'], true)): $rejectId = (int) $application['id']; require __DIR__ . '/../partials/reject-request.php'; endif; ?>
                 </td>
               </tr>
             <?php endforeach; ?>

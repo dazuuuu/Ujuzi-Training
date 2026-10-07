@@ -39,7 +39,8 @@ $totalCollected = array_sum(array_map(static fn($o) => (float) $o['collected'], 
         <button type="submit" class="btn-primary">Save minimum</button>
       </form>
       <p class="text-xs font-semibold text-neutral-500">
-        Students pay at least this share of a course fee to enrol, and must have paid this share of all their fees before they can send an attachment request. Set 100% to require full payment up front.
+        To enrol, a student's wallet must hold at least this share of the course fee. Nothing is charged then — each module's share of the fee is paid from the wallet as the student opens it.
+        Students must also have paid this share of their fees before they can send an attachment request.
       </p>
     </section>
   </div>

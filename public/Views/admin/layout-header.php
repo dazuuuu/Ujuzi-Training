@@ -19,14 +19,18 @@ $navItems = [
     ['id' => 'students', 'href' => url('/admin/registered-users?role_slug=student'), 'label' => 'Students'],
     ['id' => 'attachment-providers', 'href' => url('/admin/registered-users?role_slug=attachment_trainer'), 'label' => 'Attachment providers'],
     ['id' => 'course-organisations', 'href' => url('/admin/registered-users?role_slug=organisation_admin'), 'label' => 'Organisations providing courses'],
+    ['id' => 'course-approvals', 'href' => url('/admin/course-approvals'), 'label' => 'Approvals' . (($n = count(\App\Models\Course::pendingApproval()) + count(\App\Models\BranchDeletionRequest::pending())) ? ' (' . $n . ')' : '')],
     ['id' => 'forms', 'href' => url('/admin/forms'), 'label' => 'Forms'],
     ['id' => 'updates', 'href' => url('/admin/updates'), 'label' => 'Updates'],
     ['id' => 'attachments', 'href' => url('/admin/attachments'), 'label' => 'Attachments'],
     ['id' => 'finance', 'href' => url('/admin/finance'), 'label' => 'Finance'],
+    ['id' => 'reports', 'href' => url('/admin/reports'), 'label' => 'Reports'],
+    ['id' => 'student-lookup', 'href' => url('/admin/student-lookup'), 'label' => 'Student lookup'],
     ['id' => 'documents', 'href' => url('/admin/documents'), 'label' => 'Documents'],
     ['id' => 'data-cleanup', 'href' => url('/admin/data-cleanup'), 'label' => 'Data Cleanup'],
     ['id' => 'navigation', 'href' => url('/admin/navigation'), 'label' => 'Navigation'],
-    ['id' => 'homepage', 'href' => url('/admin/homepage'), 'label' => 'Homepage'],
+    ['id' => 'pages', 'href' => url('/admin/pages'), 'label' => 'Public pages'],
+    ['id' => 'homepage', 'href' => url('/admin/homepage'), 'label' => 'Logos & featured courses'],
     ['id' => 'settings', 'href' => url('/admin/settings'), 'label' => 'Settings'],
     ['id' => 'admins', 'href' => url('/admin/admins'), 'label' => 'Admins'],
 ];
@@ -35,7 +39,7 @@ $navIcons = [
     'registered-users' => 'users', 'students' => 'graduation', 'attachment-providers' => 'briefcase',
     'course-organisations' => 'building', 'forms' => 'file', 'updates' => 'download', 'attachments' => 'briefcase',
     'finance' => 'wallet', 'documents' => 'file', 'data-cleanup' => 'x', 'navigation' => 'menu', 'settings' => 'settings',
-    'homepage' => 'dashboard', 'admins' => 'user',
+    'homepage' => 'dashboard', 'pages' => 'globe', 'course-approvals' => 'check', 'admins' => 'user', 'reports' => 'chart', 'student-lookup' => 'search',
 ];
 $admin = AdminSession::current();
 // Limited admins only see the sections they were given.
@@ -73,7 +77,7 @@ try {
     <div>
       <div class="workspace-brand flex items-center justify-between px-5 py-5 border-b">
         <div class="flex items-center gap-2.5">
-          <div class="workspace-logo w-8 h-8 flex items-center justify-center rounded-lg shrink-0" style="background:var(--ke-green);color:white;">
+          <div class="workspace-logo w-8 h-8 flex items-center justify-center rounded-lg shrink-0" style="background:<?= storeLogoPath() ? '#fff' : 'var(--ke-green)' ?>;color:white;">
             <?= storeLogoHtml('w-full h-full object-contain rounded-lg', 'w-4 h-4 text-white') ?>
           </div>
           <div class="flex flex-col leading-none">

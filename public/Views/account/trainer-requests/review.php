@@ -9,7 +9,7 @@ $pending = ($request['status'] ?? '') === 'pending';
     <div>
       <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">Student request</p>
       <h1 class="mt-2 font-serif-heading text-3xl font-bold"><?= e(userDisplayName($person)) ?></h1>
-      <p class="mt-1 text-sm font-medium text-neutral-600"><?= e($person['email'] ?: ($person['phone'] ?? '')) ?><?= !empty($request['branch_title']) ? ' · Branch: ' . e($request['branch_title']) : '' ?> · <?= e(ucfirst((string) $request['status'])) ?></p>
+      <p class="mt-1 text-sm font-medium text-neutral-600"><?= e(implode(' · ', array_filter([$person['phone'] ?? '', $person['email'] ?? ''])) ?: '') ?><?= !empty($request['branch_title']) ? ' · Branch: ' . e($request['branch_title']) : '' ?> · <?= e(ucfirst((string) $request['status'])) ?></p>
     </div>
     <a href="<?= url('/account/trainer-requests') ?>" class="btn-secondary">Back to requests</a>
   </section>

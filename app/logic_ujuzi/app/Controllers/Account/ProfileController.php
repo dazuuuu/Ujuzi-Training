@@ -17,6 +17,7 @@ class ProfileController extends BaseAccountController
 {
     public function index(): void
     {
+        $this->syncAccountFromAnswers();
         $forms = Form::forRole((int) $this->user['role_id'], true);
         $withFields = [];
         foreach ($forms as $form) {
@@ -70,6 +71,115 @@ class ProfileController extends BaseAccountController
         ]);
     }
 
+    /** Anyone's profile picture (tutors set theirs with the rest of what students see). */
+    /**
+     * Accounts saved before other names and phone were copied from the
+     * profile form get them now, so "Your details", certificates and phone
+     * sign-in all see them.
+     */
+    private function syncAccountFromAnswers(): void
+    {
+        $changed = false;
+        try {
+            foreach (Form::forRole((int) $this->user['role_id'], true, 'profile') as $form) {
+                $response = FormResponse::findForUserForm((int) $this->user['id'], (int) $form['id']);
+                $answers = is_array($response['answers'] ?? null) ? $response['answers'] : [];
+                foreach (FormField::forForm((int) $form['id']) as $field) {
+                    $value = $answers[$field['field_key']] ?? null;
+                    if (($field['field_type'] ?? '') === 'name' && is_array($value)
+                        && trim((string) ($value['other'] ?? '')) !== '' && trim((string) ($this->user['other_names'] ?? '')) === '') {
+                        User::updateProfileNames((int) $this->user['id'], (string) ($this->user['first_name'] ?? ''), (string) ($this->user['last_name'] ?? ''), (string) $value['other']);
+                        $changed = true;
+                    }
+                    if (($field['field_type'] ?? '') === 'phone' && is_scalar($value) && trim((string) $value) !== '' && trim((string) ($this->user['phone'] ?? '')) === '') {
+                        User::syncPhone((int) $this->user['id'], (string) $value);
+                        $changed = true;
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            return;
+        }
+        if ($changed) {
+            $this->user = User::find((int) $this->user['id']) ?: $this->user;
+        }
+    }
+
+    public function updatePhoto(): void
+    {
+        if (!csrfVerify(Request::post('csrf_token'))) {
+            flashError('Your session expired. Please try again.');
+            redirect('/account/profile');
+        }
+        $upload = $_FILES['photo'] ?? null;
+        if (!is_array($upload) || ($upload['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+            flashError('Choose a picture first.');
+            redirect('/account/profile');
+        }
+        try {
+            $path = \App\Services\UploadService::store($upload, 'profiles');
+        } catch (\App\Services\UploadException $e) {
+            flashError($e->getMessage());
+            redirect('/account/profile');
+        }
+        \App\Services\UploadService::delete($this->user['photo_path'] ?? null);
+        User::setPhoto((int) $this->user['id'], $path);
+        flashSuccess('Profile picture saved.');
+        redirect('/account/profile');
+    }
+
+    /** A tutor's picture, contacts and background, shown to the students of their courses. */
+    public function updatePublic(): void
+    {
+        if (!csrfVerify(Request::post('csrf_token'))) {
+            flashError('Your session expired. Please try again.');
+            redirect('/account/profile#public-profile');
+        }
+        if (($this->user['role_slug'] ?? '') !== 'trainer') {
+            redirect('/account/profile');
+        }
+
+        $fields = [];
+        foreach (User::PUBLIC_PROFILE_FIELDS as $key) {
+            $fields[$key] = trim((string) Request::post($key, ''));
+        }
+        $fields['photo_path'] = (string) ($this->user['photo_path'] ?? '');
+        $phone = User::normalizePhone((string) Request::post('phone', ''));
+
+        $errors = [];
+        foreach (['linkedin_url' => 'LinkedIn', 'social_url' => 'Social media'] as $key => $label) {
+            if ($fields[$key] !== '' && !preg_match('#^https?://#i', $fields[$key])) {
+                $fields[$key] = 'https://' . $fields[$key];
+            }
+            if ($fields[$key] !== '' && !filter_var($fields[$key], FILTER_VALIDATE_URL)) {
+                $errors[] = $label . ' must be a web link.';
+            }
+        }
+        if ($phone === '' || strlen(preg_replace('/\D/', '', $phone)) < 9) {
+            $errors[] = 'Enter a phone number students can call.';
+        }
+        $upload = $_FILES['photo'] ?? null;
+        if (is_array($upload) && ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+            try {
+                $fields['photo_path'] = \App\Services\UploadService::store($upload, 'tutors');
+                \App\Services\UploadService::delete($this->user['photo_path'] ?? null);
+            } catch (\App\Services\UploadException $e) {
+                $errors[] = $e->getMessage();
+            }
+        }
+        if ($errors) {
+            flashError(implode(' ', $errors));
+            redirect('/account/profile#public-profile');
+        }
+
+        User::updatePublicProfile((int) $this->user['id'], $fields, $phone);
+        $missing = User::missingPublicProfile(User::find((int) $this->user['id']) ?? []);
+        $missing
+            ? flashError('Saved. Still needed before you can create courses: ' . implode(', ', $missing) . '.')
+            : flashSuccess('Saved. Students of your courses can now see your profile.');
+        redirect('/account/profile#public-profile');
+    }
+
     public function update(): void
     {
         if (!csrfVerify(Request::post('csrf_token'))) {
@@ -99,6 +209,14 @@ class ProfileController extends BaseAccountController
             }
             if ($errors) {
                 flashError(implode(' ', $errors));
+                redirect('/account/profile');
+            }
+            if ($email !== '' && empty($this->user['email'])) {
+                // A new sign-in email counts once its owner verifies it.
+                $error = AccountLockController::sendVerification((int) $this->user['id'], $email, null, userDisplayName($this->user));
+                $error === null
+                    ? flashSuccess('We sent a link to ' . $email . '. Press "Verify my email" in it to add this email to your account.')
+                    : flashError($error);
                 redirect('/account/profile');
             }
             User::updateCredentials((int) $this->user['id'], $email, $phone);
@@ -163,6 +281,12 @@ class ProfileController extends BaseAccountController
             break;
         }
         foreach ($fields as $field) {
+            if (($field['field_type'] ?? '') === 'phone' && is_scalar($collected['answers'][$field['field_key']] ?? null)) {
+                User::syncPhone((int) $this->user['id'], (string) $collected['answers'][$field['field_key']]);
+                break;
+            }
+        }
+        foreach ($fields as $field) {
             if (($field['field_type'] ?? '') !== 'name') {
                 continue;
             }
@@ -171,7 +295,7 @@ class ProfileController extends BaseAccountController
                 $first = trim((string) ($raw['first'] ?? ''));
                 $last = trim((string) ($raw['last'] ?? ''));
                 if ($first !== '' || $last !== '') {
-                    User::updateProfileNames((int) $this->user['id'], $first, $last);
+                    User::updateProfileNames((int) $this->user['id'], $first, $last, (string) ($raw['other'] ?? ''));
                 }
             }
             break;

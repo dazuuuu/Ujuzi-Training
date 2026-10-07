@@ -75,6 +75,8 @@ $maxRole = max(1, ...array_map(fn($row) => (int) $row['total'], $roleCounts ?: [
     <?php endforeach; ?>
   </section>
 
+  <?php require __DIR__ . '/partials/dashboard-charts.php'; ?>
+
   <?php if ($attachmentStats): ?>
     <section class="rounded-xl border border-neutral-300 bg-white p-5 shadow-sm">
       <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
@@ -83,14 +85,6 @@ $maxRole = max(1, ...array_map(fn($row) => (int) $row['total'], $roleCounts ?: [
           <h3 class="mt-1 text-xl font-black text-black">Provider workflow</h3>
         </div>
         <a href="<?= url('/admin/attachments') ?>" class="btn-secondary" style="padding:0.4rem 0.7rem;">View all attachments</a>
-      </div>
-      <div class="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <?php foreach (['pending' => 'Requested', 'paused' => 'On hold', 'accepted' => 'Accepted', 'completed' => 'Finished', 'recommended' => 'Certified', 'rejected' => 'Declined'] as $key => $label): ?>
-          <div class="rounded-lg border border-neutral-200 p-3">
-            <p class="text-[10px] font-black uppercase text-neutral-500"><?= e($label) ?></p>
-            <p class="mt-2 text-2xl font-black"><?= number_format((int) ($attachmentStats[$key] ?? 0)) ?></p>
-          </div>
-        <?php endforeach; ?>
       </div>
       <div class="mt-3 grid gap-3 sm:grid-cols-3">
         <div class="rounded-lg border border-neutral-200 p-3">
@@ -141,56 +135,6 @@ $maxRole = max(1, ...array_map(fn($row) => (int) $row['total'], $roleCounts ?: [
     </section>
   <?php endif; ?>
 
-  <section class="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-    <div class="rounded-xl border border-neutral-300 bg-white shadow-sm">
-      <div class="border-b border-neutral-200 px-5 py-4">
-        <p class="text-[11px] font-black uppercase tracking-widest text-neutral-600">People by role</p>
-        <h3 class="mt-1 text-xl font-black text-black">Who is on the platform</h3>
-      </div>
-      <div class="space-y-4 p-5">
-        <?php if (!$roleCounts): ?>
-          <p class="text-sm font-bold text-neutral-700">Roles will appear after the first LMS update is run.</p>
-        <?php endif; ?>
-        <?php foreach ($roleCounts as $row):
-          $width = max(6, (int) round(((int) $row['total'] / $maxRole) * 100));
-        ?>
-          <div>
-            <div class="mb-1 flex items-center justify-between gap-3">
-              <p class="truncate text-sm font-black text-black"><?= e($row['name']) ?></p>
-              <p class="text-xs font-bold text-neutral-700"><?= (int) $row['total'] ?></p>
-            </div>
-            <div class="h-2 overflow-hidden rounded-full bg-neutral-200">
-              <div class="h-full rounded-full" style="width: <?= $width ?>%;background:var(--ke-green)"></div>
-            </div>
-          </div>
-        <?php endforeach; ?>
-      </div>
-    </div>
-
-    <div class="rounded-xl border border-neutral-300 bg-white shadow-sm">
-      <div class="flex items-center justify-between border-b border-neutral-200 px-5 py-4">
-        <div>
-          <p class="text-[11px] font-black uppercase tracking-widest text-neutral-600">Recent users</p>
-          <h3 class="mt-1 text-lg font-black text-black">Newly provisioned</h3>
-        </div>
-        <a href="<?= url('/admin/users') ?>" class="btn-secondary" style="padding:0.4rem 0.7rem;">View all</a>
-      </div>
-      <div class="divide-y divide-neutral-100">
-        <?php if (!$recentUsers): ?>
-          <p class="p-5 text-sm font-bold text-neutral-700">No users yet. Create an organisation, then add people.</p>
-        <?php endif; ?>
-        <?php foreach ($recentUsers as $person): ?>
-          <div class="flex items-center justify-between gap-3 px-5 py-4">
-            <div>
-              <p class="text-sm font-black text-black"><?= e(userDisplayName($person)) ?></p>
-              <p class="text-xs font-semibold text-neutral-600"><?= e($person['role_name']) ?> · <?= e($person['organisation_name'] ?? 'No organisation') ?></p>
-            </div>
-            <a href="<?= url('/admin/users/' . (int) $person['id'] . '/edit') ?>" class="btn-secondary" style="padding:0.35rem 0.65rem;">Edit</a>
-          </div>
-        <?php endforeach; ?>
-      </div>
-    </div>
-  </section>
 </div>
 
 <?php require __DIR__ . '/layout-footer.php'; ?>

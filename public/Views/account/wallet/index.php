@@ -9,29 +9,21 @@ $who = static fn(array $r, string $p): string => trim(($r[$p . '_first'] ?? '') 
 <div class="space-y-6">
 <?php if ($mode === 'student'): ?>
   <section>
-    <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">My wallet</p>
-    <h1 class="mt-2 font-serif-heading text-3xl font-bold">Wallet &amp; coins</h1>
-    <p class="mt-1 text-sm font-medium text-neutral-600">Ksh 100 = <?= e(rtrim(rtrim(number_format(WalletService::coinsPer100(), 2), '0'), '.')) ?> coins. Deposit money to earn coins, then pay for courses bit by bit (at least <?= \App\Services\WalletService::minPaymentPercent() ?>% to enrol).</p>
+    <h1 class="font-serif-heading text-2xl font-bold">My wallet</h1>
+    <p class="text-xs font-medium text-neutral-500">Ksh 100 = <?= e(rtrim(rtrim(number_format(WalletService::coinsPer100(), 2), '0'), '.')) ?> coins · pay at least <?= \App\Services\WalletService::minPaymentPercent() ?>% of a course to enrol.</p>
   </section>
 
-  <div class="grid gap-4 sm:grid-cols-3">
-    <div class="rounded-xl border bg-white p-5 shadow-sm" style="border-color:var(--ke-line)"><p class="text-[11px] font-black uppercase" style="color:var(--ke-muted)">Coins available</p><p class="mt-2 text-3xl font-black" style="color:var(--ke-green)">🪙 <?= e($coinsFmt($balanceKsh)) ?></p><p class="text-xs font-semibold text-neutral-500">= Ksh <?= $fmt($balanceKsh) ?></p></div>
-    <div class="rounded-xl border bg-white p-5 shadow-sm" style="border-color:var(--ke-line)"><p class="text-[11px] font-black uppercase" style="color:var(--ke-muted)">Total deposited</p><p class="mt-2 text-2xl font-black">Ksh <?= $fmt($depositedKsh) ?></p></div>
-    <div class="rounded-xl border bg-white p-5 shadow-sm" style="border-color:var(--ke-line)"><p class="text-[11px] font-black uppercase" style="color:var(--ke-muted)">Total spent on courses</p><p class="mt-2 text-2xl font-black">Ksh <?= $fmt($spentKsh) ?></p></div>
+  <div class="wallet-strip">
+    <div class="wallet-balance">
+      <span class="wallet-label">Balance</span>
+      <strong>Ksh <?= $fmt($balanceKsh) ?></strong>
+      <span class="wallet-coins">🪙 <?= e($coinsFmt($balanceKsh)) ?> coins</span>
+    </div>
+    <div class="wallet-mini"><span class="wallet-label">Deposited</span><span>Ksh <?= $fmt($depositedKsh) ?></span></div>
+    <div class="wallet-mini"><span class="wallet-label">Spent on courses</span><span>Ksh <?= $fmt($spentKsh) ?></span></div>
   </div>
 
-  <section class="rounded-xl border bg-white p-6 shadow-sm space-y-3" style="border-color:var(--ke-line)">
-    <h2 class="font-serif-heading text-lg font-bold">Deposit (M-Pesa)</h2>
-    <?php if (\App\Services\PaymentGateway::mode() === 'simulation'): ?>
-      <p class="text-xs font-bold" style="color:var(--ke-red)">Simulation mode: no real money is charged. Deposits are approved instantly.</p>
-    <?php endif; ?>
-    <form method="post" action="<?= url('/account/wallet/deposit') ?>" class="grid gap-3 sm:grid-cols-3 sm:items-end">
-      <?= csrfField() ?>
-      <label class="block text-xs font-bold uppercase text-neutral-600">Amount (Ksh)<input type="number" name="amount_ksh" min="10" step="1" required class="mt-1 w-full rounded-lg border border-neutral-300 p-2 text-sm" /></label>
-      <label class="block text-xs font-bold uppercase text-neutral-600">M-Pesa phone<input type="text" name="phone" placeholder="0712345678" required class="mt-1 w-full rounded-lg border border-neutral-300 p-2 text-sm" /></label>
-      <button type="submit" class="btn-primary">Deposit</button>
-    </form>
-  </section>
+  <?php $depositReturn = '/account/wallet'; require __DIR__ . '/../partials/deposit-form.php'; ?>
 
   <section class="space-y-3">
     <h2 class="font-serif-heading text-lg font-bold">My course payments</h2>
@@ -64,13 +56,25 @@ $who = static fn(array $r, string $p): string => trim(($r[$p . '_first'] ?? '') 
 <?php elseif ($mode === 'earner'):
   $collected = array_sum(array_map(static fn($c) => (float) $c['collected'], $courses));
   $expected = array_sum(array_map(static fn($c) => (float) $c['fee'] * (int) $c['students'], $courses));
-  $isOrg = $scope === 'organisation';
+  $isOrg = $scope !== 'tutor';
+  $dateQs = http_build_query(array_filter(['from' => $from ?? '', 'to' => $to ?? '']));
 ?>
   <section>
     <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)"><?= $isOrg ? 'Organisation finances' : 'My earnings' ?></p>
     <h1 class="mt-2 font-serif-heading text-3xl font-bold"><?= $isOrg ? 'Finances' : 'Earnings' ?></h1>
-    <p class="mt-1 text-sm font-medium text-neutral-600">Every time a student pays for <?= $isOrg ? 'one of your organisation\'s courses' : 'one of your courses' ?>, it is credited here.</p>
+    <p class="mt-1 text-sm font-medium text-neutral-600">Every time a student pays for <?= $scope === 'branch' ? 'a course, students of your branch' : ($isOrg ? 'one of your organisation\'s courses' : 'one of your courses') ?>, it is credited here.</p>
   </section>
+  <form method="get" action="<?= url('/account/wallet') ?>" class="flex flex-wrap items-end gap-2 rounded-xl border border-neutral-200 bg-white p-3 shadow-sm print:hidden">
+    <label class="text-xs font-bold uppercase text-neutral-600">From<input type="date" name="from" value="<?= e($from ?? '') ?>" class="mt-1 block rounded-lg border border-neutral-300 p-2 text-sm"></label>
+    <label class="text-xs font-bold uppercase text-neutral-600">To<input type="date" name="to" value="<?= e($to ?? '') ?>" class="mt-1 block rounded-lg border border-neutral-300 p-2 text-sm"></label>
+    <button type="submit" class="btn-secondary">Show</button>
+    <?php if ($dateQs !== ''): ?><a href="<?= url('/account/wallet') ?>" class="self-center text-xs font-bold underline">All dates</a><?php endif; ?>
+    <span class="ml-auto flex flex-wrap gap-2">
+      <a href="<?= e(url('/account/wallet/export/xlsx') . ($dateQs !== '' ? '?' . $dateQs : '')) ?>" class="btn-primary inline-flex items-center gap-2"><?= icon('download', 'h-4 w-4') ?> Excel</a>
+      <a href="<?= e(url('/account/wallet/export/pdf') . ($dateQs !== '' ? '?' . $dateQs : '')) ?>" target="_blank" rel="noopener" class="btn-secondary inline-flex items-center gap-2"><?= icon('file', 'h-4 w-4') ?> View PDF</a>
+      <button type="button" class="btn-secondary" onclick="window.print()">Print</button>
+    </span>
+  </form>
   <div class="grid gap-4 sm:grid-cols-3">
     <div class="rounded-xl border bg-white p-5 shadow-sm" style="border-color:var(--ke-line)"><p class="text-[11px] font-black uppercase" style="color:var(--ke-muted)">Total earned</p><p class="mt-2 text-3xl font-black" style="color:var(--ke-green)">Ksh <?= $fmt($collected) ?></p></div>
     <div class="rounded-xl border bg-white p-5 shadow-sm" style="border-color:var(--ke-line)"><p class="text-[11px] font-black uppercase" style="color:var(--ke-muted)">Expected from enrolled students</p><p class="mt-2 text-2xl font-black">Ksh <?= $fmt($expected) ?></p></div>

@@ -57,4 +57,16 @@ class LmsController
     {
         View::render('lms.about', []);
     }
+
+    /** A page Super Admin made in the page builder (/p/{slug}). Unpublished pages show only in the editor's preview. */
+    public function customPage(string $slug): void
+    {
+        $meta = \App\Services\PageBuilder::customPages()[$slug] ?? null;
+        if (!$meta || (empty($meta['published']) && \App\Services\PageBuilder::previewToken() === null)) {
+            http_response_code(404);
+            View::render('lms.404');
+            return;
+        }
+        View::render('lms.custom', ['pbPage' => 'c-' . $slug, 'pbTitle' => $meta['title'] . ' | ' . appName(), 'pbDescription' => $meta['description']]);
+    }
 }

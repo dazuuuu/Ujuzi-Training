@@ -38,7 +38,6 @@ class LoginRoles
     {
         return match ($slug) {
             'student' => '/account/register',
-            'trainer' => '/account/register/trainer',
             'attachment_trainer' => '/account/register/attachment-trainer',
             default => null,
         };
@@ -57,14 +56,14 @@ class LoginRoles
             'attachment_trainer' => [
                 'badge' => $name,
                 'heading' => 'Attachment provider sign in',
-                'blurb' => 'Sign in to your attachment provider dashboard to register your organisation, manage branches, and certify attachees. Students only see you after they finish a course, for the duration on your profile form.',
+                'blurb' => 'Sign in to register your organisation, manage branches, and ask organisations providing courses to take their students. Their students see you once they approve you.',
                 'need_account' => 'Register as an attachment provider, or ask Super Admin to create your account.',
             ],
             'trainer' => [
                 'badge' => $name,
                 'heading' => 'Tutor sign in',
-                'blurb' => 'Sign in to your tutor dashboard. After you pick organisations on your profile, each organisation must approve you.',
-                'need_account' => 'New tutors can register with email and password, then complete the tutor form.',
+                'blurb' => 'Sign in to your tutor dashboard to create courses under your organisation\'s categories.',
+                'need_account' => 'Tutors are registered by their organisation. Ask your organisation for your sign-in details.',
             ],
             'student' => [
                 'badge' => $name,

@@ -17,7 +17,7 @@ $approvedStudents = is_array($approvedStudents ?? null) ? $approvedStudents : []
           <?php foreach ($approvedStudents as $student): ?>
             <tr>
               <td class="font-black"><?= e(userDisplayName($student)) ?></td>
-              <td><?= e($student['email'] ?: ($student['phone'] ?? '—')) ?></td>
+              <td><?= e(implode(' · ', array_filter([$student['phone'] ?? '', $student['email'] ?? ''])) ?: '—') ?></td>
               <td><?= e($student['branch_title'] ?? '—') ?></td>
               <td>
                 <form method="post" action="<?= url($categoriesAction . (int) $student['id'] . '/categories') ?>" id="approved-student-<?= (int) $student['id'] ?>">

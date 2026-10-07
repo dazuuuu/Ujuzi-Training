@@ -40,6 +40,7 @@ class BranchAdminController extends BaseAccountController
         $completed = [];
         foreach ($applications as $application) {
             $application['fees'] = $fees[(int) $application['student_user_id']] ?? null;
+            $application['request_fees'] = WalletService::requestFees((int) $application['student_user_id'], $application['category_id'] ?? null, !empty($application['course_id']) ? (int) $application['course_id'] : null);
             if (in_array($application['status'], [AttachmentApplication::STATUS_COMPLETED, AttachmentApplication::STATUS_RECOMMENDED], true)) {
                 $completed[] = $application;
             } else {
@@ -143,10 +144,14 @@ class BranchAdminController extends BaseAccountController
             redirect('/account/branch-admin');
         }
 
+        if ($newStatus === AttachmentApplication::STATUS_RECOMMENDED && !\App\Models\AttachmentAssessment::isMarked($id)) {
+            flashError(\App\Models\AttachmentAssessment::NOT_MARKED);
+            redirect('/account/attachment-requests/' . $id . '#assessment');
+        }
         if ($newStatus === AttachmentApplication::STATUS_RECOMMENDED) {
-            $owed = WalletService::studentBalanceOwed((int) $application['student_user_id']);
+            $owed = WalletService::requestFees((int) $application['student_user_id'], !empty($application['category_id']) ? (int) $application['category_id'] : null, !empty($application['course_id']) ? (int) $application['course_id'] : null)['balance'];
             if ($owed > 0) {
-                flashError('This student still owes Ksh ' . number_format($owed, 2) . ' in course fees. They can be marked completed once the balance is Ksh 0.');
+                flashError(WalletService::outstandingMessage($owed));
                 redirect('/account/branch-admin');
             }
         }

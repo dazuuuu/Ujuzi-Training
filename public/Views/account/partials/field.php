@@ -88,7 +88,7 @@ switch ($type) {
         echo '<div class="name-grid">';
         echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">First name</label><input type="text" name="' . e($name) . '[first]" value="' . e($first) . '"' . $nameAttrs . ' class="' . $nameClass . '" /></div>';
         echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Last name</label><input type="text" name="' . e($name) . '[last]" value="' . e($last) . '"' . ($locked ? ' readonly' : '') . ' class="' . $nameClass . '" /></div>';
-        echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Other names (optional)</label><input type="text" name="' . e($name) . '[other]" value="' . e($other) . '" class="' . $class . '" /></div>';
+        echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Other names</label><input type="text" name="' . e($name) . '[other]" value="' . e($other) . '" class="' . $class . '" /></div>';
         echo '</div>';
         if ($locked) {
             echo '<p class="field-hint">First and last name were set when your account was created — contact your organisation admin to change them.</p>';
@@ -406,26 +406,20 @@ switch ($type) {
         break;
 
     case 'branch_select':
-        $current = (string) $value;
+        // Branches show as cards with their contacts; the student picks one.
+        $current = (int) $value;
         $viewer = $currentUser ?? \App\Core\UserSession::current();
         $defaultOrgId = is_array($viewer) ? (int) ($viewer['organisation_id'] ?? 0) : 0;
         $defaultProviderId = is_array($viewer) && (($viewer['role_slug'] ?? '') === 'attachment_trainer') ? (int) ($viewer['id'] ?? 0) : 0;
-        $branch = (int) $current > 0 ? \App\Models\OrganisationBranch::findWithOrganisation((int) $current) : null;
-        $label = '';
-        if ($branch) {
-            $label = trim((string) ($branch['title'] ?? ''));
-            $location = trim((string) ($branch['location'] ?? ''));
-            if ($location !== '') {
-                $label .= ' - ' . $location;
-            }
+        echo '<div class="js-branch-select branch-pick-grid" data-name="' . e($name) . '" data-current="' . ($current > 0 ? $current : '') . '"'
+            . ($required ? ' data-required="1"' : '')
+            . ' data-branches-url="' . e(url('/api/form/branches')) . '" data-default-org-id="' . ($defaultOrgId > 0 ? $defaultOrgId : '') . '" data-default-provider-id="' . ($defaultProviderId > 0 ? $defaultProviderId : '') . '">';
+        echo '<p class="text-sm font-bold" style="color:var(--ke-muted)">Choose an organisation first to see its branches.</p>';
+        if ($current > 0) {
+            echo '<input type="hidden" name="' . e($name) . '" value="' . $current . '">';
         }
-        echo '<select name="' . e($name) . '" ' . ($required ? 'required' : '') . ' class="' . $class . ' js-branch-select" data-branches-url="' . e(url('/api/form/branches')) . '" data-default-org-id="' . ($defaultOrgId > 0 ? $defaultOrgId : '') . '" data-default-provider-id="' . ($defaultProviderId > 0 ? $defaultProviderId : '') . '">';
-        echo '<option value="">Choose organisation or attachment provider first</option>';
-        if ($branch) {
-            echo '<option value="' . (int) $branch['id'] . '" data-org-id="' . (int) $branch['organisation_id'] . '" selected>' . e($label) . '</option>';
-        }
-        echo '</select>';
-        echo '<p class="field-hint">This uses branches already created and saved in the database.</p>';
+        echo '</div>';
+        echo '<p class="field-hint">Pick the branch you want to go to. Each card shows that branch\'s admin and contacts.</p>';
         break;
 
     case 'category':

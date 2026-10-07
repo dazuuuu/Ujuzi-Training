@@ -164,11 +164,8 @@ class FormField
         }
         if (is_array($value)) {
             if (isset($value['first']) || isset($value['last']) || isset($value['other'])) {
-                $full = trim(($value['first'] ?? '') . ' ' . ($value['last'] ?? ''));
-                $other = trim((string) ($value['other'] ?? ''));
-                if ($other !== '') {
-                    $full .= ' (' . $other . ')';
-                }
+                // First, other and last names in order — other names are a name like the rest, no brackets.
+                $full = trim(preg_replace('/\s+/', ' ', ($value['first'] ?? '') . ' ' . ($value['other'] ?? '') . ' ' . ($value['last'] ?? '')));
                 return $full !== '' ? $full : '—';
             }
             if (isset($value['county']) || isset($value['street']) || isset($value['city'])) {

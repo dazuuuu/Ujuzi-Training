@@ -8,7 +8,7 @@ class CourseEnrollment
 {
     public static function enroll(int $userId, int $courseId, array $payment = []): void
     {
-        Database::connection()->prepare(
+        $stmt = Database::connection()->prepare(
             'INSERT INTO course_enrollments (user_id, course_id, amount_ksh, currency, payment_provider, payment_status, payment_reference, enrolled_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
              ON DUPLICATE KEY UPDATE
@@ -18,7 +18,8 @@ class CourseEnrollment
                 payment_status = VALUES(payment_status),
                 payment_reference = VALUES(payment_reference),
                 enrolled_at = COALESCE(enrolled_at, NOW())'
-        )->execute([
+        );
+        $stmt->execute([
             $userId,
             $courseId,
             (float) ($payment['amount_ksh'] ?? 0),
@@ -27,6 +28,12 @@ class CourseEnrollment
             $payment['payment_status'] ?? 'paid',
             $payment['payment_reference'] ?? null,
         ]);
+        if ($stmt->rowCount() === 1) { // a new enrolment, not a payment update
+            $course = Course::find($courseId);
+            if ($course) {
+                \App\Services\Notifier::toUser($userId, 'You are enrolled: ' . $course['title'], 'You are enrolled', 'You are now enrolled for ' . $course['title'] . ' (' . ($course['organisation_name'] ?? '') . '). Start with the first module whenever you are ready.', 'Start learning', '/account/courses/' . $courseId);
+            }
+        }
     }
 
     public static function isEnrolled(int $userId, int $courseId): bool

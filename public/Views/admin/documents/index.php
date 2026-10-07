@@ -1,70 +1,55 @@
 <?php
-/** Requires $certificateTemplate/$certificateIsPdf/$certificateIsImage and $letterTemplate/$letterIsPdf/$letterIsImage in scope. */
+/** Requires $certificateTemplate/$certificateIsPdf/$certificateIsImage (for $orgId, 0 = platform-wide), $organisations, $orgName and $letterTemplate/$letterIsPdf/$letterIsImage. */
 require __DIR__ . '/../layout-header.php';
 
-$card = static function (string $type, string $title, string $help, ?string $template, bool $isPdf, bool $isImage): void {
-    ?>
-    <section class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm space-y-4">
-      <div>
-        <h2 class="font-serif-heading text-lg font-bold"><?= e($title) ?></h2>
-        <p class="mt-1 text-sm font-medium text-neutral-600"><?= e($help) ?></p>
-      </div>
-
-      <?php if ($template): ?>
-        <div class="rounded-lg border p-4 space-y-3" style="border-color:var(--ke-line)">
-          <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">Current template</p>
-          <?php if ($isImage): ?>
-            <img src="<?= e(imageUrl($template)) ?>" alt="<?= e($title) ?>" class="max-h-80 w-full rounded object-contain border border-neutral-200 bg-neutral-50" />
-          <?php else: ?>
-            <iframe src="<?= e(imageUrl($template)) ?>" title="<?= e($title) ?>" class="h-80 w-full rounded border border-neutral-200"></iframe>
-          <?php endif; ?>
-        </div>
-      <?php endif; ?>
-
-      <form method="post" action="<?= url('/admin/documents/' . $type) ?>" enctype="multipart/form-data" class="space-y-4">
-        <?= csrfField() ?>
-        <div>
-          <label class="text-[11px] font-bold uppercase text-neutral-600">PDF or image</label>
-          <input type="file" name="template" accept=".pdf,application/pdf,image/*" required class="mt-2 block w-full text-sm" />
-        </div>
-        <button type="submit" class="btn-primary">Save template</button>
-      </form>
-
-      <?php if ($template): ?>
-        <form method="post" action="<?= url('/admin/documents/' . $type) ?>" onsubmit="return confirm('Remove this template?');">
-          <?= csrfField() ?>
-          <input type="hidden" name="remove_template" value="1" />
-          <button type="submit" class="btn-danger">Remove template</button>
-        </form>
-      <?php endif; ?>
-    </section>
-    <?php
+$card = static function (string $type, string $title, string $help, ?string $template, bool $isPdf, bool $isImage, ?int $orgId = null, ?string $note = null): void {
+    $edType = $type; $edTitle = $title; $edHelp = $help; $edTemplate = $template; $edIsPdf = $isPdf; $edNote = $note;
+    $edLayout = \App\Services\DocumentLayout::get($type, $orgId);
+    $qs = $orgId ? '?org=' . $orgId : '';
+    $edUploadUrl = url('/admin/documents/' . $type) . $qs;
+    $edLayoutUrl = url('/admin/documents/' . $type . '/layout') . $qs;
+    require __DIR__ . '/../../partials/document-editor.php';
 };
 ?>
 
-<div class="max-w-3xl space-y-6">
+<div class="max-w-5xl space-y-6">
   <section>
     <h1 class="font-serif-heading text-2xl font-bold">Documents</h1>
     <p class="mt-1 text-sm font-medium text-neutral-600">Upload the layouts used for auto-generated student documents — the certificate and the attachment recommendation letter.</p>
   </section>
 
+  <form method="get" action="<?= url('/admin/documents') ?>" class="flex flex-wrap items-end gap-2 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+    <label class="text-xs font-bold uppercase text-neutral-600">Certificate design for
+      <select name="org" class="mt-1 block rounded-lg border border-neutral-300 p-2 text-sm normal-case" onchange="this.form.submit()">
+        <option value="">Platform-wide (used when an organisation has no design of its own)</option>
+        <?php foreach ($organisations as $org): ?>
+          <option value="<?= (int) $org['id'] ?>" <?= (int) $org['id'] === (int) $orgId ? 'selected' : '' ?>><?= e($org['name']) ?><?= \App\Services\CertificateService::ownTemplatePath((int) $org['id']) ? ' · own design' : '' ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+    <noscript><button type="submit" class="btn-secondary">Open</button></noscript>
+  </form>
+
   <?php $card(
       'certificate',
-      'Certificate template',
-      'Student certificates use this design and write the learner’s name plus every skill they have earned onto it.',
+      $orgId ? 'Certificate template — ' . $orgName : 'Certificate template (platform-wide)',
+      'Upload the certificate design (PDF or image), then drag the student\'s name, course, organisation, registration number and date to where they go.',
       $certificateTemplate,
       $certificateIsPdf,
-      $certificateIsImage
+      $certificateIsImage,
+      $orgId ?: null,
+      $orgId && !$certificateTemplate ? 'This organisation has no design of its own yet, so its certificates use the platform-wide design. Upload one to give it its own.' : null
   ); ?>
 
   <?php $card(
       'recommendation_letter',
       'Recommendation letter template',
-      'Generated automatically once an attachment provider marks a student’s attachment as recommended/completed.',
+      'Upload the letter design (PDF or image), then drag the student\'s name, course, the organisation and branch they were attached at, registration number and date into place. Issued when a branch marks the attachment completed.',
       $letterTemplate,
       $letterIsPdf,
       $letterIsImage
   ); ?>
 </div>
+
 
 <?php require __DIR__ . '/../layout-footer.php'; ?>

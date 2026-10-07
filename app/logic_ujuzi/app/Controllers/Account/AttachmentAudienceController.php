@@ -8,10 +8,9 @@ use App\Models\Organisation;
 use App\Models\OrganisationCategory;
 
 /**
- * Lets an organisation providing attachment choose whose students it accepts:
- * which organisations providing courses, and which of their categories. It
- * appears straight away, with no approval, to students enrolled in a course
- * under one of those categories.
+ * Lets an organisation providing attachment ask to take the students of
+ * organisations providing courses, per category. Each organisation approves
+ * or declines; students see the provider once approved.
  */
 class AttachmentAudienceController extends BaseAccountController
 {
@@ -33,6 +32,7 @@ class AttachmentAudienceController extends BaseAccountController
             'activeNav' => 'attachment_audience',
             'organisations' => $organisations,
             'selectedCategoryIds' => AttachmentAudience::categoryIdsFor((int) $this->user['id']),
+            'statuses' => AttachmentAudience::statusesFor((int) $this->user['id']),
         ]);
     }
 
@@ -47,8 +47,8 @@ class AttachmentAudienceController extends BaseAccountController
         $ids = Request::post('category_ids', []);
         $saved = AttachmentAudience::sync((int) $this->user['id'], is_array($ids) ? $ids : []);
         $saved > 0
-            ? flashSuccess('Saved. Students enrolled in ' . $saved . ' course categor' . ($saved === 1 ? 'y' : 'ies') . ' now see you under Attachment.')
-            : flashError('Saved with nothing selected — no student can see you until you turn on at least one category.');
+            ? flashSuccess('Saved. Each organisation providing courses reviews new categories; its students see you once it approves.')
+            : flashError('Saved with nothing selected — no student can see you until you ask for at least one category.');
         redirect('/account/attachment-audience');
     }
 

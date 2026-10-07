@@ -46,6 +46,8 @@ class UserController extends BaseAdminController
                     (string) ($user['email'] ?? ''),
                     (string) ($user['phone'] ?? ''),
                     (string) ($user['organisation_name'] ?? ''),
+                    (string) ($user['registration_number'] ?? ''),
+                    (string) ($user['other_names'] ?? ''),
                 ]));
                 if (strpos($haystack, strtolower($filters['q'])) === false) {
                     return false;
@@ -53,6 +55,35 @@ class UserController extends BaseAdminController
             }
             return true;
         }));
+        // Every student carries a registration number (the same one printed on
+        // their certificate and recommendation letter).
+        foreach ($users as &$user) {
+            if (($user['role_slug'] ?? '') === 'student' && empty($user['registration_number'])) {
+                $user['registration_number'] = User::assignRegistrationNumber((int) $user['id']) ?? '';
+            }
+        }
+        unset($user);
+
+        if ($roleSlug === 'student' && Request::query('export', '') === 'xlsx') {
+            \App\Services\SpreadsheetExport::download(
+                'students-' . date('Y-m-d'),
+                'Students',
+                ['#', 'Reg. No.', 'First name', 'Other names', 'Last name', 'Email', 'Phone', 'Organisation', 'Registered', 'Status'],
+                array_map(static fn(array $u, int $i): array => [
+                    $i + 1,
+                    (string) ($u['registration_number'] ?? ''),
+                    (string) ($u['first_name'] ?? ''),
+                    (string) ($u['other_names'] ?? ''),
+                    (string) ($u['last_name'] ?? ''),
+                    (string) ($u['email'] ?? ''),
+                    (string) ($u['phone'] ?? ''),
+                    (string) ($u['organisation_name'] ?? ''),
+                    !empty($u['created_at']) ? date('Y-m-d', strtotime((string) $u['created_at'])) : '',
+                    ucfirst((string) ($u['account_status'] ?? (!empty($u['is_active']) ? 'active' : 'blocked'))),
+                ], $users, array_keys($users))
+            );
+        }
+
         $groupedUsers = [];
         foreach ($users as $user) {
             $key = (string) ($user['role_slug'] ?? 'other');
@@ -75,6 +106,7 @@ class UserController extends BaseAdminController
             'users' => $users,
             'groupedUsers' => $groupedUsers,
             'filters' => $filters,
+            'isStudentSheet' => $roleSlug === 'student',
             'resultCount' => count($users),
             'roles' => Role::all(),
             'organisations' => Organisation::all(),
@@ -284,7 +316,7 @@ class UserController extends BaseAdminController
             }
         }
         if ($form['phone'] !== '') {
-            $existing = User::findByIdentifier('phone', $form['phone']);
+            $existing = User::findByPhone($form['phone']);
             if ($existing && (int) $existing['id'] !== (int) $ignoreId) {
                 $errors[] = 'That phone number is already used by another user.';
             }
@@ -305,5 +337,25 @@ class UserController extends BaseAdminController
             'organisation_id' => '',
             'is_active' => 1,
         ];
+    }
+
+    /** Unlocks an account locked for sharing an email / phone (once its details are its own). */
+    public function unlock(string $id): void
+    {
+        if (!csrfVerify(Request::post('csrf_token'))) {
+            flashError('Your session expired. Please try again.');
+            redirect('/admin/users');
+        }
+        $user = User::find((int) $id);
+        if (!$user) {
+            redirect('/admin/users');
+        }
+        if (User::emailTaken((string) ($user['email'] ?? ''), (int) $user['id']) || User::phoneTaken((string) ($user['phone'] ?? ''), (int) $user['id'])) {
+            flashError('This account still shares its email or phone with another account. Edit it to give it its own details first, then unlock it.');
+            redirect('/admin/users/' . (int) $user['id'] . '/edit');
+        }
+        User::unlock((int) $user['id']);
+        flashSuccess(userDisplayName($user) . ' is unlocked.');
+        redirect((string) ($_SERVER['HTTP_REFERER'] ?? '/admin/users'));
     }
 }

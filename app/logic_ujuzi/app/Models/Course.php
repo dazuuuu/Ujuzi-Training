@@ -9,11 +9,49 @@ class Course
     public const VISIBILITY_STRICT = 'strict';
     public const VISIBILITY_GLOBAL = 'global';
 
+    /**
+     * " AND c.approval_status = 'approved'" — students only ever see courses
+     * Super Admin approved. Empty before the approval update has run.
+     */
+    public static function approvedSql(string $alias = 'c'): string
+    {
+        static $ready = null;
+        if ($ready === null) {
+            try {
+                $ready = (bool) Database::connection()->query("SHOW COLUMNS FROM courses LIKE 'approval_status'")->fetch();
+            } catch (\Throwable $e) {
+                $ready = false;
+            }
+        }
+        return $ready ? " AND $alias.approval_status = 'approved'" : '';
+    }
+
+    /** Courses waiting for Super Admin, oldest first. */
+    public static function pendingApproval(): array
+    {
+        if (self::approvedSql() === '') {
+            return [];
+        }
+        return Database::connection()->query(
+            "SELECT c.*, o.name AS organisation_name, u.first_name, u.last_name, u.email
+             FROM courses c INNER JOIN organisations o ON o.id = c.organisation_id
+             INNER JOIN users u ON u.id = c.trainer_user_id
+             WHERE c.approval_status = 'pending' ORDER BY c.created_at ASC"
+        )->fetchAll();
+    }
+
+    public static function setApproval(int $id, string $status, ?string $note): void
+    {
+        Database::connection()->prepare(
+            'UPDATE courses SET approval_status = ?, approval_note = ?, approved_at = IF(? = \'approved\', NOW(), NULL) WHERE id = ?'
+        )->execute([$status, $note, $status, $id]);
+    }
+
     public static function find(int $id): ?array
     {
         $stmt = Database::connection()->prepare(
             'SELECT c.*, cat.name AS category_name, cat.is_open AS category_is_open, o.name AS organisation_name,
-                    u.first_name, u.last_name, u.email
+                    u.first_name, u.last_name, u.email, u.photo_path AS tutor_photo, u.headline AS tutor_headline
              FROM courses c
              INNER JOIN organisation_categories cat ON cat.id = c.category_id
              INNER JOIN organisations o ON o.id = c.organisation_id
@@ -29,7 +67,7 @@ class Course
     {
         $stmt = Database::connection()->prepare(
             'SELECT c.*, cat.name AS category_name, o.name AS organisation_name,
-                    u.first_name, u.last_name, u.email
+                    u.first_name, u.last_name, u.email, u.photo_path AS tutor_photo, u.headline AS tutor_headline
              FROM courses c
              INNER JOIN organisation_categories cat ON cat.id = c.category_id
              INNER JOIN organisations o ON o.id = c.organisation_id
@@ -62,7 +100,7 @@ class Course
     {
         $stmt = Database::connection()->prepare(
             'SELECT c.*, cat.name AS category_name, o.name AS organisation_name,
-                    u.first_name, u.last_name, u.email
+                    u.first_name, u.last_name, u.email, u.photo_path AS tutor_photo, u.headline AS tutor_headline
              FROM courses c
              INNER JOIN organisation_categories cat ON cat.id = c.category_id
              INNER JOIN organisations o ON o.id = c.organisation_id
@@ -90,12 +128,12 @@ class Course
     {
         $organisationIds = array_values(array_unique(array_filter(array_map('intval', $organisationIds))));
         $sql = 'SELECT c.*, cat.name AS category_name, o.name AS organisation_name,
-                       u.first_name, u.last_name, u.email
+                       u.first_name, u.last_name, u.email, u.photo_path AS tutor_photo, u.headline AS tutor_headline
                 FROM courses c
                 INNER JOIN organisation_categories cat ON cat.id = c.category_id
                 INNER JOIN organisations o ON o.id = c.organisation_id
                 INNER JOIN users u ON u.id = c.trainer_user_id
-                WHERE c.is_published = 1 AND (c.visibility = \'global\'';
+                WHERE c.is_published = 1' . self::approvedSql() . ' AND (c.visibility = \'global\'';
         $params = [];
         if ($organisationIds) {
             $placeholders = implode(',', array_fill(0, count($organisationIds), '?'));
@@ -106,6 +144,21 @@ class Course
         $stmt = Database::connection()->prepare($sql);
         $stmt->execute($params);
         return array_map([self::class, 'hydrate'], $stmt->fetchAll());
+    }
+
+    /** @return array<int, int> course id => number of students enrolled */
+    public static function enrolmentCounts(array $courseIds): array
+    {
+        $courseIds = array_values(array_unique(array_filter(array_map('intval', $courseIds))));
+        if (!$courseIds) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($courseIds), '?'));
+        $stmt = Database::connection()->prepare(
+            "SELECT course_id, COUNT(*) FROM course_enrollments WHERE course_id IN ($placeholders) GROUP BY course_id"
+        );
+        $stmt->execute($courseIds);
+        return array_map('intval', $stmt->fetchAll(\PDO::FETCH_KEY_PAIR));
     }
 
     public static function categoryIdsFor(int $courseId): array
@@ -131,12 +184,12 @@ class Course
     {
         $stmt = Database::connection()->prepare(
             'SELECT c.*, cat.name AS category_name, o.name AS organisation_name,
-                    u.first_name, u.last_name, u.email
+                    u.first_name, u.last_name, u.email, u.photo_path AS tutor_photo, u.headline AS tutor_headline
              FROM courses c
              INNER JOIN organisation_categories cat ON cat.id = c.category_id
              INNER JOIN organisations o ON o.id = c.organisation_id
              INNER JOIN users u ON u.id = c.trainer_user_id
-             WHERE c.is_published = 1 AND c.visibility = \'global\'
+             WHERE c.is_published = 1' . self::approvedSql() . ' AND c.visibility = \'global\'
              ORDER BY c.created_at DESC'
         );
         $stmt->execute();
@@ -191,12 +244,41 @@ class Course
         }));
     }
 
+    /**
+     * Whether this student has earned this course's certificate: the course
+     * gives one, the student completed it, and (when the course needs
+     * attachment) their attachment for it is completed.
+     */
+    public static function isCertifiableFor(int $userId, array $course): bool
+    {
+        if (empty($course['certificate_enabled']) || !self::isCompletedByUser((int) $course['id'], $userId)) {
+            return false;
+        }
+        if (empty($course['requires_attachment'])) {
+            return true;
+        }
+        try {
+            return in_array((int) $course['id'], AttachmentApplication::certifiableCourseIdsForStudent($userId), true)
+                || AttachmentApplication::hasCompletedAttachment($userId);
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
     /** A course only counts as completed once its fee is cleared — nothing may still be owed. */
     public static function isCompletedByUser(int $courseId, int $userId): bool
     {
-        return self::feeSettledByUser($courseId, $userId)
+        // A finished run stays finished, even after a retake or the course resetting.
+        if (\App\Services\CourseRetake::hasCompletion($userId, $courseId)) {
+            return true;
+        }
+        $done = self::feeSettledByUser($courseId, $userId)
             && self::modulesCompletedByUser($courseId, $userId)
             && self::finalExamPassedByUser($courseId, $userId);
+        if ($done) {
+            \App\Services\CourseRetake::recordCompletion($userId, $courseId);
+        }
+        return $done;
     }
 
     public static function feeSettledByUser(int $courseId, int $userId): bool
@@ -212,7 +294,7 @@ class Course
     {
         $modules = CourseModule::forCourse($courseId);
         if (!$modules) {
-            return false;
+            return true; // nothing to work through; the student finishes with "Complete course"
         }
         try {
             $progress = CourseModuleProgress::forUserCourse($userId, $courseId);
@@ -221,17 +303,23 @@ class Course
         }
         $state = CourseModule::withUnlockState($modules, $progress);
         foreach ($state as $module) {
-            if (empty($module['is_unlocked']) || empty($module['is_passed'])) {
+            // Every module worked through (quiz taken pass or fail, or marked done).
+            if (empty($module['is_unlocked']) || empty($module['is_done'])) {
                 return false;
             }
         }
         return true;
     }
 
+    /**
+     * The course's last step is done: its final exam passed, or — for a
+     * course without a final exam — the student ticked "Complete course"
+     * (recorded the same way, as a passed attempt).
+     */
     public static function finalExamPassedByUser(int $courseId, int $userId): bool
     {
         $course = self::find($courseId);
-        if (!$course || empty($course['final_exam_questions'])) {
+        if (!$course) {
             return false;
         }
         try {
@@ -242,20 +330,13 @@ class Course
         return !empty($progress['passed']);
     }
 
+    /** The course names as printed on certificates: just the title, nothing added. */
     public static function skillNames(array $courses): array
     {
         $skills = [];
         foreach ($courses as $course) {
-            $skill = trim((string) ($course['title'] ?? ''));
-            $category = trim((string) ($course['category_name'] ?? ''));
-            $label = $skill !== '' ? $skill : $category;
-            if ($label === '') {
-                continue;
-            }
-            if ($category !== '' && strcasecmp($skill, $category) !== 0) {
-                $label = $skill . ' (' . $category . ')';
-            }
-            if (!in_array($label, $skills, true)) {
+            $label = trim((string) ($course['title'] ?? ''));
+            if ($label !== '' && !in_array($label, $skills, true)) {
                 $skills[] = $label;
             }
         }
@@ -334,24 +415,90 @@ class Course
         Database::connection()->prepare('DELETE FROM courses WHERE id = ?')->execute([$id]);
     }
 
-    public static function updateFinalExam(int $id, array $questions, int $passPercent = 80): void
+    /** The final exam's question bank and how many questions each student's paper has (null = all). */
+    public static function updateFinalExam(int $id, array $questions, int $passPercent = 100, ?int $paperSize = null): void
     {
         Database::connection()->prepare(
             'UPDATE courses SET final_exam_questions = ?, final_pass_percent = ? WHERE id = ?'
-        )->execute([
-            json_encode(CourseModule::normalizeQuestions($questions)),
-            CourseModule::normalizePassPercent($passPercent),
-            $id,
-        ]);
+        )->execute([json_encode(CourseModule::normalizeQuestions($questions)), self::FINAL_PASS_PERCENT, $id]);
+        try {
+            Database::connection()->prepare('UPDATE courses SET final_paper_size = ? WHERE id = ?')
+                ->execute([$paperSize && $paperSize > 0 ? $paperSize : null, $id]);
+        } catch (\Throwable $e) {
+            // Before the exam-papers update: everyone gets every question.
+        }
     }
 
-    public static function gradeFinalExam(array $course, array $answers): array
+    /** The certificate needs a perfect final exam. */
+    public const FINAL_PASS_PERCENT = 100;
+
+    /**
+     * This student's final exam paper: a random selection from the question
+     * bank (final_paper_size questions), in random order, with each question's
+     * answer choices shuffled. The same student sees the same paper until
+     * they sit it; each new attempt draws a new one.
+     * @return array<int, array{q: int, opts: int[]}> paper position => original question index and option order
+     */
+    public static function finalPaper(array $course, int $userId, ?array $progress): array
     {
-        $module = [
-            'quiz_questions' => $course['final_exam_questions'] ?? [],
-            'pass_percent' => $course['final_pass_percent'] ?? 80,
-        ];
-        return CourseModule::grade($module, $answers);
+        $bank = $course['final_exam_questions'] ?? [];
+        if (!$bank) {
+            return [];
+        }
+        mt_srand(crc32($userId . ':' . (int) $course['id'] . ':' . ($progress['updated_at'] ?? $progress['id'] ?? 'first')));
+        $order = array_keys($bank);
+        shuffle($order);
+        $size = (int) ($course['final_paper_size'] ?? 0);
+        if ($size > 0) {
+            $order = array_slice($order, 0, min($size, count($order)));
+        }
+        $paper = [];
+        foreach ($order as $q) {
+            $opts = array_keys($bank[$q]['options'] ?? []);
+            shuffle($opts);
+            $paper[] = ['q' => $q, 'opts' => $opts];
+        }
+        mt_srand(); // back to normal randomness for everything else
+        return $paper;
+    }
+
+    /** The paper's questions as the student sees them (choices in their shuffled order). */
+    public static function paperQuestions(array $course, array $paper): array
+    {
+        $bank = $course['final_exam_questions'] ?? [];
+        $out = [];
+        foreach ($paper as $item) {
+            $question = $bank[$item['q']];
+            $question['options'] = array_map(static fn(int $o) => $bank[$item['q']]['options'][$o], $item['opts']);
+            $out[] = $question;
+        }
+        return $out;
+    }
+
+    /**
+     * Marks a student's paper: their answers (by paper position and shown
+     * choice) are turned back into the bank's questions and choices, then
+     * marked. Only 100% passes.
+     */
+    public static function gradeFinalExam(array $course, array $answers, array $paper = []): array
+    {
+        $bank = $course['final_exam_questions'] ?? [];
+        if (!$paper) {
+            $paper = array_map(static fn(int $q): array => ['q' => $q, 'opts' => array_keys($bank[$q]['options'] ?? [])], array_keys($bank));
+        }
+        $questions = [];
+        $original = [];
+        foreach ($paper as $pos => $item) {
+            $questions[] = $bank[$item['q']];
+            $given = $answers[$pos] ?? null;
+            if (is_array($given)) {
+                $given = array_map(static fn($shown) => $item['opts'][(int) $shown] ?? -1, $given);
+            } elseif (($bank[$item['q']]['type'] ?? '') !== 'text' && $given !== null && $given !== '') {
+                $given = $item['opts'][(int) $given] ?? -1;
+            }
+            $original[] = $given;
+        }
+        return CourseModule::grade(['quiz_questions' => $questions, 'pass_percent' => self::FINAL_PASS_PERCENT], $original);
     }
 
     public static function normalizeVisibility(?string $value): string

@@ -11,7 +11,7 @@ use App\Models\AttachmentApplication;
 class AttachmentReport
 {
     public const HEADERS = [
-        'Student', 'Email', 'Phone', 'Course category', 'Organisation providing courses',
+        'Student', 'Registration no.', 'Email', 'Phone', 'Course category', 'Organisation providing courses',
         'Organisation providing attachment', 'Branch', 'Status', 'Requested', 'Accepted', 'Completed',
         'Fees total (Ksh)', 'Paid (Ksh)', 'Balance (Ksh)', 'Paid %',
     ];
@@ -26,6 +26,7 @@ class AttachmentReport
             $f = $fees[(int) $a['student_user_id']] ?? null;
             $rows[] = [
                 trim($a['first_name'] . ' ' . $a['last_name']),
+                (string) ($a['registration_number'] ?? ''),
                 (string) $a['email'],
                 (string) ($a['phone'] ?? ''),
                 (string) ($a['category_name'] ?? ''),

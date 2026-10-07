@@ -138,7 +138,7 @@ class TrainerRequestController extends BaseAccountController
             : OrganisationMembership::reject($id, $orgId, (int) $this->user['id']);
 
         if (!$ok) {
-            flashError('That trainer request could not be updated.');
+            flashError('That tutor request could not be updated. A tutor belongs to one organisation only — if they already work with another organisation, they can\'t join yours.');
             redirect('/account/trainer-requests');
         }
 

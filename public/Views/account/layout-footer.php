@@ -129,37 +129,47 @@
         });
     }
 
-    function refreshBranchSelect(select) {
-      var form = select.closest('form');
+    function refreshBranchSelect(box) {
+      var form = box.closest('form');
       if (!form) return;
       var ids = selectedOrganisationIds(form);
       var providerIds = selectedAttachmentProviderIds(form);
-      var defaultOrgId = select.getAttribute('data-default-org-id');
+      var defaultOrgId = box.getAttribute('data-default-org-id');
       if (!ids.length && defaultOrgId) ids = [defaultOrgId];
-      var defaultProviderId = select.getAttribute('data-default-provider-id');
+      var defaultProviderId = box.getAttribute('data-default-provider-id');
       if (!providerIds.length && defaultProviderId) providerIds = [defaultProviderId];
-      var current = select.value;
-      var url = select.getAttribute('data-branches-url');
+      var checked = box.querySelector('input:checked') || box.querySelector('input[type=hidden]');
+      var current = checked ? checked.value : (box.getAttribute('data-current') || '');
+      var name = box.getAttribute('data-name');
+      var required = box.getAttribute('data-required') === '1';
+      var url = box.getAttribute('data-branches-url');
       if (!url || (!ids.length && !providerIds.length)) {
-        select.innerHTML = '<option value="">Choose organisation or attachment provider first</option>';
-        select.disabled = true;
+        box.innerHTML = '<p class="text-sm font-bold" style="color:var(--ke-muted)">Choose an organisation first to see its branches.</p>';
         return;
       }
       fetch(url + '?organisation_ids=' + encodeURIComponent(ids.join(',')) + '&attachment_provider_ids=' + encodeURIComponent(providerIds.join(',')), { headers: { Accept: 'application/json' } })
         .then(function (response) { return response.json(); })
         .then(function (payload) {
           var items = payload.items || [];
-          var html = '<option value="">' + (items.length ? 'Choose branch' : 'No branches saved for this selection') + '</option>';
-          items.forEach(function (item) {
-            var label = item.title + (item.location ? ' - ' + item.location : '');
-            html += '<option value="' + escapeHtml(item.id) + '"' + (String(item.id) === String(current) ? ' selected' : '') + '>' + escapeHtml(label) + '</option>';
-          });
-          select.innerHTML = html;
-          select.disabled = items.length === 0;
+          if (!items.length) {
+            box.innerHTML = '<p class="text-sm font-bold" style="color:var(--ke-muted)">No branches saved for this organisation.</p>';
+            return;
+          }
+          box.innerHTML = items.map(function (item, i) {
+            var lines = '';
+            if (item.location) lines += '<span class="block text-xs font-semibold text-neutral-600">📍 ' + escapeHtml(item.location) + '</span>';
+            if (item.admin_name) lines += '<span class="block text-xs font-semibold text-neutral-600">Branch admin: ' + escapeHtml(item.admin_name) + '</span>';
+            if (item.phone) lines += '<span class="block text-xs font-semibold text-neutral-600">📞 ' + escapeHtml(item.phone) + '</span>';
+            if (item.email) lines += '<span class="block break-all text-xs font-semibold text-neutral-600">✉️ ' + escapeHtml(item.email) + '</span>';
+            return '<label class="branch-pick">'
+              + '<input type="radio" name="' + escapeHtml(name) + '" value="' + escapeHtml(item.id) + '"' + (String(item.id) === String(current) ? ' checked' : '') + (required && i === 0 ? ' required' : '') + '>'
+              + '<span class="min-w-0"><span class="block text-sm font-bold text-gray-800">' + escapeHtml(item.title) + '</span>'
+              + (item.organisation_name ? '<span class="block text-[11px] font-bold uppercase text-neutral-500">' + escapeHtml(item.organisation_name) + '</span>' : '')
+              + lines + '</span></label>';
+          }).join('');
         })
         .catch(function () {
-          select.innerHTML = '<option value="">Could not load branches</option>';
-          select.disabled = true;
+          box.innerHTML = '<p class="text-sm font-bold" style="color:var(--ke-red)">Could not load branches. Try again.</p>';
         });
     }
 
@@ -332,5 +342,6 @@
   })();
   </script>
 <script src="<?= asset('assets/js/app-shell.js') ?>" defer></script>
+<?php require __DIR__ . '/../partials/image-cropper.php'; ?>
 </body>
 </html>

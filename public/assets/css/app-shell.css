@@ -114,10 +114,15 @@ body.admin-shell {
     padding-bottom: calc(var(--app-tabbar-h) + env(safe-area-inset-bottom) + 12px) !important;
   }
 
-  /* The top bar wastes space on mobile, hide it entirely in favor of the bottom tab bar. */
-  .srms-topbar, .workspace-topbar, .flag-stripe { 
-    display: none !important; 
+  /* Phones: Super Admin relies on the bottom tab bar; the portals keep a slim
+     bar with the menu, title, bell and account menu. */
+  .workspace-topbar, .flag-stripe {
+    display: none !important;
   }
+  .srms-topbar { padding: calc(env(safe-area-inset-top) + 0.4rem) 0.75rem 0.4rem !important; border-bottom: 1px solid var(--ke-line, #e5e7eb); }
+  .srms-topbar .srms-search { display: none !important; }
+  .srms-topbar .srms-avatar { width: 34px; height: 34px; }
+  .srms-main { padding-top: 12px !important; }
 }
 
 /* Course cards: every card the same size, long text clamped with a toggle. */
@@ -190,11 +195,18 @@ body.admin-shell {
   -webkit-line-clamp: unset;
   min-height: 0;
 }
+/* Four cards a row on a laptop, three on a tablet, two on a phone. */
 .course-tile-grid {
   display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 0.9rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: stretch;
+}
+@media (max-width: 1023px) {
+  .course-tile-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 639px) {
+  .course-tile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
 }
 
 /* Student dashboard tiles. */
@@ -325,7 +337,7 @@ body.admin-shell {
 /* Course learning page: lesson in the middle, course content on the right. */
 .learn-layout { display: grid; gap: 1.5rem; grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 1024px) {
-  .learn-layout { grid-template-columns: minmax(0, 1fr) 340px; align-items: start; }
+  .learn-layout { grid-template-columns: minmax(0, 1fr) 360px; align-items: start; }
   .learn-aside { position: sticky; top: 1rem; }
 }
 .learn-card { border: 1px solid var(--ke-line, #e5e7eb); border-radius: 1rem; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / 0.04); }
@@ -347,3 +359,174 @@ body.admin-shell {
 .learn-option { display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.65rem 0.8rem; border: 1px solid #e5e7eb; border-radius: 0.65rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
 .learn-option:hover { border-color: var(--ke-green, #006b3f); background: #f8fcf9; }
 .learn-option input { margin-top: 0.2rem; }
+
+/* "Reject with a reason" pop-out on reviewer lists. */
+.reject-request { position: relative; display: inline-block; }
+.reject-request summary::-webkit-details-marker { display: none; }
+.reject-request-panel { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; width: 18rem; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.75rem; background: #fff; box-shadow: 0 12px 28px rgb(0 0 0 / 0.14); text-align: left; white-space: normal; }
+.reject-preset { padding: 0.2rem 0.45rem; border: 1px solid #e5e7eb; border-radius: 999px; background: #f9fafb; font-size: 0.65rem; font-weight: 700; color: #374151; cursor: pointer; }
+.reject-preset:hover { border-color: var(--ke-red, #bb0000); color: var(--ke-red, #bb0000); }
+
+/* Account menu in the top-right corner: Profile, Change password, Logout. */
+.user-menu { position: relative; }
+.user-menu > summary { list-style: none; cursor: pointer; border-radius: 999px; padding: 2px; }
+.user-menu > summary::-webkit-details-marker { display: none; }
+.user-menu > summary:focus-visible { outline: 2px solid var(--app-accent); outline-offset: 2px; }
+.user-menu-panel { position: absolute; right: 0; top: calc(100% + 8px); z-index: 60; width: 15rem; padding: 0.4rem; border: 1px solid #e5e7eb; border-radius: 0.9rem; background: #fff; box-shadow: 0 16px 36px rgb(0 0 0 / 0.14); }
+.user-menu-head { padding: 0.5rem 0.65rem 0.6rem; margin-bottom: 0.25rem; border-bottom: 1px solid #f1f5f9; }
+.user-menu-panel a { display: flex; align-items: center; gap: 0.6rem; padding: 0.55rem 0.65rem; border-radius: 0.6rem; font-size: 0.875rem; font-weight: 700; color: #1f2937; text-decoration: none; }
+.user-menu-panel a:hover { background: #f4faf6; color: var(--app-accent); }
+.user-menu-panel a.is-danger { color: #dc2626; }
+.user-menu-panel a.is-danger:hover { background: #fef2f2; }
+img.srms-avatar { display: block; }
+
+/* Course page: tabs under the video, like the category chips. */
+.course-tabs { display: flex; gap: 0.4rem; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.course-tabs::-webkit-scrollbar { display: none; }
+.course-tabs [role="tab"] { flex-shrink: 0; padding: 0.5rem 0.95rem; border: 1px solid var(--ke-line, #e5e7eb); border-radius: 999px; background: #fff; font-size: 0.8rem; font-weight: 800; color: #374151; cursor: pointer; white-space: nowrap; }
+.course-tabs [role="tab"]:hover { border-color: var(--ke-green, #006b3f); color: var(--ke-green, #006b3f); }
+.course-tabs [role="tab"][aria-selected="true"] { background: var(--ke-green, #006b3f); border-color: var(--ke-green, #006b3f); color: #fff; }
+.course-tabs [role="tab"]:focus-visible { outline: 2px solid var(--ke-green, #006b3f); outline-offset: 2px; }
+
+/* Course outline: lock, title, cost, and the module's buttons. */
+.outline-list { margin-top: 0.25rem; }
+.outline-row { display: flex; gap: 0.75rem; padding: 0.8rem 0.6rem; border-top: 1px solid #f1f5f9; }
+.outline-row.is-current { background: #f4faf6; border-radius: 0.75rem; box-shadow: inset 3px 0 0 var(--ke-green, #006b3f); }
+.outline-lock { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; flex-shrink: 0; color: #111827; }
+.outline-lock.is-open { color: var(--ke-green, #006b3f); }
+.outline-lock.is-done { border-radius: 999px; background: var(--ke-green, #006b3f); color: #fff; }
+.outline-title { display: block; font-size: 0.875rem; font-weight: 800; line-height: 1.3; color: #111827; text-decoration: none; overflow-wrap: anywhere; }
+.outline-title:hover { color: var(--ke-green, #006b3f); }
+.outline-cost { margin-top: 0.15rem; font-size: 0.78rem; font-weight: 800; color: #15803d; }
+.outline-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0.35rem; margin-top: 0.45rem; }
+.outline-actions form { display: inline-flex; }
+.outline-btn { display: inline-flex; align-items: center; padding: 0.3rem 0.65rem; border: 1px solid var(--ke-line, #e5e7eb); border-radius: 0.4rem; background: #fff; font-size: 0.72rem; font-weight: 800; color: #1f2937; text-decoration: none; cursor: pointer; white-space: nowrap; list-style: none; }
+.outline-btn::-webkit-details-marker { display: none; }
+.outline-btn:hover { border-color: var(--ke-green, #006b3f); color: var(--ke-green, #006b3f); }
+.outline-btn.is-primary { background: var(--ke-green, #006b3f); border-color: var(--ke-green, #006b3f); color: #fff; }
+.outline-btn.is-primary:hover { background: #00562f; color: #fff; }
+.outline-btn.is-disabled { color: #9ca3af; cursor: default; background: #f9fafb; }
+.outline-summary[open] { flex-basis: 100%; }
+.outline-summary > p { margin-top: 0.45rem; padding: 0.6rem 0.7rem; border-radius: 0.5rem; background: #f8fafc; font-size: 0.8rem; font-weight: 500; line-height: 1.55; color: #374151; }
+
+/* Private amounts: blurred until the owner taps See. */
+.is-private { filter: blur(7px); user-select: none; }
+[data-reveal] { cursor: pointer; }
+
+/* Minimal dashboard cards. */
+.mini-card { display: flex; align-items: center; gap: 0.7rem; min-width: 0; padding: 0.75rem 0.85rem; border: 1px solid var(--ke-line, #e5e7eb); border-radius: 0.85rem; background: #fff; text-decoration: none; color: inherit; }
+.mini-card:hover { border-color: var(--ke-green, #006b3f); }
+.mini-card-icon { display: inline-flex; align-items: center; justify-content: center; width: 2.1rem; height: 2.1rem; flex-shrink: 0; border-radius: 0.6rem; background: #ecf7f0; color: var(--ke-green, #006b3f); }
+.mini-card-icon svg { width: 1.1rem; height: 1.1rem; }
+.mini-card-label { display: block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #6b7280; }
+.mini-card-value { display: block; font-size: 1rem; font-weight: 900; color: #111827; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mini-grid { display: grid; gap: 0.6rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); }
+.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; }
+.section-head h2 { font-size: 1rem; font-weight: 800; color: #111827; }
+.section-head a { font-size: 0.75rem; font-weight: 800; color: var(--ke-green, #006b3f); text-decoration: none; }
+.h-scroll { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(200px, 230px); gap: 0.75rem; overflow-x: auto; padding-bottom: 0.4rem; scroll-snap-type: x mandatory; scrollbar-width: thin; }
+.h-scroll > * { scroll-snap-align: start; }
+@media (max-width: 639px) { .h-scroll { grid-auto-columns: 72%; } }
+.mini-course { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--ke-line, #e5e7eb); border-radius: 0.85rem; background: #fff; text-decoration: none; color: inherit; }
+.mini-course:hover { border-color: var(--ke-green, #006b3f); }
+.mini-course-cover { position: relative; aspect-ratio: 16 / 9; background: linear-gradient(135deg, #0f5132, #006b3f); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; font-weight: 900; }
+.mini-course-cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.mini-course-cover .course-new-ribbon { position: absolute; top: 0.5rem; left: 0.5rem; }
+.mini-course-body { padding: 0.6rem 0.75rem 0.75rem; min-width: 0; }
+.mini-course-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 0.85rem; font-weight: 800; line-height: 1.3; color: #111827; }
+.mini-course-meta { margin-top: 0.25rem; font-size: 0.7rem; font-weight: 700; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Utilities the prebuilt Tailwind file lacks. */
+.decoration-dotted { text-decoration-style: dotted; }
+.py-14 { padding-top: 3.5rem; padding-bottom: 3.5rem; }
+@media (min-width: 640px) { .sm\:text-left { text-align: left; } }
+
+/* Course card buttons: two side by side, same height, never wrapping crooked. */
+.course-tile-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4rem; padding: 0 0.75rem 0.75rem; margin-top: auto; }
+@media (min-width: 640px) { .course-tile-actions { padding: 0 1rem 1rem; } }
+.course-tile-actions .contents { display: contents; }
+.course-tile-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem; min-width: 0; min-height: 2.1rem; padding: 0.35rem 0.5rem; border: 1px solid #e5e7eb; border-radius: 0.55rem; background: #f5f5f5; font-size: 0.72rem; font-weight: 800; line-height: 1.1; color: #1f2937; text-align: center; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.course-tile-btn:hover { background: #ebebeb; }
+.course-tile-btn.is-primary { background: #16a34a; border-color: #16a34a; color: #fff; }
+.course-tile-btn.is-primary:hover { background: #15803d; }
+.course-tile-btn.is-done { background: #ecf7f0; border-color: #bfe3cc; color: var(--ke-green, #006b3f); }
+.course-tile-btn.is-wide { grid-column: 1 / -1; }
+
+/* Uploaded certificate / letter design with the student's details placed on it. */
+.doc-stage { position: relative; width: 100%; max-width: 1000px; margin: 0 auto; container-type: inline-size; background: #fff; box-shadow: 0 10px 30px rgb(0 0 0 / 0.12); line-height: 1.15; }
+.doc-bg { display: block; width: 100%; height: auto; }
+canvas.doc-bg { min-height: 12rem; background: #f8fafc; }
+.doc-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 700; color: #6b7280; }
+.doc-field { position: absolute; transform: translate(-50%, -50%); max-width: 92%; white-space: nowrap; text-align: center; font-family: Georgia, 'Times New Roman', serif; }
+.doc-stage.is-editable .doc-field { cursor: grab; padding: 0.1em 0.3em; outline: 1.5px dashed #16a34a; background: rgb(22 163 74 / 0.08); touch-action: none; user-select: none; }
+.doc-stage.is-editable .doc-field.is-hidden { opacity: 0.35; outline-color: #9ca3af; }
+.doc-stage.is-editable .doc-field.is-active { outline: 2px solid #dc2626; background: rgb(220 38 38 / 0.08); }
+@media print {
+  @page { margin: 0; }
+  body * { visibility: hidden !important; }
+  .doc-stage, .doc-stage * { visibility: visible !important; }
+  .doc-stage { position: absolute; left: 0; top: 0; width: 100%; max-width: none; box-shadow: none; }
+  .doc-loading { display: none; }
+}
+
+/* Super Admin's uploaded logo in the portal sidebar, in its own colours. */
+.srms-brand-icon.has-logo { display: flex; justify-content: center; width: fit-content; max-width: 160px; height: 56px; margin: 0 auto 0.5rem; padding: 4px 8px; border-radius: 12px; background: #fff; }
+.srms-brand-logo { display: block; height: 100%; width: auto; max-width: 144px; object-fit: contain; }
+
+/* Module cards under the course overview. */
+.module-card-row { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr)); }
+.module-card { display: block; padding: 0.85rem; border: 1px solid #e5e7eb; border-radius: 0.75rem; background: #fff; transition: border-color .15s, box-shadow .15s; }
+.module-card:hover { border-color: var(--ke-green, #006b3f); box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+.module-card.is-locked { background: #f9fafb; }
+
+/* Branch cards on forms: pick one, each showing its contacts. */
+.branch-pick-grid { display: grid; gap: 0.6rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
+.branch-pick { display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.75rem; background: #fff; cursor: pointer; }
+.branch-pick:hover { border-color: var(--ke-green, #006b3f); }
+.branch-pick:has(input:checked) { border-color: var(--ke-green, #006b3f); background: #f3faf6; box-shadow: 0 0 0 1px var(--ke-green, #006b3f); }
+.branch-pick input { margin-top: 0.2rem; }
+
+/* Branch admin attachees: cards that wrap instead of a table wider than the screen. */
+.attachee-list { display: grid; gap: 0.9rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); align-items: start; }
+.attachee-card { display: flex; flex-direction: column; gap: 0.7rem; min-width: 0; padding: 1rem; border: 1px solid #e5e7eb; border-radius: 0.9rem; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+.attachee-card.is-warning { border-color: #f59e0b; background: #fffdf5; }
+.attachee-card[hidden] { display: none; }
+.attachee-head { display: flex; align-items: flex-start; gap: 0.6rem; }
+.attachee-name { font-size: 0.98rem; font-weight: 900; color: #111827; overflow-wrap: anywhere; }
+.attachee-meta { font-size: 0.7rem; font-weight: 700; color: #6b7280; }
+.attachee-status { flex-shrink: 0; padding: 0.2rem 0.55rem; border-radius: 999px; background: #ecf7f0; color: var(--ke-green); font-size: 0.66rem; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; }
+.attachee-status.is-waiting { background: #fef2f2; color: var(--ke-red); }
+.attachee-facts { display: grid; gap: 0.55rem; font-size: 0.8rem; color: #374151; min-width: 0; }
+.attachee-facts dt { font-size: 0.64rem; font-weight: 900; text-transform: uppercase; letter-spacing: .05em; color: #9ca3af; }
+.attachee-facts dd { margin: 0; overflow-wrap: anywhere; }
+.attachee-fees { border-top: 1px solid #f1f5f9; padding-top: 0.55rem; font-size: 0.8rem; }
+.attachee-fees summary { cursor: pointer; font-weight: 800; color: #374151; }
+.attachee-fees [style*="min-width:14rem"] { min-width: 0 !important; }
+.attachee-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0.4rem; margin-top: auto; padding-top: 0.6rem; border-top: 1px solid #f1f5f9; }
+.attachee-actions .btn-primary, .attachee-actions .btn-secondary, .attachee-actions summary { padding: 0.35rem 0.7rem !important; font-size: 0.72rem !important; }
+.attachee-actions .reject-request { flex-basis: auto; }
+.attachee-actions .reject-request[open] { flex-basis: 100%; }
+.attachee-actions .reject-request-panel { position: static; width: 100%; margin-top: 0.4rem; box-shadow: none; }
+.attachee-empty { padding: 1.5rem; border: 1px dashed var(--ke-line, #e5e7eb); border-radius: 0.9rem; text-align: center; font-size: 0.85rem; font-weight: 700; color: var(--ke-muted, #6b7280); }
+
+/* "Choose file" stands out as a button everywhere in the portals. */
+input[type=file]::file-selector-button {
+  margin-right: 0.75rem; padding: 0.45rem 0.9rem; border: 0; border-radius: 0.6rem;
+  background: var(--ke-green, #006b3f); color: #fff; font-weight: 800; font-size: 0.8rem; cursor: pointer;
+}
+input[type=file]::file-selector-button:hover { filter: brightness(.9); }
+
+/* Wallet: small and calm — a balance strip and a one-line top-up form. */
+.wallet-strip { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.5rem; }
+.wallet-strip > div { display: flex; flex-direction: column; justify-content: center; padding: 0.6rem 0.85rem; border: 1px solid var(--ke-line, #e5e7eb); border-radius: 0.75rem; background: #fff; }
+.wallet-balance { flex: 1 1 12rem; }
+.wallet-balance strong { font-size: 1.15rem; font-weight: 900; color: var(--ke-green); line-height: 1.2; }
+.wallet-mini { flex: 1 1 8rem; font-size: 0.85rem; font-weight: 800; color: #111827; }
+.wallet-label { font-size: 0.62rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; color: var(--ke-muted, #6b7280); }
+.wallet-coins { font-size: 0.7rem; font-weight: 700; color: #6b7280; }
+.deposit-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding: 0.6rem 0.75rem; border: 1px solid var(--ke-line, #e5e7eb); border-radius: 0.75rem; background: #fff; }
+.deposit-title { display: inline-flex; align-items: center; gap: 0.35rem; margin-right: auto; font-size: 0.82rem; font-weight: 800; color: #111827; }
+.deposit-tag { padding: 0.05rem 0.4rem; border-radius: 99px; background: #fef2f2; color: var(--ke-red); font-size: 0.6rem; font-weight: 900; text-transform: uppercase; }
+.deposit-row input { flex: 1 1 7.5rem; min-width: 0; padding: 0.45rem 0.6rem; border: 1px solid #d1d5db; border-radius: 0.55rem; font-size: 0.85rem; }
+.deposit-row .btn-primary { padding: 0.45rem 0.9rem !important; }
+@media (max-width: 480px) { .deposit-title { flex-basis: 100%; } .deposit-row .btn-primary { flex: 1 1 100%; } }

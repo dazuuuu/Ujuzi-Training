@@ -43,7 +43,7 @@ require __DIR__ . '/../layout-header.php';
           ?>
             <tr>
               <td class="font-black"><?= e(userDisplayName($request)) ?></td>
-              <td><?= e($request['email'] ?: ($request['phone'] ?? '—')) ?></td>
+              <td><?= e(implode(' · ', array_filter([$request['phone'] ?? '', $request['email'] ?? ''])) ?: '—') ?></td>
               <td><?= e($request['branch_title'] ?? '—') ?></td>
               <td><span class="text-[11px] font-black uppercase" style="color:var(--ke-red)">Pending</span></td>
               <td>
@@ -89,7 +89,7 @@ require __DIR__ . '/../layout-header.php';
             <?php foreach ($enrollments as $row): ?>
               <tr>
                 <td class="font-black"><?= e(userDisplayName($row)) ?></td>
-                <td><?= e($row['email'] ?: ($row['phone'] ?? '—')) ?></td>
+                <td><?= e(implode(' · ', array_filter([$row['phone'] ?? '', $row['email'] ?? ''])) ?: '—') ?></td>
                 <td><?= e($row['course_title']) ?></td>
                 <td>Ksh <?= number_format((float) $row['fee'], 2) ?></td>
                 <td>Ksh <?= number_format((float) $row['paid'], 2) ?></td>

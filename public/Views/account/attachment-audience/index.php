@@ -1,7 +1,13 @@
 <?php
-/** Requires $organisations (each with 'categories') and $selectedCategoryIds. */
+/** Requires $organisations (each with 'categories'), $selectedCategoryIds and $statuses (category id => status). */
 require __DIR__ . '/../layout-header.php';
 $selected = array_fill_keys(array_map('intval', $selectedCategoryIds ?? []), true);
+$statuses = $statuses ?? [];
+$statusBadge = [
+    'approved' => ['Approved', 'background:#ecf7f0;color:var(--ke-green)'],
+    'pending' => ['Waiting for approval', 'background:#fffbeb;color:#92400e'],
+    'rejected' => ['Declined', 'background:#fef2f2;color:var(--ke-red)'],
+];
 ?>
 
 <style>
@@ -22,8 +28,8 @@ $selected = array_fill_keys(array_map('intval', $selectedCategoryIds ?? []), tru
     <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">Attachment</p>
     <h1 class="mt-2 font-serif-heading text-3xl font-bold">Where you appear</h1>
     <p class="mt-1 max-w-2xl text-sm font-medium text-neutral-600">
-      Turn on each organisation providing courses whose students you accept for attachment, then choose which of its course categories.
-      There is no approval step — as soon as you save, students enrolled in a course under those categories see you under Attachment and can send you a request.
+      Turn on each organisation providing courses whose students you'd like to take for attachment or internship, then choose which of its course categories.
+      The organisation reviews your request. Once it approves you, its students enrolled in those categories see you under Attachment and can send you a request.
     </p>
   </section>
 
@@ -61,7 +67,12 @@ $selected = array_fill_keys(array_map('intval', $selectedCategoryIds ?? []), tru
           <div class="border-t border-gray-100 p-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 org-categories" data-org="<?= $orgId ?>" <?= $orgOn ? '' : 'hidden' ?>>
             <?php foreach ($organisation['categories'] as $category): $catId = (int) $category['id']; ?>
               <label class="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-                <span class="text-sm font-semibold text-gray-700"><?= e($category['name']) ?></span>
+                <span class="min-w-0">
+                  <span class="block text-sm font-semibold text-gray-700"><?= e($category['name']) ?></span>
+                  <?php if (isset($statuses[$catId], $statusBadge[$statuses[$catId]])): [$badgeText, $badgeStyle] = $statusBadge[$statuses[$catId]]; ?>
+                    <span class="mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-[10px] font-black uppercase" style="<?= $badgeStyle ?>"><?= $badgeText ?></span>
+                  <?php endif; ?>
+                </span>
                 <span class="aud-switch is-small">
                   <input type="checkbox" name="category_ids[]" value="<?= $catId ?>" class="cat-toggle" data-org="<?= $orgId ?>" <?= !empty($selected[$catId]) ? 'checked' : '' ?>>
                   <span class="aud-track"></span>
@@ -73,7 +84,7 @@ $selected = array_fill_keys(array_map('intval', $selectedCategoryIds ?? []), tru
       <?php endforeach; ?>
 
       <div class="sticky bottom-0 bg-white/90 py-3 backdrop-blur">
-        <button type="submit" class="btn-primary">Save where I appear</button>
+        <button type="submit" class="btn-primary">Save and send requests</button>
       </div>
     </form>
   <?php endif; ?>

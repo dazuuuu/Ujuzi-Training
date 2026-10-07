@@ -166,6 +166,22 @@ class Organisation
         ]);
     }
 
+    public const CONTACT_FIELDS = ['phone', 'email', 'location', 'website', 'logo_path'];
+
+    /** Saves the contact details students see (phone, email, location, website, logo). */
+    public static function updateContact(int $id, array $fields): void
+    {
+        $values = [];
+        foreach (self::CONTACT_FIELDS as $key) {
+            $value = trim((string) ($fields[$key] ?? ''));
+            $values[] = $value !== '' ? $value : null;
+        }
+        $values[] = $id;
+        Database::connection()->prepare(
+            'UPDATE organisations SET phone = ?, email = ?, location = ?, website = ?, logo_path = ? WHERE id = ?'
+        )->execute($values);
+    }
+
     /** Cascades to its categories, courses (+modules/enrollments/attachment applications), branches, memberships, and invites. */
     public static function delete(int $id): void
     {

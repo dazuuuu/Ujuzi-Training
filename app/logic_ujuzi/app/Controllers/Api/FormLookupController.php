@@ -38,6 +38,9 @@ class FormLookupController
             'owner_name' => (string) ($branch['owner_name'] ?? ''),
             'title' => (string) ($branch['title'] ?? ''),
             'location' => (string) ($branch['location'] ?? ''),
+            'admin_name' => (string) ($branch['branch_admin_name'] ?? ''),
+            'phone' => (string) ($branch['branch_admin_phone'] ?? ''),
+            'email' => (string) ($branch['branch_admin_email'] ?? ''),
         ], $branches);
 
         $this->respond(['items' => $items]);

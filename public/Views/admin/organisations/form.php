@@ -66,7 +66,7 @@ $adminUsers = $adminUsers ?? [];
         <input type="text" name="admin_last_name" value="<?= e($form['admin_last_name'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 bg-white p-2.5 text-sm focus:border-black focus:outline-none" />
       </div>
       <div>
-        <label class="text-[11px] font-bold uppercase text-neutral-600">Admin other names (optional)</label>
+        <label class="text-[11px] font-bold uppercase text-neutral-600">Admin other names</label>
         <input type="text" name="admin_other_names" value="<?= e($form['admin_other_names'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 bg-white p-2.5 text-sm focus:border-black focus:outline-none" />
       </div>
       <div>
