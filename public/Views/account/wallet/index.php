@@ -10,7 +10,7 @@ $who = static fn(array $r, string $p): string => trim(($r[$p . '_first'] ?? '') 
 <?php if ($mode === 'student'): ?>
   <section>
     <h1 class="font-serif-heading text-2xl font-bold">My wallet</h1>
-    <p class="text-xs font-medium text-neutral-500">Ksh 100 = <?= e(rtrim(rtrim(number_format(WalletService::coinsPer100(), 2), '0'), '.')) ?> coins · pay at least <?= \App\Services\WalletService::minPaymentPercent() ?>% of a course to enrol.</p>
+    <p class="text-xs font-medium text-neutral-500">Ksh 100 = <?= e(rtrim(rtrim(number_format(WalletService::coinsPer100(), 2), '0'), '.')) ?> coins · pay at least <?= \App\Services\WalletService::minPaymentPercent() ?>% of a course to enrol. · <a class="font-bold" style="color:var(--ke-green)" href="<?= url('/account/payments') ?>">Payment history &amp; receipts</a></p>
   </section>
 
   <div class="wallet-strip">

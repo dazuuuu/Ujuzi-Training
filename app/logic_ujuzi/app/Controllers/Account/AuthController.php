@@ -62,24 +62,29 @@ class AuthController
         $method = Request::post('method', 'email');
         $error = '';
 
+        // One box for email or phone, then the password. A phone matches
+        // however it is typed (07…, +2547…), including the phone given on the
+        // registration form.
+        $login = trim((string) Request::post('login', Request::post('email', Request::post('phone', ''))));
+        $password = (string) Request::post('password', '');
+        $isEmail = str_contains($login, '@');
+        $method = $isEmail ? 'email' : 'phone';
         if (!csrfVerify(Request::post('csrf_token'))) {
             $error = 'Your session expired. Please try again.';
-        } elseif ($method === 'phone') {
-            $phone = User::normalizePhone((string) Request::post('phone', ''));
-            $user = $phone ? User::findByPhone($phone) : null;
-            $error = !$user && $phone !== '' && User::phoneTaken($phone)
-                ? 'More than one account uses this phone number, so it can\'t be used to sign in yet. Sign in with your email to fix your account.'
-                : $this->authenticateUser($user, $resolved['slug'], '');
-        } else {
-            $email = strtolower(trim((string) Request::post('email', '')));
-            $password = (string) Request::post('password', '');
-            $user = $email ? User::findByIdentifier('email', $email) : null;
+        } elseif ($login === '') {
+            $error = 'Enter your email address or phone number.';
+        } elseif ($isEmail) {
+            $user = User::findByIdentifier('email', strtolower($login));
             $error = $this->authenticateUser($user, $resolved['slug'], $password);
+        } else {
+            $user = User::findByPhone($login);
+            $error = !$user && User::phoneTaken($login)
+                ? 'More than one account uses this phone number, so it can\'t be used to sign in yet. Sign in with your email to fix your account.'
+                : $this->authenticateUser($user, $resolved['slug'], $password);
         }
 
         $this->renderRoleLogin($role, $error, $method, [
-            'email' => Request::post('email', ''),
-            'phone' => Request::post('phone', ''),
+            'login' => Request::post('login', ''),
         ]);
     }
 
@@ -160,7 +165,7 @@ class AuthController
     private function authenticateUser(?array $user, string $expectedSlug, string $password): string
     {
         if (!$user) {
-            if ($expectedSlug === 'organisation_admin' && Request::post('method', 'email') !== 'phone') {
+            if ($expectedSlug === 'organisation_admin' && str_contains((string) Request::post('login', ''), '@')) {
                 try {
                     if (Organisation::count() > 0) {
                         return 'That email is not an organisation admin user account yet. Super Admin must create an admin account for the organisation, or send the organisation admin invite link.';
@@ -169,7 +174,7 @@ class AuthController
                     // Fall through to the generic role login message.
                 }
             }
-            return Request::post('method', 'email') === 'phone'
+            return !str_contains((string) Request::post('login', ''), '@')
                 ? 'We could not find a ' . roleLabel($expectedSlug) . ' account for that phone number.'
                 : 'We could not find a ' . roleLabel($expectedSlug) . ' account for that email. Use the login page that matches your role, or register if you are new.';
         }
@@ -187,17 +192,15 @@ class AuthController
             return $message;
         }
 
-        $method = Request::post('method', 'email');
-        if ($method === 'phone') {
-            $this->completeLogin($user);
-        }
-
+        // Email or phone, the password is always checked — on this exact account.
         if (!empty($user['has_password'])) {
-            $verified = User::verifyPassword((string) $user['email'], $password);
-            if ($verified) {
-                $this->completeLogin($verified);
+            if (User::passwordMatches((int) $user['id'], $password)) {
+                $this->completeLogin($user);
             }
-            return 'That email or password is incorrect.';
+            return 'That email / phone or password is incorrect.';
+        }
+        if (empty($user['email'])) {
+            return 'This account has no password yet. Ask your organisation admin to set one.';
         }
 
         if ($password !== '') {

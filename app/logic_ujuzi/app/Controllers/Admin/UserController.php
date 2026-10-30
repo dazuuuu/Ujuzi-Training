@@ -26,6 +26,10 @@ class UserController extends BaseAdminController
             'status' => trim((string) Request::query('status', '')),
         ];
         $users = array_values(array_filter($allUsers, function (array $user) use ($filters): bool {
+            // Students have their own tab (Students); the plain list is everyone else.
+            if ($filters['role_id'] === 0 && $filters['role_slug'] === '' && (string) ($user['role_slug'] ?? '') === 'student') {
+                return false;
+            }
             if ($filters['role_id'] > 0 && (int) ($user['role_id'] ?? 0) !== $filters['role_id']) {
                 return false;
             }
@@ -64,17 +68,18 @@ class UserController extends BaseAdminController
         }
         unset($user);
 
-        if ($roleSlug === 'student' && Request::query('export', '') === 'xlsx') {
+        if (Request::query('export', '') === 'xlsx') {
             \App\Services\SpreadsheetExport::download(
-                'students-' . date('Y-m-d'),
-                'Students',
-                ['#', 'Reg. No.', 'First name', 'Other names', 'Last name', 'Email', 'Phone', 'Organisation', 'Registered', 'Status'],
+                ($roleSlug !== '' ? $roleSlug : 'users') . '-' . date('Y-m-d'),
+                'Users',
+                ['#', 'Reg. No.', 'First name', 'Other names', 'Last name', 'Role', 'Email', 'Phone', 'Organisation', 'Registered', 'Status'],
                 array_map(static fn(array $u, int $i): array => [
                     $i + 1,
                     (string) ($u['registration_number'] ?? ''),
                     (string) ($u['first_name'] ?? ''),
                     (string) ($u['other_names'] ?? ''),
                     (string) ($u['last_name'] ?? ''),
+                    (string) ($u['role_name'] ?? ''),
                     (string) ($u['email'] ?? ''),
                     (string) ($u['phone'] ?? ''),
                     (string) ($u['organisation_name'] ?? ''),
@@ -106,7 +111,7 @@ class UserController extends BaseAdminController
             'users' => $users,
             'groupedUsers' => $groupedUsers,
             'filters' => $filters,
-            'isStudentSheet' => $roleSlug === 'student',
+            'isStudentSheet' => true, // every list is a spreadsheet now
             'resultCount' => count($users),
             'roles' => Role::all(),
             'organisations' => Organisation::all(),
@@ -312,13 +317,13 @@ class UserController extends BaseAdminController
         if ($form['email'] !== '') {
             $existing = User::findByIdentifier('email', $form['email']);
             if ($existing && (int) $existing['id'] !== (int) $ignoreId) {
-                $errors[] = 'That email is already used by another user.';
+                $errors[] = 'An account already exists in the system with this email.';
             }
         }
         if ($form['phone'] !== '') {
             $existing = User::findByPhone($form['phone']);
             if ($existing && (int) $existing['id'] !== (int) $ignoreId) {
-                $errors[] = 'That phone number is already used by another user.';
+                $errors[] = 'An account already exists in the system with this phone number.';
             }
         }
 

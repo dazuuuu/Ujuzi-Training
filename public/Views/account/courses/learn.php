@@ -28,6 +28,9 @@ $finalPaperQuestions = $finalPaperQuestions ?? [];
 $paperCount = (int) ($course['final_paper_size'] ?? 0) ?: count($finalQuestions);
 $hasFinal = !empty($finalQuestions);
 $finalPassed = $isEnrolled && !empty($finalProgress['passed']);
+// Passed, but the course needs its attachment marked completed by the provider first.
+$attachmentPending = $finalPassed && !empty($course['requires_attachment'])
+    && !\App\Models\Course::attachmentDoneFor((int) ($currentUser['id'] ?? 0), (int) $course['id']);
 $materials = is_array($course['materials'] ?? null) ? $course['materials'] : [];
 $fileHref = static function ($file): string {
     return imageUrl(is_array($file) ? (string) ($file['url'] ?? $file['path'] ?? '') : (string) $file);
@@ -60,8 +63,9 @@ foreach ($modules as $i => $module) {
 }
 $lessons['final'] = [
     'type' => 'final', 'title' => $hasFinal ? 'Final exam' : 'Complete course',
-    'meta' => $hasFinal ? $paperCount . ' questions · 100% to pass' : 'Tick it off after the last module',
-    'state' => $finalPassed ? 'done' : ($isEnrolled && $modulesComplete ? 'open' : 'locked'),
+    'meta' => $hasFinal ? $paperCount . ' questions · ' . (int) $course['final_pass_percent'] . '% to pass' . (!empty($course['final_duration_minutes']) ? ' · ' . (int) $course['final_duration_minutes'] . ' min' : '') : 'Tick it off after the last module',
+    // The final exam opens as soon as the student is enrolled (paying is checked on the exam itself).
+    'state' => $finalPassed ? 'done' : ($isEnrolled && ($hasFinal || $modulesComplete) ? 'open' : 'locked'),
 ];
 
 // Where the student should carry on.
@@ -100,6 +104,9 @@ $questionsHtml = static function (array $questions, bool $required = true): void
     foreach ($questions as $qIndex => $question) {
         $type = $question['type'] ?? 'single_choice';
         echo '<fieldset class="space-y-2" data-question><legend class="mb-2 text-sm font-black text-gray-800">' . ($qIndex + 1) . '. ' . e($question['question']) . '</legend>';
+        if (!empty($question['image'])) {
+            echo '<img src="' . e(imageUrl($question['image'])) . '" alt="Picture for question ' . ($qIndex + 1) . '" class="quiz-picture">';
+        }
         if ($type === 'text') {
             echo '<textarea name="answers[' . (int) $qIndex . ']"' . $req . ' rows="3" class="w-full rounded-lg border border-neutral-300 p-2.5 text-sm" placeholder="Type your answer"></textarea>';
         } else {
@@ -122,7 +129,20 @@ $resultBox = static function (string $key) use ($quizResult): void {
     $ok = !empty($quizResult['passed']);
     echo '<p class="rounded-lg border px-4 py-3 text-sm font-bold" role="status" style="'
         . ($ok ? 'border-color:#b7e1c7;background:#ecf7f0;color:var(--ke-green)' : 'border-color:#fecaca;background:#fef2f2;color:var(--ke-red)')
-        . '">' . e((string) $quizResult['message']) . '</p>';
+        . '">' . (!empty($quizResult['timed_out']) ? 'Time is up — your exam was submitted automatically. ' : '') . e((string) $quizResult['message']) . '</p>';
+    if (!empty($quizResult['review'])) {
+        echo '<div class="space-y-2"><p class="text-sm font-black">Your answers</p>';
+        foreach ($quizResult['review'] as $n => $item) {
+            $ok = !empty($item['ok']);
+            echo '<div class="rounded-lg border px-3 py-2 text-sm" style="border-color:' . ($ok ? '#b7e1c7' : '#fecaca') . ';background:' . ($ok ? '#f6fbf8' : '#fff7f7') . '">'
+                . '<p class="font-bold">' . ($ok ? '✓' : '✗') . ' ' . ($n + 1) . '. ' . e($item['question']) . '</p>'
+                . (!empty($item['image']) ? '<img src="' . e(imageUrl($item['image'])) . '" alt="" class="quiz-picture" style="max-height:120px">' : '')
+                . '<p class="text-xs font-semibold text-neutral-600">Your answer: ' . e($item['given'] !== '' ? $item['given'] : 'not answered') . '</p>'
+                . (!$ok && $item['answer'] !== '' ? '<p class="text-xs font-bold" style="color:var(--ke-green)">Correct answer: ' . e($item['answer']) . '</p>' : '')
+                . '</div>';
+        }
+        echo '</div>';
+    }
 };
 
 /** The enrol button: to the payment plan for a paid course, straight in for a free one. */
@@ -145,7 +165,7 @@ require __DIR__ . '/../layout-header.php';
       <a href="<?= url('/account/courses') ?>" class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">← My courses</a>
       <h1 class="mt-1 font-serif-heading text-2xl font-bold leading-tight sm:text-3xl"><?= e($course['title']) ?></h1>
       <p class="mt-1 text-sm font-semibold text-neutral-500">
-        <a href="<?= url('/account/organisations/' . (int) $course['organisation_id']) ?>" class="underline decoration-dotted"><?= e($course['organisation_name'] ?? '') ?></a><?= !empty($course['category_name']) ? ' · ' . e($course['category_name']) : '' ?>
+        <a href="<?= url('/account/organisations/' . (int) $course['organisation_id']) ?>" class="underline decoration-dotted"><?= e($course['organisation_name'] ?? '') ?></a><?= ($courseBranch = \App\Models\Course::branchTitle($course)) !== '' ? ' — ' . e($courseBranch) : '' ?><?= !empty($course['category_name']) ? ' · ' . e($course['category_name']) : '' ?>
         <?php if ($tutorName !== ''): ?> · Tutor:
           <?php if ($isEnrolled): ?><a href="<?= url('/account/tutors/' . (int) $course['trainer_user_id']) ?>" class="underline decoration-dotted"><?= e($tutorName) ?></a><?php else: ?><?= e($tutorName) ?><?php endif; ?>
         <?php endif; ?>
@@ -169,7 +189,9 @@ require __DIR__ . '/../layout-header.php';
         <div class="flex items-center gap-3">
           <?php $pct = $overall; $ringSize = 56; $ringLabel = 'Course progress'; require __DIR__ . '/../partials/progress-ring.php'; ?>
           <div>
-            <?php if ($finalPassed): ?>
+            <?php if ($attachmentPending): ?>
+              <p class="text-sm font-black" style="color:#92400e">Awaiting attachment</p>
+            <?php elseif ($finalPassed): ?>
               <p class="text-sm font-black" style="color:var(--ke-green)">Completed</p>
             <?php else: ?>
               <p class="text-sm font-black text-gray-800"><?= $done ?> of <?= $steps ?></p>
@@ -214,6 +236,8 @@ require __DIR__ . '/../layout-header.php';
         $tabs = [];
         if ($overview !== '' || !empty($course['introduction_title']) || $modules) { $tabs['overview'] = 'Course overview'; }
         $tabs['description'] = 'Description';
+        $requirements = \App\Models\Course::requirementsList($course);
+        if ($requirements) { $tabs['requirements'] = 'Requirements'; }
         if ($materials) { $tabs['materials'] = 'Materials'; }
         if ($tutorName !== '') { $tabs['tutor'] = 'Tutor'; }
       ?>
@@ -223,6 +247,9 @@ require __DIR__ . '/../layout-header.php';
             <div class="flex flex-wrap items-center gap-2">
               <?php if (!$isEnrolled): ?>
                 <?php $enrolButton('Enrol now'); ?>
+              <?php elseif ($attachmentPending): ?>
+                <span class="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-black" style="background:#fffbeb;color:#92400e">Passed — completes once your attachment is marked completed</span>
+                <a href="<?= url('/account/attachment-providers') ?>" class="btn-secondary">Attachment</a>
               <?php elseif ($finalPassed): ?>
                 <span class="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-black uppercase" style="background:#ecf7f0;color:var(--ke-green)"><?= icon('check', 'h-4 w-4') ?> Completed</span>
                 <?php if (!empty($course['certificate_enabled'])): ?><a href="<?= $certUrl ?>" class="btn-primary">View certificate</a><?php endif; ?>
@@ -293,6 +320,9 @@ require __DIR__ . '/../layout-header.php';
                   <div class="rounded-lg border p-3" style="border-color:var(--ke-line)"><dt class="text-[11px] font-black uppercase text-neutral-500">Final exam</dt><dd class="font-black text-gray-800"><?= $hasFinal ? count($finalQuestions) . ' questions' : 'None' ?></dd></div>
                   <div class="rounded-lg border p-3" style="border-color:var(--ke-line)"><dt class="text-[11px] font-black uppercase text-neutral-500">Certificate</dt><dd class="font-black text-gray-800"><?= !empty($course['certificate_enabled']) ? 'Yes' : 'No' ?></dd></div>
                 </dl>
+              <?php elseif ($tabKey === 'requirements'): ?>
+                <p class="text-sm font-semibold text-neutral-600">What you need for this course:</p>
+                <ul class="learn-prose mt-2 list-disc space-y-1 pl-5"><?php foreach ($requirements as $req): ?><li><?= e($req) ?></li><?php endforeach; ?></ul>
               <?php elseif ($tabKey === 'materials'): ?>
                 <?php if ($isEnrolled): ?>
                   <ul class="flex flex-wrap gap-2">
@@ -328,29 +358,6 @@ require __DIR__ . '/../layout-header.php';
           <?php $first = false; endforeach; ?>
         </div>
 
-      <?php elseif ($here['type'] === 'module' && $here['state'] === 'enrol'): ?>
-        <div class="flex flex-col items-center gap-4 px-6 py-14 text-center">
-          <span class="app-tile-icon" style="width:3.5rem;height:3.5rem"><?= icon('lock', 'h-7 w-7') ?></span>
-          <div>
-            <p class="learn-section-title">Module <?= $here['index'] + 1 ?> of <?= count($modules) ?></p>
-            <h2 id="lesson-title" class="mt-1 font-serif-heading text-2xl font-bold"><?= e($here['title']) ?></h2>
-          </div>
-          <?php if (!empty($here['module']['summary'])): ?><div class="max-w-md text-left"><p class="learn-section-title">Module overview</p><p class="mt-1 text-sm font-medium text-neutral-600"><?= nl2br(e($here['module']['summary'])) ?></p></div><?php endif; ?>
-          <p class="text-sm font-bold text-neutral-600"><?= $here['price'] > 0 ? 'Module cost: ' . ModuleAccess::coins((float) $here['price']) . ' coins, paid when you open it.' : 'Enrol to open this module.' ?></p>
-          <?php $enrolButton('Enrol now'); ?>
-        </div>
-
-      <?php elseif ($here['type'] === 'module' && $here['state'] === 'locked'): ?>
-        <div class="flex flex-col items-center gap-3 px-6 py-16 text-center">
-          <span class="flex h-14 w-14 items-center justify-center rounded-full bg-neutral-100 text-neutral-500"><?= icon('lock', 'h-7 w-7') ?></span>
-          <h2 id="lesson-title" class="font-serif-heading text-xl font-bold"><?= e($here['title']) ?> is locked</h2>
-          <?php if (!empty($here['module']['summary'])): ?><div class="max-w-md text-left"><p class="learn-section-title">Module overview</p><p class="mt-1 text-sm font-medium text-neutral-600"><?= nl2br(e($here['module']['summary'])) ?></p></div><?php endif; ?>
-          <p class="max-w-md text-sm font-medium text-neutral-600">Pass the module before it to open this one.</p>
-          <?php if ($nextKey && $nextKey !== 'final'): ?>
-            <a href="<?= e($lessonUrl($nextKey)) ?>" class="btn-primary">Continue with <?= e($lessons[$nextKey]['title']) ?></a>
-          <?php endif; ?>
-        </div>
-
       <?php elseif ($here['type'] === 'final'): ?>
         <div class="space-y-5 p-5 sm:p-6">
           <div>
@@ -360,8 +367,8 @@ require __DIR__ . '/../layout-header.php';
           <?php if (!$isEnrolled): ?>
             <p class="rounded-lg border border-dashed p-4 text-sm font-bold" style="border-color:var(--ke-line);color:var(--ke-muted)">Enrol and finish every module to reach this step.</p>
             <?php $enrolButton('Enrol now'); ?>
-          <?php elseif (!$modulesComplete): ?>
-            <p class="rounded-lg border border-dashed p-4 text-sm font-bold" style="border-color:var(--ke-line);color:var(--ke-muted)"><?= $hasFinal ? 'Pass every module to unlock the final exam.' : 'Finish every module, then tick the course completed here.' ?></p>
+          <?php elseif (!$hasFinal && !$modulesComplete): ?>
+            <p class="rounded-lg border border-dashed p-4 text-sm font-bold" style="border-color:var(--ke-line);color:var(--ke-muted)">Finish every module, then tick the course completed here.</p>
           <?php elseif (!$hasFinal): ?>
             <?php if ($finalPassed): ?>
               <div class="flex flex-wrap items-center gap-3 rounded-xl p-4" style="background:#ecf7f0">
@@ -382,11 +389,18 @@ require __DIR__ . '/../layout-header.php';
             <p class="rounded-lg border p-4 text-sm font-bold" style="border-color:#f59e0b;background:#fffbeb;color:#92400e">Clear your balance of Ksh <?= number_format($owed, 2) ?> before the final exam.</p>
           <?php else: ?>
             <?php $resultBox('final'); ?>
-            <?php $attachmentGrade = !empty($course['requires_attachment']) ? \App\Models\AttachmentAssessment::gradeForStudentCourse((int) ($currentUser['id'] ?? 0), (int) $course['id']) : null; ?>
-            <?php if ($attachmentGrade !== null): ?>
-              <p class="rounded-lg border px-3 py-2 text-sm font-bold" style="border-color:var(--ke-line)">Attachment assessment: <span style="color:var(--ke-green)"><?= rtrim(rtrim(number_format($attachmentGrade, 1), '0'), '.') ?>%</span> — sent by your attachment organisation and counted with this exam.</p>
+            <?php $grade = \App\Models\Course::finalGrade($course, (int) ($currentUser['id'] ?? 0)); ?>
+            <?php if (!empty($course['requires_attachment'])): ?>
+              <div class="rounded-lg border px-3 py-2 text-sm font-semibold" style="border-color:var(--ke-line)">
+                <p class="font-black">Final grade = <?= \App\Models\Course::examPercent() ?>% exam + <?= 100 - \App\Models\Course::examPercent() ?>% attachment assessment</p>
+                <p class="mt-1 text-neutral-600">
+                  Exam: <strong><?= $grade['exam'] !== null ? rtrim(rtrim(number_format($grade['exam'], 1), '0'), '.') . '%' : 'not taken yet' ?></strong> ·
+                  Attachment: <strong><?= $grade['attachment'] !== null ? rtrim(rtrim(number_format($grade['attachment'], 1), '0'), '.') . '%' : 'not assessed yet' ?></strong>
+                  <?php if ($grade['grade'] !== null): ?> · Final grade: <strong style="color:var(--ke-green)"><?= rtrim(rtrim(number_format($grade['grade'], 1), '0'), '.') ?>%</strong><?php endif; ?>
+                </p>
+              </div>
             <?php endif; ?>
-            <p class="text-sm font-medium text-neutral-600">Answer every question, then submit once at the end. You'll get your score after submitting. Your paper is your own — its questions and their order differ for every student. You need 100% to complete the course and get its certificate.</p>
+            <p class="text-sm font-medium text-neutral-600">Answer every question, then submit once at the end. You'll get your score after submitting. Your paper is your own — its questions and their order differ for every student. You need <?= (int) $course['final_pass_percent'] ?>% to pass and get the certificate.<?php if (!empty($course['final_duration_minutes'])): ?> <strong>Time limit: <?= (int) $course['final_duration_minutes'] ?> minutes</strong> — when the time is up, the exam is submitted automatically.<?php endif; ?></p>
             <?php if ($finalPassed): ?>
               <div class="flex flex-wrap items-center gap-3 rounded-xl p-4" style="background:#ecf7f0">
                 <span style="color:var(--ke-green)"><?= icon('check', 'h-6 w-6') ?></span>
@@ -396,13 +410,22 @@ require __DIR__ . '/../layout-header.php';
                 <?php elseif (!$settled): ?>
                   <p class="w-full text-xs font-bold text-neutral-600">Clear your fee balance to complete the course and get the certificate.</p>
                 <?php elseif (!empty($course['requires_attachment'])): ?>
-                  <p class="w-full text-xs font-bold text-neutral-600">Complete your attachment before this skill appears on your certificate.</p>
+                  <p class="w-full text-xs font-bold text-neutral-600"><?= $attachmentPending ? 'This course completes once your attachment provider marks your attachment completed.' : 'Attachment completed.' ?></p>
                 <?php endif; ?>
               </div>
               <p class="text-xs font-semibold text-neutral-500">A passed exam can't be taken again.</p>
+            <?php elseif (!empty($course['final_duration_minutes']) && empty($examEndsAt)): ?>
+              <div class="rounded-xl border p-4 text-sm" style="border-color:var(--ke-line)">
+                <p class="font-bold">This exam is timed: <?= (int) $course['final_duration_minutes'] ?> minutes. The clock starts when you press Start and keeps running if you leave the page.</p>
+                <a href="<?= e(url('/account/courses/' . (int) $course['id'] . '?lesson=final&start=1#lesson')) ?>" class="btn-primary mt-3 inline-block">Start exam</a>
+              </div>
             <?php else: ?>
+              <?php if (!empty($examEndsAt)): ?>
+                <div class="exam-timer" id="exam-timer" data-ends="<?= (int) $examEndsAt ?>" data-now="<?= time() ?>">⏱ <span>--:--</span> left</div>
+              <?php endif; ?>
               <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/final-exam/submit') ?>" class="space-y-5" id="final-exam-form" novalidate data-stepper>
                 <?= csrfField() ?>
+                <input type="hidden" name="timed_out" value="0">
                 <?php $questionsHtml($finalPaperQuestions ?: $finalQuestions, false); ?>
                 <button type="submit" class="btn-primary">Submit final exam</button>
               </form>
@@ -421,60 +444,83 @@ require __DIR__ . '/../layout-header.php';
                       : 'Submit your final exam? You can\'t change your answers after submitting.';
                     if (!confirm(msg)) { event.preventDefault(); }
                   });
+                  var timer = document.getElementById('exam-timer');
+                  if (timer) {
+                    // Server time, so a wrong phone clock can't change the limit.
+                    var left = (+timer.dataset.ends - +timer.dataset.now) * 1000, end = Date.now() + left, label = timer.querySelector('span');
+                    (function tick() {
+                      var ms = end - Date.now();
+                      if (ms <= 0) {
+                        label.textContent = '0:00';
+                        form.elements.timed_out.value = '1';
+                        form.submit(); // no confirm: time is up
+                        return;
+                      }
+                      var s = Math.ceil(ms / 1000), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
+                      label.textContent = (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(sec).padStart(2, '0');
+                      timer.classList.toggle('is-low', s <= 60);
+                      setTimeout(tick, 500);
+                    })();
+                  }
                 })();
               </script>
             <?php endif; ?>
           <?php endif; ?>
         </div>
 
-      <?php elseif ($here['type'] === 'module' && $here['state'] === 'pay'):
-        $short = $plan['from_wallet'] > $walletKsh + 0.001;
-      ?>
-        <div class="flex flex-col items-center gap-4 px-6 py-14 text-center">
-          <span class="app-tile-icon" style="width:3.5rem;height:3.5rem"><?= icon('lock', 'h-7 w-7') ?></span>
-          <div>
-            <p class="learn-section-title">Module <?= $here['index'] + 1 ?> of <?= count($modules) ?> · locked until paid</p>
-            <h2 id="lesson-title" class="mt-1 font-serif-heading text-2xl font-bold"><?= e($here['title']) ?></h2>
-          </div>
-          <?php if (!empty($here['module']['summary'])): ?><div class="max-w-md text-left"><p class="learn-section-title">Module overview</p><p class="mt-1 text-sm font-medium text-neutral-600"><?= nl2br(e($here['module']['summary'])) ?></p></div><?php endif; ?>
-          <p class="max-w-md text-sm font-medium text-neutral-600">
-            This module costs <strong><?= ModuleAccess::coins($plan['next_price']) ?> coins</strong> (Ksh <?= number_format($plan['next_price'], 2) ?>).
-            <?php if ($plan['from_credit'] > 0): ?>
-              Ksh <?= number_format($plan['from_credit'], 2) ?> comes from money you already paid for this course<?= $plan['from_wallet'] > 0 ? ', and ' . ModuleAccess::coins($plan['from_wallet']) . ' coins from your wallet' : '' ?>.
-            <?php endif; ?>
-            Once unlocked it stays open for <?= ModuleAccess::ACCESS_DAYS ?> days.
-          </p>
-          <p class="text-xs font-bold text-neutral-500">Wallet: <?= ModuleAccess::coins($walletKsh) ?> coins (Ksh <?= number_format($walletKsh, 2) ?>)</p>
-          <?php if ($short): ?>
-            <p class="rounded-lg border px-4 py-2 text-sm font-bold" role="alert" style="border-color:#f59e0b;background:#fffbeb;color:#92400e">Not enough coins — deposit <?= ModuleAccess::coins($plan['from_wallet'] - $walletKsh) ?> more to open this module.</p>
-            <a href="<?= url('/account/wallet') ?>" class="btn-primary">Deposit to My wallet</a>
-          <?php else: ?>
-            <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/modules/' . (int) $here['module']['id'] . '/unlock') ?>">
-              <?= csrfField() ?>
-              <button type="submit" class="btn-primary">Unlock module<?= $plan['from_wallet'] > 0 ? ' · ' . ModuleAccess::coins($plan['from_wallet']) . ' coins' : '' ?></button>
-            </form>
-          <?php endif; ?>
-        </div>
-
       <?php else:
-        // An open or finished module.
+        // A module: its video, then everything about it, then its quiz — all on one page.
+        // Not paid for (or not enrolled yet): the same page as a preview that can't be used.
         $module = $here['module'];
+        $preview = in_array($here['state'], ['pay', 'enrol'], true);
         $embed = $module['embed_url'] ?? '';
         $videoPath = $module['video_path'] ?? '';
         $isYoutube = ($module['video_source'] ?? '') === 'youtube';
         $lessonMaterials = is_array($module['materials'] ?? null) ? $module['materials'] : [];
         $questions = $module['quiz_questions'] ?? [];
       ?>
-        <?php if (($isYoutube && $embed) || $videoPath): ?>
-          <div class="learn-video" oncontextmenu="return false;">
-            <?php if ($isYoutube && $embed): ?>
-              <iframe src="<?= e($embed) ?>" title="<?= e($here['title']) ?>" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+        <?php if ($preview): ?>
+          <div class="module-paybar" role="status">
+            <span class="module-paybar-icon"><?= icon('lock', 'h-5 w-5') ?></span>
+            <div class="min-w-0 flex-1">
+              <?php if ($here['state'] === 'enrol'): ?>
+                <p class="font-black">Enrol to open this module</p>
+                <p class="text-xs font-semibold"><?= $here['price'] > 0 ? 'Module cost: ' . ModuleAccess::coins((float) $here['price']) . ' coins, paid when you open it.' : 'Free once you enrol.' ?></p>
+              <?php else: $short = $plan['from_wallet'] > $walletKsh + 0.001; ?>
+                <p class="font-black">Pay to open this module · <?= ModuleAccess::coins($plan['next_price']) ?> coins (Ksh <?= number_format($plan['next_price'], 2) ?>)</p>
+                <p class="text-xs font-semibold">
+                  <?php if ($plan['from_credit'] > 0): ?>Ksh <?= number_format($plan['from_credit'], 2) ?> comes from money you already paid for this course<?= $plan['from_wallet'] > 0 ? ', and ' . ModuleAccess::coins($plan['from_wallet']) . ' coins from your wallet' : '' ?>. <?php endif; ?>
+                  Open for <?= ModuleAccess::ACCESS_DAYS ?> days once paid. Wallet: <?= ModuleAccess::coins($walletKsh) ?> coins.
+                </p>
+              <?php endif; ?>
+            </div>
+            <?php if ($here['state'] === 'enrol'): ?>
+              <?php $enrolButton('Enrol now'); ?>
+            <?php elseif ($short): ?>
+              <a href="<?= url('/account/wallet') ?>" class="btn-primary">Deposit <?= ModuleAccess::coins($plan['from_wallet'] - $walletKsh) ?> more coins</a>
             <?php else: ?>
-              <video controls controlsList="nodownload noremoteplayback noplaybackrate" disablePictureInPicture playsinline oncontextmenu="return false;">
+              <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/modules/' . (int) $module['id'] . '/unlock') ?>">
+                <?= csrfField() ?>
+                <button type="submit" class="btn-primary">Unlock<?= $plan['from_wallet'] > 0 ? ' · ' . ModuleAccess::coins($plan['from_wallet']) . ' coins' : '' ?></button>
+              </form>
+            <?php endif; ?>
+          </div>
+        <?php endif; ?>
+
+        <?php if (($isYoutube && $embed) || $videoPath): ?>
+          <div class="learn-video<?= $preview ? ' is-preview' : '' ?>" id="module-video" oncontextmenu="return false;">
+            <?php if ($isYoutube && $embed): ?>
+              <iframe src="<?= e($embed) ?>" title="<?= e($here['title']) ?>" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen <?= $preview ? 'tabindex="-1"' : '' ?>></iframe>
+            <?php else: ?>
+              <video controls controlsList="nodownload noremoteplayback noplaybackrate" disablePictureInPicture playsinline oncontextmenu="return false;" <?= $preview ? 'tabindex="-1"' : '' ?>>
                 <source src="<?= e(imageUrl($videoPath)) ?>">
               </video>
             <?php endif; ?>
+            <?php if ($preview): ?><span class="learn-video-lock"><?= icon('lock', 'h-6 w-6') ?></span><?php endif; ?>
           </div>
+          <?php if (!$preview): ?>
+            <button type="button" class="video-fullscreen" data-fullscreen="module-video"><?= icon('maximize', 'h-4 w-4') ?> Watch full screen</button>
+          <?php endif; ?>
         <?php endif; ?>
 
         <div class="space-y-6 p-5 sm:p-6">
@@ -489,63 +535,69 @@ require __DIR__ . '/../layout-header.php';
             <?php endif; ?>
           </div>
 
-          <?php
-            // The module's parts as tabs right under the video: overview, about, notes, materials, then the quiz.
-            $moduleTabs = [];
-            foreach (['summary' => 'Overview', 'description' => 'About', 'notes' => 'Notes'] as $field => $label) {
-                if (!empty($module[$field])) { $moduleTabs[$field] = $label; }
-            }
-            if ($lessonMaterials) { $moduleTabs['materials'] = 'Materials'; }
-            $moduleTabs['quiz'] = $questions ? 'Quiz' : 'Finish';
-            $firstTab = ($quizResult && ($quizResult['key'] ?? '') === 'm' . (int) $module['id']) ? 'quiz' : array_key_first($moduleTabs);
-          ?>
-          <div class="course-tabs" role="tablist" data-tabs="module" aria-label="This module">
-            <?php foreach ($moduleTabs as $tabKey => $tabLabel): $on = $tabKey === $firstTab; ?>
-              <button type="button" role="tab" id="mtab-<?= $tabKey ?>" data-tab aria-controls="mpanel-<?= $tabKey ?>" aria-selected="<?= $on ? 'true' : 'false' ?>" <?= $on ? '' : 'tabindex="-1"' ?>><?= e($tabLabel) ?></button>
-            <?php endforeach; ?>
+          <div class="<?= $preview ? 'module-preview' : '' ?>" <?= $preview ? 'inert' : '' ?>>
+            <?php
+              // Overview, About and Notes side by side as tabs; the overview shows first.
+              $moduleTabs = array_filter(['summary' => 'Module overview', 'description' => 'About this module', 'notes' => 'Module notes'], static fn(string $field): bool => !empty($module[$field]), ARRAY_FILTER_USE_KEY);
+            ?>
+            <?php if ($moduleTabs): ?>
+              <div class="course-tabs" role="tablist" data-tabs="module" aria-label="About this module">
+                <?php $first = true; foreach ($moduleTabs as $field => $label): ?>
+                  <button type="button" role="tab" id="mtab-<?= $field ?>" data-tab aria-controls="mpanel-<?= $field ?>" aria-selected="<?= $first ? 'true' : 'false' ?>" <?= $first ? '' : 'tabindex="-1"' ?>><?= $label ?></button>
+                <?php $first = false; endforeach; ?>
+              </div>
+              <?php $first = true; foreach ($moduleTabs as $field => $label): ?>
+                <section role="tabpanel" id="mpanel-<?= $field ?>" data-tab-panel="module" aria-labelledby="mtab-<?= $field ?>" class="mb-5 mt-3" <?= $first ? '' : 'hidden' ?>>
+                  <div class="learn-prose"><?= nl2br(e($module[$field])) ?></div>
+                </section>
+              <?php $first = false; endforeach; ?>
+            <?php endif; ?>
+            <?php if ($lessonMaterials): ?>
+              <section class="mb-5">
+                <h3 class="learn-section-title">Materials</h3>
+                <ul class="mt-2 flex flex-wrap gap-2">
+                  <?php foreach ($lessonMaterials as $file): ?>
+                    <li><a href="<?= e($fileHref($file)) ?>" target="_blank" rel="noopener" class="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold" style="border-color:var(--ke-line);color:var(--ke-green)"><?= icon('file', 'h-4 w-4') ?> <?= e($fileName($file)) ?></a></li>
+                  <?php endforeach; ?>
+                </ul>
+              </section>
+            <?php endif; ?>
           </div>
 
-          <?php foreach (['summary', 'description', 'notes'] as $field): if (!isset($moduleTabs[$field])) { continue; } ?>
-            <section role="tabpanel" id="mpanel-<?= $field ?>" data-tab-panel="module" aria-labelledby="mtab-<?= $field ?>" <?= $field === $firstTab ? '' : 'hidden' ?>>
-              <div class="learn-prose"><?= nl2br(e($module[$field])) ?></div>
-            </section>
-          <?php endforeach; ?>
-
-          <?php if ($lessonMaterials): ?>
-          <section role="tabpanel" id="mpanel-materials" data-tab-panel="module" aria-labelledby="mtab-materials" <?= $firstTab === 'materials' ? '' : 'hidden' ?>>
-            <section>
-              <h3 class="learn-section-title">Materials</h3>
-              <ul class="mt-2 flex flex-wrap gap-2">
-                <?php foreach ($lessonMaterials as $file): ?>
-                  <li><a href="<?= e($fileHref($file)) ?>" target="_blank" rel="noopener" class="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold" style="border-color:var(--ke-line);color:var(--ke-green)"><?= icon('file', 'h-4 w-4') ?> <?= e($fileName($file)) ?></a></li>
-                <?php endforeach; ?>
-              </ul>
-            </section>
-          </section>
-          <?php endif; ?>
-
-          <section role="tabpanel" id="mpanel-quiz" data-tab-panel="module" aria-labelledby="mtab-quiz" <?= $firstTab === 'quiz' ? '' : 'hidden' ?>>
-          <?php if ($questions): ?>
-            <section id="quiz" class="rounded-xl border p-5 space-y-4" style="border-color:var(--ke-line);background:#fbfcfb">
-              <?php $resultBox($here['type'] === 'module' ? 'm' . (int) $module['id'] : ''); ?>
+          <?php if ($preview): ?>
+            <p class="rounded-xl border border-dashed p-4 text-sm font-bold" style="border-color:var(--ke-line);color:var(--ke-muted)"><?= icon('lock', 'inline h-4 w-4 align-[-2px]') ?> <?= $questions ? 'The quiz opens' : 'This module opens' ?> once you <?= $here['state'] === 'enrol' ? 'enrol' : 'pay for it' ?>.</p>
+          <?php elseif ($questions): ?>
+            <section id="quiz" class="rounded-xl border p-5 space-y-4" style="border-color:var(--ke-line);background:#fbfcfb;scroll-margin-top:80px">
+              <?php $resultBox('m' . (int) $module['id']); ?>
               <div class="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <h3 class="font-serif-heading text-lg font-bold">Module quiz</h3>
-                  <p class="text-xs font-semibold text-neutral-500">Score at least <?= (int) $module['pass_percent'] ?>% to open the next module.</p>
+                  <p class="text-xs font-semibold text-neutral-500">Pass mark <?= (int) $module['pass_percent'] ?>%. Pass or fail, you see the right answers and go on to the next module.</p>
                 </div>
-                <?php if (!empty($module['is_passed'])): ?>
-                  <span class="text-sm font-black" style="color:var(--ke-green)">Passed<?= !empty($module['progress']['score']) ? ' · ' . (int) $module['progress']['score'] . '%' : '' ?></span>
+                <?php if (!empty($module['progress'])): ?>
+                  <span class="text-sm font-black" style="color:<?= !empty($module['is_passed']) ? 'var(--ke-green)' : '#92400e' ?>"><?= !empty($module['is_passed']) ? 'Passed' : 'Done' ?> · <?= (int) ($module['progress']['score'] ?? 0) ?>%</span>
                 <?php endif; ?>
               </div>
-              <?php if (!empty($module['is_passed'])): ?>
-                <p class="text-xs font-semibold text-neutral-500">You passed this quiz. A passed quiz can't be taken again — you can keep reading the module.</p>
-                <?php if ($followKey && !in_array($lessons[$followKey]['state'], ['locked', 'enrol'], true)): ?>
-                  <a href="<?= e($lessonUrl($followKey)) ?>" class="btn-primary inline-block">Go to <?= e(mb_strimwidth($lessons[$followKey]['title'], 0, 30, '…')) ?> →</a>
+              <?php if (!empty($module['progress'])):
+                // Taken: the student's answers against the right ones, kept on the page.
+                $review = CourseModule::review($questions, (array) ($module['progress']['answers'] ?? []));
+              ?>
+                <?php if (!($quizResult && ($quizResult['key'] ?? '') === 'm' . (int) $module['id'])): ?>
+                  <p class="text-xs font-semibold text-neutral-500">You've taken this quiz. Here are the right answers.</p>
+                <?php endif; ?>
+                <?php if ($review && !empty($module['progress']['answers'])): ?>
+                  <div class="space-y-2">
+                    <?php foreach ($review as $n => $item): $ok = !empty($item['ok']); ?>
+                      <div class="rounded-lg border px-3 py-2 text-sm" style="border-color:<?= $ok ? '#b7e1c7' : '#fecaca' ?>;background:<?= $ok ? '#f6fbf8' : '#fff7f7' ?>">
+                        <p class="font-bold"><?= $ok ? '✓' : '✗' ?> <?= $n + 1 ?>. <?= e($item['question']) ?></p>
+                        <?php if (!empty($item['image'])): ?><img src="<?= e(imageUrl($item['image'])) ?>" alt="" class="quiz-picture" style="max-height:120px"><?php endif; ?>
+                        <p class="text-xs font-semibold text-neutral-600">Your answer: <?= e($item['given'] !== '' ? $item['given'] : 'not answered') ?></p>
+                        <?php if (!$ok && $item['answer'] !== ''): ?><p class="text-xs font-bold" style="color:var(--ke-green)">Correct answer: <?= e($item['answer']) ?></p><?php endif; ?>
+                      </div>
+                    <?php endforeach; ?>
+                  </div>
                 <?php endif; ?>
               <?php else: ?>
-                <?php if (!empty($module['progress'])): ?>
-                  <p class="rounded-lg border px-3 py-2 text-xs font-bold" style="border-color:#fde68a;background:#fffbeb;color:#92400e">Last score <?= (int) ($module['progress']['score'] ?? 0) ?>%. Pass this quiz to open the next module — try again below.</p>
-                <?php endif; ?>
                 <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/modules/' . (int) $module['id'] . '/quiz') ?>" class="space-y-5" novalidate data-stepper>
                   <?= csrfField() ?>
                   <?php $questionsHtml($questions); ?>
@@ -556,11 +608,14 @@ require __DIR__ . '/../layout-header.php';
           <?php elseif (empty($module['is_done'])): ?>
             <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/modules/' . (int) $module['id'] . '/done') ?>" class="flex flex-wrap items-center gap-3 rounded-xl border p-4" style="border-color:var(--ke-line);background:#fbfcfb">
               <?= csrfField() ?>
-              <p class="min-w-0 flex-1 text-sm font-semibold text-neutral-600">This module has no quiz. When you've read it, tick it done to move on.</p>
+              <p class="min-w-0 flex-1 text-sm font-semibold text-neutral-600">This module has no quiz. When you've read it, tick it done.</p>
               <button type="submit" class="btn-primary"><?= icon('check', 'inline h-4 w-4 align-[-2px]') ?> Mark as done</button>
             </form>
           <?php endif; ?>
-          </section>
+
+          <?php if ($followKey && $lessons[$followKey]['state'] !== 'locked' && !$preview): ?>
+            <a href="<?= e($lessonUrl($followKey)) ?>" class="btn-secondary inline-flex">Next: <?= e(mb_strimwidth($lessons[$followKey]['title'], 0, 34, '…')) ?> →</a>
+          <?php endif; ?>
         </div>
       <?php endif; ?>
 
@@ -569,7 +624,7 @@ require __DIR__ . '/../layout-header.php';
         <?php if ($prevKey): ?>
           <a href="<?= e($lessonUrl($prevKey)) ?>" class="btn-secondary">← <?= e(mb_strimwidth($lessons[$prevKey]['title'], 0, 24, '…')) ?></a>
         <?php else: ?><span></span><?php endif; ?>
-        <?php if ($followKey && !in_array($lessons[$followKey]['state'], ['locked', 'enrol'], true)): ?>
+        <?php if ($followKey && $lessons[$followKey]['state'] !== 'locked'): ?>
           <a href="<?= e($lessonUrl($followKey)) ?>" class="btn-primary"><?= e(mb_strimwidth($lessons[$followKey]['title'], 0, 24, '…')) ?> →</a>
         <?php elseif ($followKey): ?>
           <span class="text-right text-xs font-bold text-neutral-400">Next: <?= e(mb_strimwidth($lessons[$followKey]['title'], 0, 22, '…')) ?> (locked)</span>
@@ -686,6 +741,24 @@ require __DIR__ . '/../layout-header.php';
   </div>
 </div>
 
+<script>
+// "Watch full screen": the module's video fills the phone screen (also turned sideways).
+document.addEventListener('click', function (e) {
+  var btn = e.target.closest('[data-fullscreen]');
+  if (!btn) return;
+  var box = document.getElementById(btn.getAttribute('data-fullscreen'));
+  if (!box) return;
+  var video = box.querySelector('video');
+  var go = box.requestFullscreen || box.webkitRequestFullscreen;
+  if (go) {
+    var asked = go.call(box);
+    if (asked && asked.catch) { asked.catch(function () {}); }
+    try { screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(function () {}); } catch (err) {}
+  } else if (video && video.webkitEnterFullscreen) {
+    video.webkitEnterFullscreen(); // iPhone
+  }
+});
+</script>
 <script>
 // Quizzes and exams one question at a time: the first question shows, picking
 // an answer moves on by itself; Back / Next for the rest, Submit on the last.

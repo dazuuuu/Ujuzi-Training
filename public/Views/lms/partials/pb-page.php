@@ -17,7 +17,7 @@ $pbSite = PageBuilder::site();
   <?php if (!empty($pbDescription)): ?><meta name="description" content="<?= e($pbDescription) ?>"/><?php endif; ?>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="<?= asset('assets/css/tailwind.css') ?>">
   <style>
     html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;}

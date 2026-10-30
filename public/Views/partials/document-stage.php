@@ -25,12 +25,15 @@ $src = imageUrl((string) $docTemplate);
   <?php endforeach; ?>
 </div>
 <?php if ($docIsPdf): ?>
+  <?php if (empty($GLOBALS['docPdfJsLoaded'])): $GLOBALS['docPdfJsLoaded'] = true; ?>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <?php endif; ?>
   <script>
   (function () {
     if (!window.pdfjsLib) return;
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    document.querySelectorAll('canvas[data-pdf-src]').forEach(function (canvas) {
+    document.querySelectorAll('canvas[data-pdf-src]:not([data-pdf-drawn])').forEach(function (canvas) {
+      canvas.setAttribute('data-pdf-drawn', '1');
       pdfjsLib.getDocument(canvas.getAttribute('data-pdf-src')).promise.then(function (pdf) {
         return pdf.getPage(1);
       }).then(function (page) {

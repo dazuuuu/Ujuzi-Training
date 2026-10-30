@@ -50,35 +50,68 @@ require __DIR__ . '/../layout-header.php';
   ?>
   <?php endif; ?>
 
-  <section class="space-y-3">
-    <div class="flex flex-wrap items-center justify-between gap-2">
-      <h2 class="font-serif-heading text-lg font-bold">Certificates earned <span class="text-sm font-bold text-neutral-500">(<?= count($earned) ?>)</span></h2>
-      <?php if ($earned): ?><input type="search" id="cert-search" placeholder="Search name, reg. no. or course…" class="w-full sm:max-w-xs rounded-lg border border-neutral-300 p-2 text-sm"><?php endif; ?>
-    </div>
+  <section class="space-y-2">
+    <?php $courseNames = array_values(array_unique(array_column($earned, 'course_title'))); sort($courseNames); ?>
+    <h2 class="font-serif-heading text-lg font-bold">Students with your certificates</h2>
     <?php if (!$earned): ?>
       <p class="rounded-xl border border-dashed p-6 text-sm font-bold" style="border-color:var(--ke-line);color:var(--ke-muted)">No student has earned a certificate on your courses yet. They appear here once they finish a course (and its attachment, when it needs one).</p>
     <?php else: ?>
-      <div class="overflow-x-auto rounded-xl border border-neutral-300 bg-white shadow-sm">
-        <table class="excel-table admin-data-table" id="cert-table">
-          <thead><tr><th>Student</th><th>Reg. No.</th><th>Phone</th><th>Course</th><th></th></tr></thead>
-          <tbody>
-            <?php foreach ($earned as $row): ?>
-              <tr data-search="<?= e(strtolower($row['name'] . ' ' . $row['registration_number'] . ' ' . $row['course_title'])) ?>">
-                <td class="font-black"><?= e($row['name']) ?></td>
-                <td><?= e($row['registration_number']) ?></td>
-                <td><?= e($row['phone'] ?: '—') ?></td>
-                <td><?= e($row['course_title']) ?></td>
-                <td><a href="<?= url('/account/certificates/' . (int) $row['user_id'] . '/' . (int) $row['course_id']) ?>" class="btn-primary" style="padding:0.25rem 0.6rem;font-size:0.72rem;">View / print</a></td>
-              </tr>
-            <?php endforeach; ?>
-          </tbody>
-        </table>
+      <div>
+        <div class="xl-toolbar">
+          <span><label for="cert-search">Find</label><input type="search" id="cert-search" placeholder="Name, reg. no., phone…"></span>
+          <span><label for="cert-course">Course</label><select id="cert-course"><option value="">(All)</option><?php foreach ($courseNames as $cn): ?><option value="<?= e(strtolower($cn)) ?>"><?= e($cn) ?></option><?php endforeach; ?></select></span>
+          <span class="xl-grow"></span>
+          <span>
+            <button type="submit" form="cert-form" id="cert-selected" disabled>Download selected (<b>0</b>)</button>
+            <button type="button" class="is-green" id="cert-shown">Download all shown (<b><?= count($earned) ?></b>)</button>
+          </span>
+        </div>
+        <form method="get" action="<?= url('/account/certificates/download') ?>" target="_blank" id="cert-form">
+          <table data-xl id="cert-table" data-xl-tabs="<?= e('<span class="is-active">Certificates</span><span class="xl-count" id="cert-count">' . count($earned) . ' records</span>') ?>">
+            <thead><tr><th><input type="checkbox" id="cert-all" aria-label="Select all shown"></th><th>Student</th><th>Reg. No.</th><th>Phone</th><th>Course</th><th>Completed</th><th>Certificate No.</th><th>Certificate</th></tr></thead>
+            <tbody>
+              <?php foreach ($earned as $row): ?>
+                <tr data-search="<?= e(strtolower($row['name'] . ' ' . $row['registration_number'] . ' ' . $row['phone'] . ' ' . ($row['certificate_no'] ?? ''))) ?>" data-course="<?= e(strtolower($row['course_title'])) ?>">
+                  <td><input type="checkbox" name="pairs[]" value="<?= (int) $row['user_id'] . '-' . (int) $row['course_id'] ?>" class="cert-box" aria-label="Select <?= e($row['name']) ?>"></td>
+                  <td><?= e($row['name']) ?></td>
+                  <td><?= e($row['registration_number']) ?></td>
+                  <td><?= e($row['phone']) ?></td>
+                  <td><?= e($row['course_title']) ?></td>
+                  <td><?= e($row['completed_at'] ?? '') ?></td>
+                  <td><?= e($row['certificate_no'] ?? '') ?></td>
+                  <td><a href="<?= url('/account/certificates/' . (int) $row['user_id'] . '/' . (int) $row['course_id']) ?>">Open</a></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </form>
       </div>
+      <script src="<?= asset('assets/js/excel-grid.js') ?>"></script>
       <script>
-        document.getElementById('cert-search').addEventListener('input', function () {
-          var q = this.value.trim().toLowerCase();
-          document.querySelectorAll('#cert-table tbody tr').forEach(function (tr) { tr.hidden = q !== '' && tr.dataset.search.indexOf(q) === -1; });
-        });
+      (function () {
+        var form = document.getElementById('cert-form'), table = document.getElementById('cert-table'), search = document.getElementById('cert-search'), course = document.getElementById('cert-course'),
+            sel = document.getElementById('cert-selected'), shown = document.getElementById('cert-shown'), all = document.getElementById('cert-all'), count = document.getElementById('cert-count');
+        var rows = function () { return Array.prototype.slice.call(table.tBodies[0].rows); };
+        function sync() {
+          var visible = rows().filter(function (tr) { return !tr.hidden; }).length;
+          var n = document.querySelectorAll('.cert-box:checked').length;
+          sel.querySelector('b').textContent = n; sel.disabled = n === 0;
+          shown.querySelector('b').textContent = visible; shown.disabled = visible === 0;
+          if (count) count.textContent = visible + ' records';
+        }
+        function filter() {
+          var q = search.value.trim().toLowerCase(), c = course.value;
+          rows().forEach(function (tr) {
+            tr.hidden = (q !== '' && tr.dataset.search.indexOf(q) === -1) || (c !== '' && tr.dataset.course !== c);
+            if (tr.hidden) tr.querySelector('.cert-box').checked = false;
+          });
+          window.xlRenumber(table); sync();
+        }
+        search.addEventListener('input', filter); course.addEventListener('change', filter);
+        document.addEventListener('change', function (e) { if (e.target.classList.contains('cert-box')) sync(); });
+        all.addEventListener('change', function () { rows().forEach(function (tr) { if (!tr.hidden) tr.querySelector('.cert-box').checked = all.checked; }); sync(); });
+        shown.addEventListener('click', function () { rows().forEach(function (tr) { tr.querySelector('.cert-box').checked = !tr.hidden; }); sync(); form.submit(); });
+      })();
       </script>
     <?php endif; ?>
   </section>

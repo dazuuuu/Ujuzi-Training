@@ -49,48 +49,6 @@ require __DIR__ . '/../layout-header.php';
   </div>
 </div>
 
-<?php if ($template): ?>
-  <?php
-    $docTemplate = $template;
-    $docIsPdf = $isPdf;
-    $docLayout = $payload['layout'] ?? \App\Services\DocumentLayout::get('certificate');
-    $docValues = [
-      'name' => $payload['learner'] ?? '',
-      'course' => $payload['course'] ?? '',
-      'organisation' => $payload['course_organisation'] ?? '',
-      'registration_number' => $payload['registration_number'] ?? '',
-      'date' => $payload['issued'] ?? '',
-  ];
-    require __DIR__ . '/../../partials/document-stage.php';
-  ?>
-<?php else: ?>
-<section class="certificate-stage <?= $template ? 'has-template' : 'no-template' ?>">
-  <?php if ($template && $isImage): ?>
-    <img class="certificate-bg" src="<?= e(imageUrl($template)) ?>" alt="">
-  <?php elseif ($template && $isPdf): ?>
-    <embed class="certificate-bg" src="<?= e(imageUrl($template)) ?>" type="application/pdf" />
-  <?php endif; ?>
-  <div class="certificate-overlay">
-    <p class="certificate-kicker"><?= e(appName()) ?></p>
-    <h2 class="certificate-name"><?= e($payload['learner'] ?? '') ?></h2>
-    <?php if (!empty($payload['organisation'])): ?>
-      <p class="certificate-org"><?= e($payload['organisation']) ?></p>
-    <?php endif; ?>
-    <?php if (!empty($payload['registration_number'])): ?>
-      <p class="certificate-org">Reg. No. <?= e($payload['registration_number']) ?></p>
-    <?php endif; ?>
-    <p class="certificate-label">Course completed</p>
-    <ul class="certificate-skills">
-      <?php foreach ($skills as $skill): ?>
-        <li><?= e($skill) ?></li>
-      <?php endforeach; ?>
-    </ul>
-    <?php if (!empty($payload['course_organisation'])): ?>
-      <p class="certificate-org">Offered by <?= e($payload['course_organisation']) ?></p>
-    <?php endif; ?>
-    <p class="certificate-date">Issued <?= e($payload['issued'] ?? '') ?></p>
-  </div>
-</section>
-<?php endif; ?>
+<?php require __DIR__ . '/../../partials/certificate-render.php'; ?>
 
 <?php require __DIR__ . '/../layout-footer.php'; ?>

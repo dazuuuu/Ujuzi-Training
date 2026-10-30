@@ -413,6 +413,50 @@ class OrganisationMembership
         )->execute([$userId, $organisationId, $reviewerUserId]);
     }
 
+    /** Tutors the organisation added to one of its branches. */
+    public static function tutorsForBranch(int $branchId): array
+    {
+        $stmt = Database::connection()->prepare(
+            "SELECT u.id, u.email, u.phone, u.first_name, u.last_name, m.id AS membership_id
+             FROM organisation_memberships m
+             INNER JOIN users u ON u.id = m.user_id
+             INNER JOIN roles r ON r.id = u.role_id AND r.slug IN ('" . implode("','", self::trainerRoleSlugs()) . "')
+             WHERE m.branch_id = ? AND m.status = 'approved'
+             ORDER BY u.first_name, u.last_name"
+        );
+        $stmt->execute([$branchId]);
+        return $stmt->fetchAll();
+    }
+
+    /** Makes the tutor an approved tutor of the organisation, at this branch. */
+    public static function assignTutorToBranch(int $userId, int $organisationId, int $branchId, int $reviewerUserId): void
+    {
+        self::ensureApproved($userId, $organisationId, $reviewerUserId);
+        Database::connection()->prepare(
+            'UPDATE organisation_memberships SET branch_id = ? WHERE user_id = ? AND organisation_id = ?'
+        )->execute([$branchId, $userId, $organisationId]);
+    }
+
+    /** The branch a person belongs to in an organisation (approved membership), or null. */
+    public static function branchIdFor(int $userId, int $organisationId): ?int
+    {
+        $stmt = Database::connection()->prepare(
+            "SELECT branch_id FROM organisation_memberships
+             WHERE user_id = ? AND organisation_id = ? AND status = 'approved' AND branch_id IS NOT NULL
+             ORDER BY id DESC LIMIT 1"
+        );
+        $stmt->execute([$userId, $organisationId]);
+        return (int) $stmt->fetchColumn() ?: null;
+    }
+
+    /** Takes the tutor off the branch; they stay a tutor of the organisation. */
+    public static function removeTutorFromBranch(int $userId, int $branchId): void
+    {
+        Database::connection()->prepare(
+            'UPDATE organisation_memberships SET branch_id = NULL WHERE user_id = ? AND branch_id = ?'
+        )->execute([$userId, $branchId]);
+    }
+
     public static function approve(int $id, int $organisationId, int $reviewerUserId): bool
     {
         return self::approveWithCategories($id, $organisationId, $reviewerUserId, null);

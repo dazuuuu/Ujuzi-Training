@@ -7,7 +7,7 @@ require __DIR__ . '/../layout-header.php';
   <section>
     <h1 class="font-serif-heading text-2xl font-bold">Import people</h1>
     <p class="mt-1 text-sm font-medium text-neutral-600">
-      Upload a CSV file with two columns: <span class="font-mono">name</span> and <span class="font-mono">email</span>.
+      Upload a CSV file with a <span class="font-mono">name</span> column (or <span class="font-mono">first name</span>, <span class="font-mono">other names</span>, <span class="font-mono">last name</span>) and an <span class="font-mono">email</span> column. Other columns are ignored.
       Each row gets a login with the default password, and an email with their sign-in details — same as adding one person at a time.
       In Excel: File → Save As → CSV (Comma delimited) before uploading.
     </p>

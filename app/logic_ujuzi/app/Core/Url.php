@@ -26,13 +26,27 @@ class Url
         $configured = trim((string) Env::get('APP_URL', ''));
         if ($configured !== '') {
             $configuredPath = (string) (parse_url($configured, PHP_URL_PATH) ?? '');
-            self::$basePath = rtrim($configuredPath, '/');
+            self::$basePath = self::withoutHiddenPublic(rtrim($configuredPath, '/'));
             return;
         }
 
         // Fallback: dirname(SCRIPT_NAME) for public/index.php is the folder the browser sees it in.
         $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/index.php'));
-        self::$basePath = $scriptDir === '/' ? '' : rtrim($scriptDir, '/');
+        self::$basePath = self::withoutHiddenPublic($scriptDir === '/' ? '' : rtrim($scriptDir, '/'));
+    }
+
+    /**
+     * The root .htaccess maps every request into public/ without the visitor
+     * typing it: when this request's address doesn't contain "/public", keep
+     * it out of the links too.
+     */
+    private static function withoutHiddenPublic(string $base): string
+    {
+        $requestPath = (string) (parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?? '/');
+        if (PHP_SAPI !== 'cli' && str_ends_with($base, '/public') && $requestPath !== $base && !str_starts_with($requestPath, $base . '/')) {
+            return substr($base, 0, -strlen('/public'));
+        }
+        return $base;
     }
 
     public static function basePath(): string

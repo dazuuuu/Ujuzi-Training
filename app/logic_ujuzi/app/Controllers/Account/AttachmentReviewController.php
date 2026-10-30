@@ -19,8 +19,9 @@ class AttachmentReviewController extends BaseAccountController
 {
     /** What each status can move to, and the button label for it. */
     public const ACTIONS = [
-        App::STATUS_PENDING => ['accept' => 'Accept', 'pause' => 'Put on hold', 'decline' => 'Decline'],
-        App::STATUS_PAUSED => ['accept' => 'Accept', 'decline' => 'Decline'],
+        // The provider (or its branch) can mark the attachment completed at any stage.
+        App::STATUS_PENDING => ['accept' => 'Accept', 'pause' => 'Put on hold', 'complete' => 'Mark completed', 'decline' => 'Decline'],
+        App::STATUS_PAUSED => ['accept' => 'Accept', 'complete' => 'Mark completed', 'decline' => 'Decline'],
         App::STATUS_ACCEPTED => ['pause' => 'Put on hold', 'complete' => 'Mark completed', 'decline' => 'Decline'],
         App::STATUS_RECOMMENDED => [],
         App::STATUS_COMPLETED => [],
@@ -40,18 +41,45 @@ class AttachmentReviewController extends BaseAccountController
         AttachmentMessage::markRead($application['id'], AttachmentMessage::SIDE_REVIEWER);
         $fees = WalletService::feeSummaries([$application['student_user_id']])[$application['student_user_id']] ?? null;
 
-        $this->render('account.attachment-review.show', [
-            'assessment' => \App\Models\AttachmentAssessment::forApplication((int) $application['id']),
-            'criteria' => \App\Models\AttachmentAssessment::criteriaFor((int) $application['provider_user_id']),
+        $this->render('account.attachment-review.show', $this->sheetData($application) + [
             'pageTitle' => 'Attachment request',
             'activeNav' => $this->backNav(),
             'application' => $application,
             'fees' => $fees,
             'requestFees' => WalletService::requestFees($application['student_user_id'], $application['category_id'] ?? null, !empty($application['course_id']) ? (int) $application['course_id'] : null),
             'messages' => AttachmentMessage::forApplication($application['id']),
-            'actions' => self::ACTIONS[$application['status']] ?? [],
+            // A branch's requests are decided by its branch admin; the organisation only views them.
+            'actions' => $this->canFill($application) ? (self::ACTIONS[$application['status']] ?? []) : [],
             'backUrl' => $this->backUrl(),
         ]);
+    }
+
+    /** Only the assessment, on its own page. */
+    public function assessmentPage(string $id): void
+    {
+        $application = $this->reviewable((int) $id);
+        $this->render('account.attachment-review.assessment', $this->sheetData($application) + [
+            'pageTitle' => 'Assessment',
+            'activeNav' => $this->backNav(),
+            'application' => $application,
+            'backUrl' => $this->backUrl(),
+        ]);
+    }
+
+    private function sheetData(array $application): array
+    {
+        $saved = \App\Models\AttachmentAssessment::forApplication((int) $application['id']);
+        return [
+            'assessment' => $saved,
+            'form' => \App\Models\AttachmentAssessment::formFor((int) $application['provider_user_id'], $saved),
+            'canFill' => $this->canFill($application),
+        ];
+    }
+
+    /** The branch admin fills a branch's attachees; the organisation fills those not sent to a branch. */
+    private function canFill(array $application): bool
+    {
+        return ($this->user['role_slug'] ?? '') === 'branch_admin' || empty($application['branch_id']);
     }
 
     /** A note to the student, optionally with a status change. Either one on its own is fine. */
@@ -61,6 +89,10 @@ class AttachmentReviewController extends BaseAccountController
         $here = '/account/attachment-requests/' . $application['id'];
         if (!csrfVerify(Request::post('csrf_token'))) {
             flashError('Your session expired. Please try again.');
+            redirect($here);
+        }
+        if (!$this->canFill($application)) {
+            flashError('This attachee is handled by the branch admin of ' . ($application['branch_title'] ?? 'the branch') . '.');
             redirect($here);
         }
 
@@ -83,7 +115,8 @@ class AttachmentReviewController extends BaseAccountController
             redirect($here);
         }
 
-        if ($newStatus === App::STATUS_RECOMMENDED && !\App\Models\AttachmentAssessment::isMarked((int) $application['id'])) {
+        // Marks are only needed when the attachment counts towards a course that requires it.
+        if ($newStatus === App::STATUS_RECOMMENDED && App::needsAssessment($application) && !\App\Models\AttachmentAssessment::isMarked((int) $application['id'])) {
             flashError(\App\Models\AttachmentAssessment::NOT_MARKED);
             redirect($here . '#assessment');
         }
@@ -115,8 +148,7 @@ class AttachmentReviewController extends BaseAccountController
         redirect($here);
     }
 
-    /** Sends the student their recommendation letter again: in their portal, and by email when email is set up. */
-    /** Saves the assessment sheet (criteria, marks, comments, remarks). "generate" fills in the standard criteria. */
+    /** Saves the daily log (date, what they did, score, remarks per day) and the closing remark. */
     public function assessment(string $id): void
     {
         $application = App::findForReviewer((int) $id, $this->user);
@@ -125,20 +157,37 @@ class AttachmentReviewController extends BaseAccountController
             flashError('That request could not be found, or your session expired.');
             redirect('/account/branch-admin');
         }
-        $rows = Request::post('generate') === '1'
-            ? \App\Models\AttachmentAssessment::STANDARD_CRITERIA
-            : (array) Request::post('items', []);
-        \App\Models\AttachmentAssessment::save((int) $application['id'], (int) $application['provider_user_id'], $rows, (string) Request::post('remarks', ''), (int) $this->user['id']);
-        flashSuccess(Request::post('generate') === '1' ? 'Standard criteria added. Change them as you like, then give the marks.' : 'Assessment saved.');
+        if (!$this->canFill($application)) {
+            flashError('The branch admin fills this attachee\'s assessment.');
+            redirect($here);
+        }
+        $saved = \App\Models\AttachmentAssessment::forApplication((int) $application['id']);
+        \App\Models\AttachmentAssessment::save(
+            (int) $application['id'],
+            (array) Request::post('items', []),
+            (string) Request::post('remarks', ''),
+            (int) $this->user['id'],
+            \App\Models\AttachmentAssessment::formFor((int) $application['provider_user_id'], $saved),
+            (array) Request::post('answers', [])
+        );
+        if (Request::post('page') === 'assessment') {
+            $here = '/account/attachment-requests/' . (int) $id . '/assessment';
+        }
+        flashSuccess(trim((string) Request::post('remarks', '')) === '' ? 'Assessment saved. Add the closing remark when the attachment ends.' : 'Assessment saved and closed. Complete the attachment to send it to the course organisation.');
         redirect($here);
     }
 
+    /** Sends the student their recommendation letter again: in their portal, and by email when email is set up. */
     public function resendLetter(string $id): void
     {
         $application = $this->reviewable((int) $id);
         $here = '/account/attachment-requests/' . $application['id'];
         if (!csrfVerify(Request::post('csrf_token'))) {
             flashError('Your session expired. Please try again.');
+            redirect($here);
+        }
+        if (!$this->canFill($application)) {
+            flashError('The branch admin resends this attachee\'s letter.');
             redirect($here);
         }
         if ($application['status'] !== App::STATUS_RECOMMENDED) {

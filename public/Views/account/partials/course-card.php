@@ -38,6 +38,16 @@ $isCompletedCard = !empty($course['is_completed']);
     <p class="truncate text-[10px] font-black uppercase tracking-wider text-green-700"><?= e($catName) ?><span class="font-bold normal-case text-neutral-500"> · <?= e($orgName) ?></span></p>
     <h2 class="course-tile-title mt-1 text-sm font-bold leading-tight text-neutral-900 sm:text-base" title="<?= e($course['title']) ?>"><a href="<?= $courseHref ?>"><?= e($course['title']) ?></a></h2>
 
+    <?php $cardReqs = \App\Models\Course::requirementsList($course); ?>
+    <?php if ($cardReqs): ?>
+      <div class="course-tile-reqs" title="Requirements: <?= e(implode(', ', $cardReqs)) ?>">
+        <span class="course-tile-reqs-label">Requirements</span>
+        <ul>
+          <?php foreach (array_slice($cardReqs, 0, 3) as $req): ?><li><?= e($req) ?></li><?php endforeach; ?>
+          <?php if (count($cardReqs) > 3): ?><li class="is-more">+<?= count($cardReqs) - 3 ?> more</li><?php endif; ?>
+        </ul>
+      </div>
+    <?php endif; ?>
     <div class="mt-auto flex flex-col gap-2 pt-2">
       <p class="course-tile-desc hidden text-xs text-neutral-600 sm:block"><?= e($description) ?></p>
       <?php if ($isLong): ?>

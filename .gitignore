@@ -13,3 +13,4 @@ public/assets/uploads/*
 !public/assets/uploads/categories/.gitkeep
 !public/assets/uploads/forms/
 !public/assets/uploads/forms/.gitkeep
+app/logic_ujuzi/config.local.php

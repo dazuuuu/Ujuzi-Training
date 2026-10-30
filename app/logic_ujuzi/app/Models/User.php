@@ -484,6 +484,13 @@ class User
 
     public static function updateProfileNames(int $id, string $firstName, string $lastName, ?string $otherNames = null): void
     {
+        if ($otherNames === null) {
+            $stmt = Database::connection()->prepare('SELECT other_names FROM users WHERE id = ?');
+            $stmt->execute([$id]);
+            self::assertUniqueName($firstName, $lastName, (string) $stmt->fetchColumn(), $id);
+        } else {
+            self::assertUniqueName($firstName, $lastName, $otherNames, $id);
+        }
         Database::connection()
             ->prepare('UPDATE users SET first_name = ?, last_name = ? WHERE id = ?')
             ->execute([$firstName !== '' ? $firstName : null, $lastName !== '' ? $lastName : null, $id]);
@@ -566,19 +573,93 @@ class User
     public static function assertUnique(?string $email, ?string $phone, ?int $exceptId = null): void
     {
         if ($email !== null && self::emailTaken($email, $exceptId)) {
-            throw new DuplicateIdentifierException('The email ' . trim($email) . ' is already used by another account.');
+            throw new DuplicateIdentifierException('An account already exists in the system with the email ' . trim($email) . '.');
         }
         if ($phone !== null && self::phoneTaken($phone, $exceptId)) {
-            throw new DuplicateIdentifierException('The phone number ' . trim($phone) . ' is already used by another account.');
+            throw new DuplicateIdentifierException('An account already exists in the system with the phone number ' . trim($phone) . '.');
         }
+    }
+
+    /** A name compared without capitals or extra spaces. */
+    private static function nameKey(?string $name): string
+    {
+        return strtolower(trim(preg_replace('/\s+/', ' ', (string) $name)));
+    }
+
+    /**
+     * Whether another account has the same first, last and other names (all
+     * three matching, capitals and spacing ignored). Accounts with no name yet
+     * never clash.
+     */
+    public static function nameTaken(?string $first, ?string $last, ?string $other, ?int $exceptId = null): bool
+    {
+        $first = self::nameKey($first);
+        $last = self::nameKey($last);
+        if ($first === '' || $last === '') {
+            return false;
+        }
+        $stmt = Database::connection()->prepare(
+            "SELECT 1 FROM users
+             WHERE LOWER(TRIM(first_name)) = ? AND LOWER(TRIM(last_name)) = ? AND LOWER(TRIM(COALESCE(other_names, ''))) = ? AND id <> ?
+             LIMIT 1"
+        );
+        $stmt->execute([$first, $last, self::nameKey($other), (int) $exceptId]);
+        return (bool) $stmt->fetchColumn();
+    }
+
+    public static function assertUniqueName(?string $first, ?string $last, ?string $other, ?int $exceptId = null): void
+    {
+        if (self::nameTaken($first, $last, $other, $exceptId)) {
+            $full = trim(preg_replace('/\s+/', ' ', trim((string) $first) . ' ' . trim((string) $other) . ' ' . trim((string) $last)));
+            throw new DuplicateIdentifierException('An account already exists in the system with the name ' . $full . '.');
+        }
+    }
+
+    /** An ID / passport / birth certificate number compared without spaces, dashes or capitals. */
+    public static function idNumberKey(string $number): string
+    {
+        return strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $number));
+    }
+
+    /**
+     * Whether another account gave the same National ID, passport or birth
+     * certificate number on any of its forms.
+     */
+    public static function idNumberTaken(string $number, ?int $exceptId = null): bool
+    {
+        $key = self::idNumberKey($number);
+        if (strlen($key) < 4) {
+            return false;
+        }
+        try {
+            // Narrow down with LIKE on the digits/letters run, then compare exactly.
+            $stmt = Database::connection()->prepare('SELECT answers FROM form_responses WHERE user_id <> ? AND answers LIKE ?');
+            $stmt->execute([(int) $exceptId, '%' . substr($key, -4) . '%']);
+        } catch (\Throwable $e) {
+            return false;
+        }
+        foreach ($stmt->fetchAll(\PDO::FETCH_COLUMN) as $json) {
+            $answers = json_decode((string) $json, true);
+            if (!is_array($answers)) {
+                continue;
+            }
+            foreach ($answers as $value) {
+                if (is_array($value) && array_key_exists('number', $value) && array_key_exists('type', $value)
+                    && self::idNumberKey((string) $value['number']) === $key) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public static function create(array $fields): int
     {
         $pdo = Database::connection();
         $email = strtolower(trim((string) ($fields['email'] ?? '')));
-        $phone = trim((string) ($fields['phone'] ?? ''));
+        $phone = self::normalizePhone(trim((string) ($fields['phone'] ?? '')));
         self::assertUnique($email, $phone);
+        self::assertUniqueName($fields['first_name'] ?? null, $fields['last_name'] ?? null, $fields['other_names'] ?? null);
         $passwordHash = null;
         if (!empty($fields['password'])) {
             $passwordHash = password_hash((string) $fields['password'], PASSWORD_DEFAULT);
@@ -652,6 +733,7 @@ class User
     public static function update(int $id, array $fields): void
     {
         self::assertUnique((string) ($fields['email'] ?? ''), (string) ($fields['phone'] ?? ''), $id);
+        self::assertUniqueName($fields['first_name'] ?? null, $fields['last_name'] ?? null, $fields['other_names'] ?? null, $id);
         $status = (string) ($fields['account_status'] ?? (!empty($fields['is_active']) ? 'active' : 'blocked'));
         if (!in_array($status, ['active', 'blocked', 'suspended'], true)) {
             $status = !empty($fields['is_active']) ? 'active' : 'blocked';
@@ -760,6 +842,15 @@ class User
         return null;
     }
 
+    /** Whether this password opens this account. */
+    public static function passwordMatches(int $id, string $password): bool
+    {
+        $stmt = Database::connection()->prepare('SELECT password_hash FROM users WHERE id = ?');
+        $stmt->execute([$id]);
+        $hash = (string) $stmt->fetchColumn();
+        return $hash !== '' && $password !== '' && password_verify($password, $hash);
+    }
+
     /** Locked: another account shares this account's email or phone, until the owner fixes it. */
     public static function isLocked(array $user): bool
     {
@@ -853,9 +944,17 @@ class User
         return $missing;
     }
 
+    /** Digits and "+" only; a local Kenyan number (07… / 01… / 2547…) gets the +254 country code. */
     public static function normalizePhone(string $phone): string
     {
-        return preg_replace('/[^0-9+]/', '', $phone);
+        $phone = preg_replace('/[^0-9+]/', '', $phone);
+        if (preg_match('/^0([17]\d{8})$/', $phone, $m)) {
+            return '+254' . $m[1];
+        }
+        if (preg_match('/^254([17]\d{8})$/', $phone, $m)) {
+            return '+254' . $m[1];
+        }
+        return $phone;
     }
 
     public static function hydrate(array $row): array

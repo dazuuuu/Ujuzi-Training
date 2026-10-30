@@ -98,6 +98,43 @@ class CertificateService
         return in_array(strtolower((string) pathinfo($path, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'webp', 'gif'], true);
     }
 
+    /**
+     * The branch a student's certificate for this course is issued under: the
+     * branch offering the course, else the branch the student belongs to in
+     * that organisation (e.g. National Police Service → DCI). Null when none.
+     */
+    public static function branchIdFor(array $course, int $userId): ?int
+    {
+        if (!empty($course['branch_id'])) {
+            return (int) $course['branch_id'];
+        }
+        if ($userId < 1 || empty($course['organisation_id'])) {
+            return null;
+        }
+        try {
+            $stmt = \App\Core\Database::connection()->prepare(
+                "SELECT branch_id FROM organisation_memberships
+                 WHERE user_id = ? AND organisation_id = ? AND status = 'approved' AND branch_id IS NOT NULL
+                 ORDER BY id DESC LIMIT 1"
+            );
+            $stmt->execute([$userId, (int) $course['organisation_id']]);
+            return (int) $stmt->fetchColumn() ?: null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /** "Parent organisation — Branch", or just the organisation when there is no branch. */
+    public static function organisationWithBranch(string $organisation, ?int $branchId): string
+    {
+        $branch = $branchId ? \App\Models\OrganisationBranch::find($branchId) : null;
+        $title = trim((string) ($branch['title'] ?? ''));
+        if ($title === '' || $organisation === '') {
+            return $organisation !== '' ? $organisation : $title;
+        }
+        return $organisation . ' — ' . $title;
+    }
+
     /** One course's certificate for one student, on that course organisation's design. */
     public static function payload(array $user, array $completedCourses): array
     {
@@ -105,16 +142,27 @@ class CertificateService
         $organisationId = (int) ($completedCourses[0]['organisation_id'] ?? 0) ?: null;
         $template = self::templatePath($organisationId);
         $owner = self::designOwner($organisationId);
+        $userId = (int) ($user['id'] ?? 0);
+        $record = null;
+        $courseOrganisation = implode(', ', array_values(array_unique(array_filter(array_map(
+            static fn(array $c): string => (string) ($c['organisation_name'] ?? ''),
+            $completedCourses
+        )))));
+        if (count($completedCourses) === 1) {
+            // One certificate per course: its own number, and the branch it was issued under.
+            $course = $completedCourses[0];
+            $record = CertificateRegistry::earnedRecord($userId, (int) ($course['id'] ?? 0), self::branchIdFor($course, $userId));
+            $branchId = $record ? ((int) ($record['branch_id'] ?? 0) ?: null) : self::branchIdFor($course, $userId);
+            $courseOrganisation = self::organisationWithBranch((string) ($course['organisation_name'] ?? ''), $branchId);
+        }
         return [
             'learner' => userFullName($user),
-            'registration_number' => (string) ($user['registration_number'] ?? (\App\Models\User::assignRegistrationNumber((int) ($user['id'] ?? 0)) ?? '')),
+            'registration_number' => (string) ($user['registration_number'] ?? (\App\Models\User::assignRegistrationNumber($userId) ?? '')),
+            'certificate_no' => (string) ($record['certificate_no'] ?? ''),
             'organisation' => (string) ($user['organisation_name'] ?? ''),
             'skills' => $skills,
             'course' => implode(', ', $skills),
-            'course_organisation' => implode(', ', array_values(array_unique(array_filter(array_map(
-                static fn(array $c): string => (string) ($c['organisation_name'] ?? ''),
-                $completedCourses
-            ))))),
+            'course_organisation' => $courseOrganisation,
             'issued' => date('j F Y'),
             'template' => $template,
             'is_pdf' => $template ? self::isPdf($template) : false,

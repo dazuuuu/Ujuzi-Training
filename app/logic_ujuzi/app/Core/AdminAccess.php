@@ -30,6 +30,8 @@ class AdminAccess
     /** First URL segment after /admin => section. Anything not listed is owner-only. */
     private const PATH_SECTIONS = [
         '' => 'dashboard',
+        'guide' => 'dashboard',
+        'change-requests' => 'users',
         'organisations' => 'organisations',
         'share-registration' => 'organisations',
         'users' => 'users',
@@ -37,16 +39,19 @@ class AdminAccess
         'roles' => 'roles',
         'forms' => 'forms',
         'attachments' => 'attachments',
+        'attachment-payments' => 'attachments',
         'finance' => 'finance',
         'reports' => 'reports',
         'student-lookup' => 'users',
         'documents' => 'documents',
         'certificate' => 'documents',
+        'certificates' => 'documents',
         'homepage' => 'homepage',
         'pages' => 'homepage',
         'theme' => 'homepage',
         'course-approvals' => 'organisations',
         'branch-deletions' => 'organisations',
+        'delete-requests' => 'organisations',
         'navigation' => 'navigation',
         'settings' => 'settings',
         'updates' => 'updates',
@@ -56,12 +61,12 @@ class AdminAccess
 
     /** Admin menu item id => section. */
     private const NAV_SECTIONS = [
-        'dashboard' => 'dashboard', 'roles' => 'roles', 'organisations' => 'organisations', 'share' => 'organisations',
+        'dashboard' => 'dashboard', 'guide' => 'dashboard', 'change-requests' => 'users', 'roles' => 'roles', 'organisations' => 'organisations', 'share' => 'organisations',
         'registered-users' => 'users', 'students' => 'users', 'attachment-providers' => 'users', 'course-organisations' => 'users',
         'forms' => 'forms', 'updates' => 'updates', 'attachments' => 'attachments', 'finance' => 'finance',
         'reports' => 'reports', 'student-lookup' => 'users',
-        'documents' => 'documents', 'data-cleanup' => 'data-cleanup', 'navigation' => 'navigation', 'settings' => 'settings',
-        'homepage' => 'homepage', 'pages' => 'homepage', 'course-approvals' => 'organisations', 'admins' => 'admins',
+        'documents' => 'documents', 'certificates' => 'documents', 'data-cleanup' => 'data-cleanup', 'navigation' => 'navigation', 'settings' => 'settings',
+        'homepage' => 'homepage', 'pages' => 'homepage', 'course-approvals' => 'organisations', 'delete-requests' => 'organisations', 'admins' => 'admins',
     ];
 
     public static function sectionForPath(string $path): string

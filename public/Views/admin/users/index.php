@@ -18,13 +18,17 @@ require __DIR__ . '/../layout-header.php';
   </div>
 
   <?php if (!empty($isStudentSheet)):
-    $sheetUsers = $groupedUsers ? array_values($groupedUsers)[0]['users'] : [];
-    $columns = ['Reg. No.', 'First name', 'Other names', 'Last name', 'Email', 'Phone', 'Organisation', 'Registered', 'Status', 'Actions'];
+    $sheetUsers = $users;
+    $columns = ['Reg. No.', 'First name', 'Other names', 'Last name', 'Role', 'Email', 'Phone', 'Organisation', 'Registered', 'Status', 'Actions'];
+    $exportQs = http_build_query(array_filter(['role_slug' => $filters['role_slug'] ?? '', 'q' => $filters['q'] ?? '', 'export' => 'xlsx']));
   ?>
   <section class="space-y-3" data-live-search-group>
     <div class="flex items-center justify-between gap-3">
-      <span class="text-xs font-bold text-neutral-600"><?= count($sheetUsers) ?> students</span>
-      <a href="<?= url('/admin/users?role_slug=student&export=xlsx' . (!empty($filters['q']) ? '&q=' . urlencode($filters['q']) : '')) ?>" class="btn-secondary">Download Excel</a>
+      <span class="text-xs font-bold text-neutral-600"><?= count($sheetUsers) ?> <?= count($sheetUsers) === 1 ? 'person' : 'people' ?></span>
+      <span class="flex gap-2 print:hidden">
+        <a href="<?= url('/admin/users') . '?' . e($exportQs) ?>" class="btn-secondary">Download Excel</a>
+        <button type="button" class="btn-secondary" onclick="window.print()">Print</button>
+      </span>
     </div>
     <div class="overflow-x-auto rounded-md border border-neutral-400 bg-white">
       <table class="excel-table excel-sheet">
@@ -49,6 +53,7 @@ require __DIR__ . '/../layout-header.php';
               <td><a href="<?= url('/admin/users/' . (int) $person['id']) ?>" class="text-black no-underline hover:underline"><?= e($person['first_name'] ?? '') ?></a></td>
               <td><?= e($person['other_names'] ?? '') ?></td>
               <td><?= e($person['last_name'] ?? '') ?></td>
+              <td><?= e($person['role_name'] ?? '') ?></td>
               <td><?= e($person['email'] ?? '') ?></td>
               <td><?= e($person['phone'] ?? '') ?></td>
               <td><?= e($person['organisation_name'] ?? '') ?></td>

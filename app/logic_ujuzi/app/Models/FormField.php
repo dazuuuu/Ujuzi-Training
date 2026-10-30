@@ -116,6 +116,13 @@ class FormField
             $label = $location !== '' ? $title . ' (' . $location . ')' : $title;
             return $org !== '' ? $label . ' - ' . $org : $label;
         }
+        if (($field['field_type'] ?? '') === 'id_document') {
+            if (!is_array($value)) {
+                return (string) $value; // an old plain-text answer
+            }
+            $number = trim((string) ($value['number'] ?? ''));
+            return $number === '' ? '—' : trim((string) ($value['type'] ?? '')) . ': ' . $number;
+        }
         if (($field['field_type'] ?? '') === 'duration') {
             if (!is_array($value)) {
                 return '—';

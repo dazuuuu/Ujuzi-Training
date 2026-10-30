@@ -115,7 +115,7 @@ class BranchAdminController extends BaseAccountController
     {
         // Completing at the branch is the final approval — it generates the
         // student's recommendation letter, no separate org-level certify step.
-        $this->decide((int) $id, AttachmentApplication::STATUS_RECOMMENDED, [AttachmentApplication::STATUS_ACCEPTED]);
+        $this->decide((int) $id, AttachmentApplication::STATUS_RECOMMENDED, [AttachmentApplication::STATUS_PENDING, AttachmentApplication::STATUS_PAUSED, AttachmentApplication::STATUS_ACCEPTED]);
     }
 
     private function decide(int $id, string $newStatus, array $fromStatuses): void
@@ -144,7 +144,7 @@ class BranchAdminController extends BaseAccountController
             redirect('/account/branch-admin');
         }
 
-        if ($newStatus === AttachmentApplication::STATUS_RECOMMENDED && !\App\Models\AttachmentAssessment::isMarked($id)) {
+        if ($newStatus === AttachmentApplication::STATUS_RECOMMENDED && AttachmentApplication::needsAssessment($application) && !\App\Models\AttachmentAssessment::isMarked($id)) {
             flashError(\App\Models\AttachmentAssessment::NOT_MARKED);
             redirect('/account/attachment-requests/' . $id . '#assessment');
         }

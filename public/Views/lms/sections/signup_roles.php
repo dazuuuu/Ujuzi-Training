@@ -1,7 +1,6 @@
 <?php
 $signupRoles = [
     [$c['student_title'] ?? 'Student', $c['student_text'] ?? '', '/account/register', 'graduation'],
-    [$c['provider_title'] ?? 'Organisation providing attachment', $c['provider_text'] ?? '', '/account/register/attachment-trainer', 'briefcase'],
 ];
 ?>
 <div class="pb-roles">

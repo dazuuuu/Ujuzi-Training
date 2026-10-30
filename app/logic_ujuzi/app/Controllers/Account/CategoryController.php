@@ -65,12 +65,11 @@ class CategoryController extends BaseAccountController
             redirect('/account/categories');
         }
         $category = $this->ownedCategory((int) $id);
-        try {
-            OrganisationCategory::delete((int) $category['id']);
-            flashSuccess('Category deleted.');
-        } catch (\Throwable $e) {
-            flashError('That category cannot be deleted while courses still use it.');
-        }
+        // Super Admin deletes it on approval.
+        $error = \App\Models\DeletionRequest::request('category', (int) $category['id'], (string) $category['name'], (string) ($this->user['organisation_name'] ?? ''), (int) $this->user['id'], (string) Request::post('reason', ''));
+        $error === null
+            ? flashSuccess('Delete request sent to Super Admin. It is deleted once Super Admin approves.')
+            : flashError($error);
         redirect('/account/categories');
     }
 

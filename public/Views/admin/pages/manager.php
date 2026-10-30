@@ -13,7 +13,7 @@ $builtIn = PageBuilder::PAGES;
       <h1 class="mt-1 text-2xl font-black text-black">Pages</h1>
       <p class="mt-1 max-w-2xl text-sm font-medium text-neutral-700">Every page of the website. Build any public page with the section editor, make new pages, and set the look of the whole site — portals included — under Theme.</p>
     </div>
-    <a href="<?= url('/admin/theme') ?>" class="btn-primary">🎨 Theme &amp; template import</a>
+    <span class="flex flex-wrap gap-2"><a href="<?= url('/admin/pages/subscribers') ?>" class="btn-secondary">Newsletter subscribers</a><a href="<?= url('/admin/theme') ?>" class="btn-primary">🎨 Theme &amp; template import</a></span>
   </section>
 
   <section class="rounded-xl border bg-white p-5 shadow-sm space-y-3" style="border-color:var(--ke-line)">

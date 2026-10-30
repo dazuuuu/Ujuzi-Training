@@ -11,7 +11,8 @@ use App\Core\Env;
 use App\Core\Database;
 
 Env::load();
-$pdo = Database::connection();
+// Re-running an update that stopped half way skips the steps it already did.
+$pdo = \App\Core\RerunnablePdo::open();
 
 $fresh = in_array('--fresh', $argv, true);
 

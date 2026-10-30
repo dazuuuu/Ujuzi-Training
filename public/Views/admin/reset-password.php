@@ -12,6 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="<?= asset('assets/css/tailwind.css') ?>">
   <link rel="stylesheet" href="<?= asset('assets/css/app.css') ?>">
+  <script defer src="<?= asset('assets/js/password-reveal.js') ?>"></script>
 </head>
 <body class="antialiased min-h-screen flex flex-col" style="background:var(--ke-black);color:var(--ke-white)">
   <div class="flag-stripe" aria-hidden="true"></div>

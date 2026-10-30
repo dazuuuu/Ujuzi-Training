@@ -106,34 +106,82 @@ class PeopleController extends BaseAccountController
             redirect('/account/people/import');
         }
 
-        $handle = fopen($file['tmp_name'], 'r');
-        if (!$handle) {
+        if (preg_match('/\.(xlsx?|ods)$/i', (string) ($file['name'] ?? ''))) {
+            flashError('That is an Excel file. In Excel: File → Save As → CSV (Comma delimited), then upload the .csv file.');
+            redirect('/account/people/import');
+        }
+        $raw = @file_get_contents($file['tmp_name']);
+        if ($raw === false) {
             flashError('Could not read that file.');
             redirect('/account/people/import');
         }
+        // Excel files often start with a hidden byte-order mark, may be UTF-16, and
+        // may use ; or tabs instead of commas (depending on the computer's region).
+        if (str_starts_with($raw, "\xFF\xFE") || str_starts_with($raw, "\xFE\xFF")) {
+            $raw = (string) mb_convert_encoding($raw, 'UTF-8', 'UTF-16');
+        }
+        $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
+        if (!mb_check_encoding($raw, 'UTF-8')) {
+            $raw = (string) mb_convert_encoding($raw, 'UTF-8', 'Windows-1252');
+        }
+        $raw = str_replace(["\r\n", "\r"], "\n", $raw);
+        $firstLine = strtok($raw, "\n") ?: '';
+        $delimiter = ',';
+        foreach ([';', "\t"] as $candidate) {
+            if (substr_count($firstLine, $candidate) > substr_count($firstLine, $delimiter)) {
+                $delimiter = $candidate;
+            }
+        }
+        $handle = fopen('php://temp', 'r+');
+        fwrite($handle, $raw);
+        rewind($handle);
 
-        $header = fgetcsv($handle);
-        if (!$header) {
+        $header = fgetcsv($handle, null, $delimiter, '"', '');
+        if (!$header || trim(implode('', array_map('strval', $header))) === '') {
             fclose($handle);
             flashError('That file looks empty.');
             redirect('/account/people/import');
         }
-        $header = array_map(static fn($col): string => strtolower(trim((string) $col)), $header);
-        $nameCol = array_search('name', $header, true);
-        $emailCol = array_search('email', $header, true);
-        if ($nameCol === false || $emailCol === false) {
+        // Accept the usual ways people title their columns ("Full name", "Email address", First/Last name…).
+        $header = array_map(static fn($col): string => trim(preg_replace('/[^a-z]+/', ' ', strtolower((string) $col))), $header);
+        $find = static function (array $names) use ($header) {
+            foreach ($header as $i => $col) {
+                if (in_array($col, $names, true)) {
+                    return $i;
+                }
+            }
+            return false;
+        };
+        $nameCol = $find(['name', 'names', 'full name', 'full names', 'fullname', 'student name', 'name of student']);
+        $firstCol = $find(['first name', 'firstname', 'given name']);
+        $otherCol = $find(['other names', 'other name', 'middle name', 'middle names']);
+        $lastCol = $find(['last name', 'lastname', 'surname', 'family name']);
+        $emailCol = $find(['email', 'e mail', 'email address', 'e mail address', 'mail']);
+        if (($nameCol === false && $firstCol === false) || $emailCol === false) {
             fclose($handle);
-            flashError('The CSV needs a "name" column and an "email" column.');
+            flashError('The CSV needs a "name" column (or "first name" and "last name") and an "email" column. Columns found: ' . (implode(', ', array_filter($header)) ?: 'none') . '.');
             redirect('/account/people/import');
         }
 
         $created = 0;
         $skipped = 0;
+        $problems = [];
         $organisationId = (int) $this->user['organisation_id'];
-        while (($row = fgetcsv($handle)) !== false) {
-            $name = trim((string) ($row[$nameCol] ?? ''));
-            $email = strtolower(trim((string) ($row[$emailCol] ?? '')));
-            if ($name === '' || $email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        while (($row = fgetcsv($handle, null, $delimiter, '"', '')) !== false) {
+            if ($row === [null] || trim(implode('', array_map('strval', $row))) === '') {
+                continue; // blank line
+            }
+            $cell = static fn($col): string => $col === false ? '' : trim(preg_replace('/\s+/', ' ', (string) ($row[$col] ?? '')));
+            $email = strtolower($cell($emailCol));
+            if ($nameCol !== false && $cell($nameCol) !== '') {
+                [$firstName, $lastName] = array_pad(explode(' ', $cell($nameCol), 2), 2, '');
+                $otherNames = '';
+            } else {
+                $firstName = $cell($firstCol);
+                $lastName = $cell($lastCol);
+                $otherNames = $cell($otherCol);
+            }
+            if ($firstName === '' || $email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 $skipped++;
                 continue;
             }
@@ -141,19 +189,26 @@ class PeopleController extends BaseAccountController
                 $skipped++;
                 continue;
             }
-            [$firstName, $lastName] = array_pad(explode(' ', $name, 2), 2, '');
 
-            $newId = User::create([
-                'email' => $email,
-                'phone' => '',
-                'first_name' => $firstName,
-                'last_name' => $lastName,
-                'role_id' => $roleId,
-                'organisation_id' => $organisationId,
-                'is_active' => 1,
-                'password' => User::DEFAULT_PASSWORD,
-                'must_change_password' => 1,
-            ]);
+            try {
+                $newId = User::create([
+                    'email' => $email,
+                    'phone' => '',
+                    'first_name' => $firstName,
+                    'last_name' => $lastName,
+                    'other_names' => $otherNames,
+                    'role_id' => $roleId,
+                    'organisation_id' => $organisationId,
+                    'is_active' => 1,
+                    'password' => User::DEFAULT_PASSWORD,
+                    'must_change_password' => 1,
+                ]);
+            } catch (\Throwable $e) {
+                // e.g. someone with the same full name already has an account — skip this row, keep importing.
+                $skipped++;
+                $problems[] = $email . ': ' . $e->getMessage();
+                continue;
+            }
             $this->markApprovedMember($newId, $organisationId);
             try {
                 MailerService::sendAccountCreated(
@@ -169,7 +224,10 @@ class PeopleController extends BaseAccountController
         }
         fclose($handle);
 
-        flashSuccess("Imported {$created} " . ($created === 1 ? 'person' : 'people') . ($skipped ? ", skipped {$skipped} (missing/invalid/duplicate email)." : '.'));
+        flashSuccess("Imported {$created} " . ($created === 1 ? 'person' : 'people') . ($skipped ? ", skipped {$skipped} (missing/invalid/duplicate email or name)." : '.'));
+        if ($problems) {
+            flashError('Not imported: ' . implode(' · ', array_slice($problems, 0, 5)) . (count($problems) > 5 ? ' · and ' . (count($problems) - 5) . ' more.' : ''));
+        }
         redirect('/account/people');
     }
 
@@ -310,13 +368,13 @@ class PeopleController extends BaseAccountController
         if ($email !== '') {
             $existing = User::findByIdentifier('email', $email);
             if ($existing && (int) $existing['id'] !== (int) $id) {
-                $errors[] = 'That email is already used by another user.';
+                $errors[] = 'An account already exists in the system with this email.';
             }
         }
         if ($phone !== '') {
             $existing = User::findByPhone($phone);
             if ($existing && (int) $existing['id'] !== (int) $id) {
-                $errors[] = 'That phone number is already used by another user.';
+                $errors[] = 'An account already exists in the system with this phone number.';
             }
         }
 

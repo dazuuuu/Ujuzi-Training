@@ -10,37 +10,17 @@
 use App\Core\AdminSession;
 use App\Services\MigrationService;
 
-$navItems = [
-    ['id' => 'dashboard', 'href' => url('/admin'), 'label' => 'Dashboard'],
-    ['id' => 'roles', 'href' => url('/admin/roles'), 'label' => 'Roles'],
-    ['id' => 'organisations', 'href' => url('/admin/organisations'), 'label' => 'Organisations'],
-    ['id' => 'share', 'href' => url('/admin/share-registration'), 'label' => 'Share registration'],
-    ['id' => 'registered-users', 'href' => url('/admin/registered-users'), 'label' => 'Registered users'],
-    ['id' => 'students', 'href' => url('/admin/registered-users?role_slug=student'), 'label' => 'Students'],
-    ['id' => 'attachment-providers', 'href' => url('/admin/registered-users?role_slug=attachment_trainer'), 'label' => 'Attachment providers'],
-    ['id' => 'course-organisations', 'href' => url('/admin/registered-users?role_slug=organisation_admin'), 'label' => 'Organisations providing courses'],
-    ['id' => 'course-approvals', 'href' => url('/admin/course-approvals'), 'label' => 'Approvals' . (($n = count(\App\Models\Course::pendingApproval()) + count(\App\Models\BranchDeletionRequest::pending())) ? ' (' . $n . ')' : '')],
-    ['id' => 'forms', 'href' => url('/admin/forms'), 'label' => 'Forms'],
-    ['id' => 'updates', 'href' => url('/admin/updates'), 'label' => 'Updates'],
-    ['id' => 'attachments', 'href' => url('/admin/attachments'), 'label' => 'Attachments'],
-    ['id' => 'finance', 'href' => url('/admin/finance'), 'label' => 'Finance'],
-    ['id' => 'reports', 'href' => url('/admin/reports'), 'label' => 'Reports'],
-    ['id' => 'student-lookup', 'href' => url('/admin/student-lookup'), 'label' => 'Student lookup'],
-    ['id' => 'documents', 'href' => url('/admin/documents'), 'label' => 'Documents'],
-    ['id' => 'data-cleanup', 'href' => url('/admin/data-cleanup'), 'label' => 'Data Cleanup'],
-    ['id' => 'navigation', 'href' => url('/admin/navigation'), 'label' => 'Navigation'],
-    ['id' => 'pages', 'href' => url('/admin/pages'), 'label' => 'Public pages'],
-    ['id' => 'homepage', 'href' => url('/admin/homepage'), 'label' => 'Logos & featured courses'],
-    ['id' => 'settings', 'href' => url('/admin/settings'), 'label' => 'Settings'],
-    ['id' => 'admins', 'href' => url('/admin/admins'), 'label' => 'Admins'],
-];
-$navIcons = [
-    'dashboard' => 'dashboard', 'roles' => 'settings', 'organisations' => 'building', 'share' => 'arrow-right',
-    'registered-users' => 'users', 'students' => 'graduation', 'attachment-providers' => 'briefcase',
-    'course-organisations' => 'building', 'forms' => 'file', 'updates' => 'download', 'attachments' => 'briefcase',
-    'finance' => 'wallet', 'documents' => 'file', 'data-cleanup' => 'x', 'navigation' => 'menu', 'settings' => 'settings',
-    'homepage' => 'dashboard', 'pages' => 'globe', 'course-approvals' => 'check', 'admins' => 'user', 'reports' => 'chart', 'student-lookup' => 'search',
-];
+// Super Admin's own menu — order and names are set under Navigation.
+$navCounts = [];
+try { $navCounts['course-approvals'] = count(\App\Models\Course::pendingApproval()); } catch (Throwable $e) {}
+try { $navCounts['delete-requests'] = count(\App\Models\DeletionRequest::pending()); } catch (Throwable $e) {}
+try { $navCounts['change-requests'] = \App\Models\ChangeRequest::pendingCount(); } catch (Throwable $e) {}
+$navItems = [];
+$navIcons = [];
+foreach (\App\Core\AccountNav::orderedItems(\App\Core\AccountNav::PORTAL_ADMIN) as $navId => [$navIcon, $navLabel, $navHref]) {
+    $navItems[] = ['id' => $navId, 'href' => url($navHref), 'label' => $navLabel . (!empty($navCounts[$navId]) ? ' (' . $navCounts[$navId] . ')' : '')];
+    $navIcons[$navId] = $navIcon;
+}
 $admin = AdminSession::current();
 // Limited admins only see the sections they were given.
 if ($admin) {
@@ -129,12 +109,12 @@ try {
     </header>
     <nav class="app-tabbar is-admin" aria-label="Main">
       <?php foreach ([['dashboard', 'Home'], ['attachments', 'Attachments'], ['finance', 'Finance'], ['registered-users', 'Users']] as [$tabId, $tabLabel]):
-        $tab = null;
-        foreach ($navItems as $item) { if ($item['id'] === $tabId) { $tab = $item; break; } }
-        if (!$tab) { continue; }
+        $tabItem = null;
+        foreach ($navItems as $item) { if ($item['id'] === $tabId) { $tabItem = $item; break; } }
+        if (!$tabItem) { continue; }
         $isHere = ($activeNav ?? '') === $tabId;
       ?>
-        <a href="<?= e($tab['href']) ?>" class="app-tab <?= $isHere ? 'is-active' : '' ?>" <?= $isHere ? 'aria-current="page"' : '' ?>>
+        <a href="<?= e($tabItem['href']) ?>" class="app-tab <?= $isHere ? 'is-active' : '' ?>" <?= $isHere ? 'aria-current="page"' : '' ?>>
           <?= icon($navIcons[$tabId] ?? 'more', 'h-6 w-6') ?><span><?= e($tabLabel) ?></span>
         </a>
       <?php endforeach; ?>

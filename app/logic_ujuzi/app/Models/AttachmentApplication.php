@@ -336,7 +336,9 @@ class AttachmentApplication
                 }
             }
         }
-        if ($role === 'attachment_trainer' && !$application['branch_id'] && $application['provider_user_id'] === (int) $user['id']) {
+        // The organisation providing attachment sees all its requests (its
+        // branch admins handle the ones for their branch).
+        if ($role === 'attachment_trainer' && (int) $application['provider_user_id'] === (int) $user['id']) {
             return $application;
         }
         return null;
@@ -369,7 +371,11 @@ class AttachmentApplication
         $where = ['1 = 1'];
         $params = [];
         $status = (string) ($filters['status'] ?? '');
-        if ($status === self::STATUS_COMPLETED) {
+        if ($status === 'ongoing') {
+            $where[] = "a.status IN ('accepted', 'paused')";
+        } elseif ($status === 'ongoing_or_completed') {
+            $where[] = "a.status IN ('accepted', 'paused', 'completed', 'recommended')";
+        } elseif ($status === self::STATUS_COMPLETED) {
             $where[] = "a.status IN ('completed', 'recommended')";
         } elseif (in_array($status, [self::STATUS_PENDING, self::STATUS_ACCEPTED, self::STATUS_PAUSED, self::STATUS_REJECTED], true)) {
             $where[] = 'a.status = ?';
@@ -389,6 +395,35 @@ class AttachmentApplication
                 $where[] = "a.selected_at $op ?";
                 $params[] = $key === 'to' ? date('Y-m-d', strtotime($date . ' +1 day')) : $date;
             }
+        }
+        // When the attachment was finished (recommended, else completed) — for payment lists.
+        foreach (['completed_from' => '>=', 'completed_to' => '<'] as $key => $op) {
+            $date = (string) ($filters[$key] ?? '');
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+                $where[] = "COALESCE(a.recommended_at, a.completed_at) $op ?";
+                $params[] = $key === 'completed_to' ? date('Y-m-d', strtotime($date . ' +1 day')) : $date;
+            }
+        }
+        // When the attachment started (accepted) — for ongoing attachments.
+        foreach (['accepted_from' => '>=', 'accepted_to' => '<'] as $key => $op) {
+            $date = (string) ($filters[$key] ?? '');
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+                $where[] = "a.accepted_at $op ?";
+                $params[] = $key === 'accepted_to' ? date('Y-m-d', strtotime($date . ' +1 day')) : $date;
+            }
+        }
+        // Finished or, while still on attachment, started in the range.
+        foreach (['active_from' => '>=', 'active_to' => '<'] as $key => $op) {
+            $date = (string) ($filters[$key] ?? '');
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+                $where[] = "COALESCE(a.recommended_at, a.completed_at, a.accepted_at) $op ?";
+                $params[] = $key === 'active_to' ? date('Y-m-d', strtotime($date . ' +1 day')) : $date;
+            }
+        }
+        if (!empty($filters['provider_ids'])) {
+            $ids = array_values(array_filter(array_map('intval', (array) $filters['provider_ids'])));
+            $where[] = $ids ? 'a.provider_user_id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')' : '0 = 1';
+            array_push($params, ...$ids);
         }
         if (array_key_exists('branch_ids', $filters)) {
             $ids = array_values(array_filter(array_map('intval', (array) $filters['branch_ids'])));
@@ -453,8 +488,57 @@ class AttachmentApplication
         )->execute([$status, $note, $id]);
         if ($status === self::STATUS_RECOMMENDED) {
             AttachmentAssessment::share($id); // the course's organisation now sees how they did
+            self::completeWaitingCourses($id);
         }
         \App\Services\Notifier::attachmentStatus($id, $status);
+    }
+
+    /**
+     * Whether completing this attachment needs the assessment marked first:
+     * only when it counts towards a course that requires attachment (its marks
+     * are 10% of that course's grade). Otherwise the marks are void.
+     */
+    public static function needsAssessment(array $application): bool
+    {
+        $student = (int) $application['student_user_id'];
+        if (!empty($application['course_id'])) {
+            $course = Course::find((int) $application['course_id']);
+            return $course !== null && !empty($course['requires_attachment']);
+        }
+        // A general attachment counts for every course the student is on.
+        foreach (AttachmentAudience::studentCourses($student) as $course) {
+            if (!empty($course['requires_attachment'])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** The courses that were only waiting for this attachment are now completed. */
+    private static function completeWaitingCourses(int $id): void
+    {
+        try {
+            $stmt = Database::connection()->prepare('SELECT student_user_id, course_id FROM attachment_applications WHERE id = ?');
+            $stmt->execute([$id]);
+            $row = $stmt->fetch();
+            if (!$row) {
+                return;
+            }
+            $student = (int) $row['student_user_id'];
+            $courseIds = !empty($row['course_id']) ? [(int) $row['course_id']] : array_keys(AttachmentAudience::studentCourses($student));
+            foreach ($courseIds as $courseId) {
+                \App\Services\CourseRetake::recordCompletionIfDone($student, (int) $courseId);
+            }
+        } catch (\Throwable $e) {
+            // Completion is also worked out again whenever the course is opened.
+        }
+    }
+
+    /** The student's attachment counting for this course is completed (by the provider or its branch). */
+    public static function completedForCourse(int $studentUserId, int $courseId): bool
+    {
+        return self::hasCompletedAttachment($studentUserId)
+            || in_array($courseId, self::certifiableCourseIdsForStudent($studentUserId), true);
     }
 
     public static function hasCompletedAttachment(int $studentUserId): bool

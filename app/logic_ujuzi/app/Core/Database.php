@@ -5,17 +5,17 @@ namespace App\Core;
 use PDO;
 
 /**
- * The installation's settings and the database connection — the one file to
- * edit on each host.
+ * The installation's settings and the database connection — the one file
+ * that holds them. Edit the values below, or let the /setup page fill them in.
  */
 class Database
 {
     public const SETTINGS = [
         'DB_HOST' => '127.0.0.1',
         'DB_PORT' => '3306',
-        'DB_NAME' => 'ujuzi_training',
-        'DB_USER' => 'root',
-        'DB_PASS' => '',
+        'DB_NAME' => 'u388216137_demo',
+        'DB_USER' => 'u388216137_Super',
+        'DB_PASS' => 'Ujuzi@2027',
 
         // Exact URL the public folder is served at, no trailing slash, e.g.
         // https://example.com or https://dazuaihub.com/Ujuzi/public. Blank = work it out from the request.
@@ -31,6 +31,12 @@ class Database
 
     private static ?PDO $connection = null;
 
+    /** Forget the open connection (after /setup changes the settings). */
+    public static function reset(): void
+    {
+        self::$connection = null;
+    }
+
     public static function connection(): PDO
     {
         if (self::$connection === null) {
@@ -40,6 +46,16 @@ class Database
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES => false,
             ]);
+            // Speak the database's own collation so bound values never clash with
+            // columns ("Illegal mix of collations" on hosts whose default differs).
+            try {
+                $collation = (string) self::$connection->query('SELECT @@collation_database')->fetchColumn();
+                if (preg_match('/^utf8mb4_[a-z0-9_]+$/', $collation)) {
+                    self::$connection->exec("SET NAMES utf8mb4 COLLATE {$collation}");
+                }
+            } catch (\Throwable $e) {
+                // Keep the driver default.
+            }
         }
         return self::$connection;
     }

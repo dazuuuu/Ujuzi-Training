@@ -88,10 +88,12 @@ switch ($type) {
         echo '<div class="name-grid">';
         echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">First name</label><input type="text" name="' . e($name) . '[first]" value="' . e($first) . '"' . $nameAttrs . ' class="' . $nameClass . '" /></div>';
         echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Last name</label><input type="text" name="' . e($name) . '[last]" value="' . e($last) . '"' . ($locked ? ' readonly' : '') . ' class="' . $nameClass . '" /></div>';
-        echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Other names</label><input type="text" name="' . e($name) . '[other]" value="' . e($other) . '" class="' . $class . '" /></div>';
+        // Other names lock too once saved, like first and last name.
+        $otherLocked = $locked && $other !== '';
+        echo '<div><label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Other names</label><input type="text" name="' . e($name) . '[other]" value="' . e($other) . '"' . ($otherLocked ? ' readonly' : '') . ' class="' . ($otherLocked ? $lockedClass : $class) . '" /></div>';
         echo '</div>';
         if ($locked) {
-            echo '<p class="field-hint">First and last name were set when your account was created — contact your organisation admin to change them.</p>';
+            echo '<p class="field-hint">' . ($otherLocked ? 'Your names' : 'First and last name') . ' can\'t be changed here once saved. To correct them, use <a href="' . e(url('/account/profile#change-request')) . '" class="underline">Request a change</a> — Super Admin approves it.</p>';
         }
         break;
 
@@ -137,7 +139,8 @@ switch ($type) {
     case 'radio':
     case 'yesno':
         $opts = $type === 'yesno' ? ['Yes', 'No'] : $options;
-        $current = (string) $value;
+        // A field changed from checkboxes to radio buttons keeps its first saved choice.
+        $current = is_array($value) ? (string) (reset($value) ?: '') : (string) $value;
         $usingOther = $allowOther && $type === 'radio' && $isOtherSelected($current, $opts);
         echo '<div class="js-choice-field">';
         echo '<div class="choice-grid cols-' . (int) $columns . '">';
@@ -403,6 +406,25 @@ switch ($type) {
         echo '<input type="search" autocomplete="off" class="' . $class . ' js-provider-search-input" placeholder="' . e($placeholder ?: 'Search attachment provider') . '" />';
         echo '<div class="js-provider-selected mt-2 flex flex-wrap gap-2"></div><div class="js-provider-results mt-2 hidden rounded-lg border border-neutral-200 bg-white shadow-sm"></div></div>';
         echo '<p class="field-hint">Choose the attachment provider whose saved branches should be available.</p>';
+        break;
+
+    case 'id_document':
+        // Pick one document, then its number — always required.
+        $docType = is_array($value) ? (string) ($value['type'] ?? '') : '';
+        $docNumber = is_array($value) ? (string) ($value['number'] ?? '') : (string) $value;
+        $docViewer = $currentUser ?? \App\Core\UserSession::current();
+        if ($docNumber !== '' && is_array($value) && is_array($docViewer)) {
+            // Saved: it changes only through a change request Super Admin approves.
+            echo '<p class="mt-1 text-sm font-semibold">' . e(trim($docType . ': ' . $docNumber, ': ')) . '</p>';
+            echo '<p class="field-hint">Locked. To correct it, use <a href="' . e(url('/account/profile#change-request')) . '" class="underline">Request a change</a> — Super Admin approves it.</p>';
+            break;
+        }
+        echo '<div class="choice-grid cols-3 mt-1">';
+        foreach (FormFieldTypes::idDocumentTypes() as $doc) {
+            echo '<label class="flex items-center gap-2 text-sm font-semibold"><input type="radio" name="' . e($name) . '[type]" value="' . e($doc) . '" ' . ($docType === $doc ? 'checked' : '') . ' required class="h-4 w-4" />' . e($doc) . '</label>';
+        }
+        echo '</div>';
+        echo '<input type="text" name="' . e($name) . '[number]" value="' . e($docNumber) . '" required maxlength="30" placeholder="' . e($placeholder ?: 'Document number') . '" class="' . $class . '" />';
         break;
 
     case 'branch_select':

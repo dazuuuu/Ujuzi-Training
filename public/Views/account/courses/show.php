@@ -5,7 +5,7 @@ $canEdit = !empty($canEdit);
 $isStudent = !empty($isStudent);
 $isEnrolled = !empty($isEnrolled);
 $editingModule = $editingModule ?? null;
-$moduleForm = $moduleForm ?? ['title' => '', 'description' => '', 'summary' => '', 'notes' => '', 'duration_minutes' => 10, 'video_source' => 'upload', 'video_url' => '', 'quiz_questions' => [], 'pass_percent' => 80];
+$moduleForm = $moduleForm ?? ['title' => '', 'description' => '', 'summary' => '', 'notes' => '', 'duration_minutes' => 10, 'video_source' => 'upload', 'video_url' => '', 'quiz_questions' => [], 'pass_percent' => 50];
 if (empty($moduleForm['quiz_questions'])) {
     $moduleForm['quiz_questions'] = [['question' => '', 'type' => 'single_choice', 'options' => ['', ''], 'correct' => 0, 'accepted_answers' => []]];
 }
@@ -13,7 +13,7 @@ $finalQuestions = $course['final_exam_questions'] ?? [];
 if (!$finalQuestions) {
     $finalQuestions = [['question' => '', 'type' => 'single_choice', 'options' => ['', ''], 'correct' => 0, 'accepted_answers' => []]];
 }
-$finalPassPercent = (int) ($course['final_pass_percent'] ?? 80);
+$finalPassPercent = (int) ($course['final_pass_percent'] ?? \App\Models\Course::FINAL_PASS_PERCENT);
 $finalProgress = $finalProgress ?? null;
 $modulesComplete = !empty($modulesComplete);
 $attachmentApplication = $attachmentApplication ?? null;
@@ -41,7 +41,7 @@ require __DIR__ . '/../layout-header.php';
         <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">Course</p>
         <h1 class="mt-2 font-serif-heading text-3xl font-bold"><?= e($course['title'] ?? 'Course') ?></h1>
         <p class="mt-1 text-sm font-semibold" style="color:var(--ke-muted)">
-          <?= e($course['category_name'] ?? '') ?> · <?= e($course['organisation_name'] ?? '') ?>
+          <?= e($course['category_name'] ?? '') ?> · <?= e($course['organisation_name'] ?? '') ?><?= ($courseBranch = \App\Models\Course::branchTitle($course)) !== '' ? ' — ' . e($courseBranch) : '' ?>
           <?php $courseDuration = \App\Models\FormField::formatAnswer(['field_type' => 'duration'], (is_array($course['answers'] ?? null) ? $course['answers']['course_duration'] ?? null : null)); ?>
           <?php if ($courseDuration !== '—'): ?> · <?= e($courseDuration) ?><?php endif; ?>
         </p>
@@ -62,10 +62,7 @@ require __DIR__ . '/../layout-header.php';
       <div class="flex flex-wrap items-center gap-2">
         <?php if ($canEdit): ?>
           <a href="<?= url('/account/courses/' . (int) $course['id'] . '/edit') ?>" class="btn-secondary">Edit details</a>
-          <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/delete') ?>" onsubmit="return confirm('Delete this course and its modules?');">
-            <?= csrfField() ?>
-            <button type="submit" class="btn-danger">Delete</button>
-          </form>
+          <?php $drType = 'course'; $drId = (int) $course['id']; $drAction = url('/account/courses/' . (int) $course['id'] . '/delete'); $drWhat = 'this course and its modules'; require __DIR__ . '/../partials/delete-request.php'; ?>
         <?php endif; ?>
         <?php if ($canEdit && isset($course['approval_status']) && $course['approval_status'] !== 'approved'): ?>
     <section class="rounded-xl border p-4 text-sm font-semibold" role="status" style="<?= $course['approval_status'] === 'rejected' ? 'border-color:#fecaca;background:#fef2f2;color:var(--ke-red)' : 'border-color:#fde68a;background:#fffbeb;color:#92400e' ?>">
@@ -104,6 +101,12 @@ require __DIR__ . '/../layout-header.php';
     <?php endif; ?>
     <?php if (!empty($course['description'])): ?>
       <p class="text-sm font-medium text-neutral-700"><?= nl2br(e($course['description'])) ?></p>
+    <?php endif; ?>
+    <?php if ($reqs = \App\Models\Course::requirementsList($course)): ?>
+      <div>
+        <p class="text-xs font-black uppercase tracking-widest text-neutral-500">Requirements</p>
+        <ul class="mt-1 list-disc pl-5 text-sm font-medium text-neutral-700"><?php foreach ($reqs as $req): ?><li><?= e($req) ?></li><?php endforeach; ?></ul>
+      </div>
     <?php endif; ?>
     <?php if ($materials): ?>
       <div>
@@ -338,7 +341,7 @@ require __DIR__ . '/../layout-header.php';
           <p class="text-sm font-medium" style="color:var(--ke-muted)">Add choice, multiple-answer, text, explanation, or code questions. Students must reach the pass mark to open the next module.</p>
           <div>
             <label class="text-[11px] font-bold uppercase text-neutral-600">Pass mark (%)</label>
-            <input type="number" name="pass_percent" min="1" max="100" value="<?= (int) ($moduleForm['pass_percent'] ?? 80) ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
+            <input type="number" name="pass_percent" min="1" max="100" value="<?= (int) ($moduleForm['pass_percent'] ?? 50) ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
           </div>
           <div id="quiz-questions" class="space-y-4" data-question-prefix="questions">
             <?php foreach ($moduleForm['quiz_questions'] as $qIndex => $question):
@@ -351,8 +354,16 @@ require __DIR__ . '/../layout-header.php';
               $acceptedAnswers = implode("\n", array_map('strval', $question['accepted_answers'] ?? []));
             ?>
               <div class="quiz-question rounded-lg border p-3 space-y-3" style="border-color:var(--ke-line)">
-                <label class="text-[11px] font-bold uppercase text-neutral-600">Question</label>
+                <div class="flex justify-end"><button type="button" class="btn-secondary js-remove-question" style="padding:0.3rem 0.6rem;color:#b91c1c;">Delete question</button></div>
+                <label class="text-[11px] font-bold uppercase text-neutral-600">Question (can be left blank for a picture question)</label>
                 <input type="text" name="questions[<?= (int) $qIndex ?>][text]" value="<?= e($question['question'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
+                <label class="text-[11px] font-bold uppercase text-neutral-600">Picture (optional — e.g. a road sign)</label>
+                <?php if (!empty($question['image'])): ?>
+                  <span class="flex items-center gap-3"><img src="<?= e(imageUrl($question['image'])) ?>" alt="" class="h-16 w-auto rounded border" style="border-color:var(--ke-line)">
+                    <label class="text-xs font-semibold"><input type="checkbox" name="questions[<?= (int) $qIndex ?>][remove_image]" value="1"> Remove picture</label></span>
+                <?php endif; ?>
+                <input type="hidden" name="questions[<?= (int) $qIndex ?>][image]" value="<?= e($question['image'] ?? '') ?>" />
+                <input type="file" name="questions_images[<?= (int) $qIndex ?>]" accept="image/jpeg,image/png,image/webp,image/gif" class="block w-full text-sm" />
                 <label class="text-[11px] font-bold uppercase text-neutral-600">Answer type</label>
                 <select name="questions[<?= (int) $qIndex ?>][type]" class="js-question-type w-full rounded-lg border border-neutral-300 p-2.5 text-sm">
                   <option value="single_choice" <?= $type === 'single_choice' ? 'selected' : '' ?>>Single correct choice</option>
@@ -388,10 +399,7 @@ require __DIR__ . '/../layout-header.php';
         </div>
       </form>
       <?php if ($editingModule): ?>
-        <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/modules/' . (int) $editingModule['id'] . '/delete') ?>" onsubmit="return confirm('Delete this module?');">
-          <?= csrfField() ?>
-          <button type="submit" class="btn-danger">Delete module</button>
-        </form>
+        <?php $drType = 'module'; $drId = (int) $editingModule['id']; $drAction = url('/account/courses/' . (int) $course['id'] . '/modules/' . (int) $editingModule['id'] . '/delete'); $drWhat = 'this module'; require __DIR__ . '/../partials/delete-request.php'; ?>
       <?php endif; ?>
     </section>
   <?php endif; ?>
@@ -452,7 +460,7 @@ require __DIR__ . '/../layout-header.php';
         </div>
       <?php endif; ?>
     <?php elseif ($canEdit): ?>
-      <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/final-exam') ?>" class="space-y-4">
+      <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/final-exam') ?>" class="space-y-4" enctype="multipart/form-data">
         <?= csrfField() ?>
         <?php $courseHasFinal = !empty($course['final_exam_questions']); ?>
         <label class="flex items-center gap-2 text-sm font-bold text-gray-800">
@@ -463,7 +471,22 @@ require __DIR__ . '/../layout-header.php';
         <div>
           <label class="text-[11px] font-bold uppercase text-neutral-600">Questions each student gets</label>
           <input type="number" name="final_paper_size" min="1" value="<?= (int) ($course['final_paper_size'] ?? 0) ?: '' ?>" placeholder="All of them" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
-          <p class="field-hint">Write more questions than this to make a question bank. Each student gets their own random selection, in a random order, with the answer choices shuffled. Students need 100% to pass and earn the certificate.</p>
+          <p class="field-hint">Write more questions than this to make a question bank. Each student gets their own random selection, in a random order, with the answer choices shuffled.</p>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label class="text-[11px] font-bold uppercase text-neutral-600">Pass mark (%)</label>
+            <input type="number" name="final_pass_percent" min="1" max="100" value="<?= (int) ($course['final_pass_percent'] ?? \App\Models\Course::FINAL_PASS_PERCENT) ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
+            <p class="field-hint">Students who score this or more pass, and their certificate is generated.</p>
+          </div>
+          <div>
+            <label class="text-[11px] font-bold uppercase text-neutral-600">Time limit</label>
+            <?php $dur = (int) ($course['final_duration_minutes'] ?? 0); $presets = [0 => 'No time limit', 10 => '10 minutes', 15 => '15 minutes', 20 => '20 minutes', 30 => '30 minutes', 45 => '45 minutes', 60 => '1 hour', 90 => '1 hour 30 min', 120 => '2 hours', 180 => '3 hours']; if ($dur && !isset($presets[$dur])) { $presets[$dur] = $dur . ' minutes'; ksort($presets); } ?>
+            <select name="final_duration_minutes" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm">
+              <?php foreach ($presets as $m => $label): ?><option value="<?= $m ?>" <?= $m === $dur ? 'selected' : '' ?>><?= e($label) ?></option><?php endforeach; ?>
+            </select>
+            <p class="field-hint">When the time is up the exam is submitted and marked automatically, and the student sees what they got right and wrong.</p>
+          </div>
         </div>
         <div id="final-questions" class="space-y-4" data-question-prefix="final_questions">
           <?php foreach ($finalQuestions as $qIndex => $question):
@@ -476,8 +499,16 @@ require __DIR__ . '/../layout-header.php';
             $acceptedAnswers = implode("\n", array_map('strval', $question['accepted_answers'] ?? []));
           ?>
             <div class="quiz-question rounded-lg border p-3 space-y-3" style="border-color:var(--ke-line)">
-              <label class="text-[11px] font-bold uppercase text-neutral-600">Question</label>
+              <div class="flex justify-end"><button type="button" class="btn-secondary js-remove-question" style="padding:0.3rem 0.6rem;color:#b91c1c;">Delete question</button></div>
+              <label class="text-[11px] font-bold uppercase text-neutral-600">Question (can be left blank for a picture question)</label>
               <input type="text" name="final_questions[<?= (int) $qIndex ?>][text]" value="<?= e($question['question'] ?? '') ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
+                <label class="text-[11px] font-bold uppercase text-neutral-600">Picture (optional — e.g. a road sign)</label>
+                <?php if (!empty($question['image'])): ?>
+                  <span class="flex items-center gap-3"><img src="<?= e(imageUrl($question['image'])) ?>" alt="" class="h-16 w-auto rounded border" style="border-color:var(--ke-line)">
+                    <label class="text-xs font-semibold"><input type="checkbox" name="final_questions[<?= (int) $qIndex ?>][remove_image]" value="1"> Remove picture</label></span>
+                <?php endif; ?>
+                <input type="hidden" name="final_questions[<?= (int) $qIndex ?>][image]" value="<?= e($question['image'] ?? '') ?>" />
+                <input type="file" name="final_questions_images[<?= (int) $qIndex ?>]" accept="image/jpeg,image/png,image/webp,image/gif" class="block w-full text-sm" />
               <label class="text-[11px] font-bold uppercase text-neutral-600">Answer type</label>
               <select name="final_questions[<?= (int) $qIndex ?>][type]" class="js-question-type w-full rounded-lg border border-neutral-300 p-2.5 text-sm">
                 <option value="single_choice" <?= $type === 'single_choice' ? 'selected' : '' ?>>Single correct choice</option>
@@ -577,6 +608,17 @@ require __DIR__ . '/../layout-header.php';
     }
   });
 
+  // Deleting a question takes it off the form; saving the exam then drops it.
+  document.addEventListener('click', function (event) {
+    if (!event.target.classList.contains('js-remove-question')) {
+      return;
+    }
+    var block = event.target.closest('.quiz-question');
+    if (block && confirm('Delete this question? It is removed when you save.')) {
+      block.remove();
+    }
+  });
+
   document.addEventListener('click', function (event) {
     if (!event.target.classList.contains('js-add-option')) {
       return;
@@ -611,14 +653,22 @@ require __DIR__ . '/../layout-header.php';
       if (!wrap) {
         return;
       }
-      var index = wrap.querySelectorAll('.quiz-question').length;
+      // Next free index: after deletions, the count could reuse a name still on the page.
+      var index = 0;
+      wrap.querySelectorAll('input[name$="[text]"]').forEach(function (input) {
+        var m = input.name.match(/\[(\d+)\]\[text\]$/);
+        if (m) index = Math.max(index, parseInt(m[1], 10) + 1);
+      });
       var prefix = wrap.getAttribute('data-question-prefix') || 'questions';
       var block = document.createElement('div');
       block.className = 'quiz-question rounded-lg border p-3 space-y-3';
       block.style.borderColor = 'var(--ke-line)';
       block.innerHTML =
-        '<label class="text-[11px] font-bold uppercase text-neutral-600">Question</label>' +
+        '<div class="flex justify-end"><button type="button" class="btn-secondary js-remove-question" style="padding:0.3rem 0.6rem;color:#b91c1c;">Delete question</button></div>' +
+        '<label class="text-[11px] font-bold uppercase text-neutral-600">Question (can be left blank for a picture question)</label>' +
         '<input type="text" name="' + prefix + '[' + index + '][text]" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />' +
+        '<label class="text-[11px] font-bold uppercase text-neutral-600">Picture (optional — e.g. a road sign)</label>' +
+        '<input type="file" name="' + prefix + '_images[' + index + ']" accept="image/jpeg,image/png,image/webp,image/gif" class="block w-full text-sm" />' +
         '<label class="text-[11px] font-bold uppercase text-neutral-600">Answer type</label>' +
         '<select name="' + prefix + '[' + index + '][type]" class="js-question-type w-full rounded-lg border border-neutral-300 p-2.5 text-sm">' +
           '<option value="single_choice">Single correct choice</option>' +

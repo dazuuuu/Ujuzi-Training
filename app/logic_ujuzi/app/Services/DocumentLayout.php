@@ -21,8 +21,9 @@ class DocumentLayout
         'certificate' => [
             'name' => ['Student name', 'Grace Wanjiku Mwangi'],
             'course' => ['Course / skills done', 'Advanced Plumbing'],
-            'organisation' => ['Organisation (course done under)', 'Ujuzi Tech Institute'],
+            'organisation' => ['Organisation — branch (course done under)', 'National Police Service — DCI'],
             'registration_number' => ['Registration number', 'UJ0012709/26'],
+            'certificate_number' => ['Certificate number (to verify)', 'UJC-26-7K3QX9M2'],
             'date' => ['Date issued', '27 September 2026'],
         ],
         'recommendation_letter' => [
@@ -42,6 +43,7 @@ class DocumentLayout
             'course' => ['x' => 50, 'y' => 55, 'size' => 2.4, 'bold' => true, 'show' => true],
             'organisation' => ['x' => 50, 'y' => 62, 'size' => 1.8, 'bold' => false, 'show' => true],
             'registration_number' => ['x' => 50, 'y' => 68, 'size' => 1.4, 'bold' => false, 'show' => true],
+            'certificate_number' => ['x' => 50, 'y' => 92, 'size' => 1.1, 'bold' => false, 'show' => true],
             'date' => ['x' => 50, 'y' => 80, 'size' => 1.4, 'bold' => false, 'show' => true],
         ],
         'recommendation_letter' => [

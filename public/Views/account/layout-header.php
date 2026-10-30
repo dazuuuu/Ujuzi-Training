@@ -44,7 +44,9 @@ $isStudent = $isStudent ?? (($loggedInUser['role_slug'] ?? '') === 'student');
         $navPortal = $isStudent ? \App\Core\AccountNav::PORTAL_STUDENT
           : ($isOrgAdmin ? \App\Core\AccountNav::PORTAL_ORGANISATION_ADMIN
           : ($isAttachmentProvider ? \App\Core\AccountNav::PORTAL_ATTACHMENT_TRAINER
-          : ($isCourseBranchAdmin ? \App\Core\AccountNav::PORTAL_COURSE_BRANCH_ADMIN : null)));
+          : ($isCourseBranchAdmin ? \App\Core\AccountNav::PORTAL_COURSE_BRANCH_ADMIN
+          : ($isBranchAdmin ? \App\Core\AccountNav::PORTAL_BRANCH_ADMIN
+          : (($loggedInUser['role_slug'] ?? '') === 'trainer' ? \App\Core\AccountNav::PORTAL_TRAINER : null)))));
       ?>
       <nav class="srms-nav">
         <a href="<?= url('/account/dashboard') ?>" class="srms-nav-link <?= ($activeNav ?? '') === 'dashboard' ? 'is-active' : '' ?>">
@@ -59,25 +61,12 @@ $isStudent = $isStudent ?? (($loggedInUser['role_slug'] ?? '') === 'student');
         <?php else: ?>
           <?php if ($canViewCourses): ?>
             <a href="<?= url('/account/courses') ?>" class="srms-nav-link <?= ($activeNav ?? '') === 'courses' ? 'is-active' : '' ?>">
-              <?= icon('book') ?> <?= $isStudent ? 'My courses' : 'Courses' ?>
+              <?= icon('book') ?> Courses
             </a>
           <?php endif; ?>
-          <?php if (($currentUser['role_slug'] ?? '') === 'trainer'): ?>
-            <a href="<?= url('/account/wallet') ?>" class="srms-nav-link <?= ($activeNav ?? '') === 'wallet' ? 'is-active' : '' ?>">
-              <?= icon('wallet') ?> Earnings
-            </a>
-          <?php endif; ?>
-          <?php if ($isBranchAdmin): ?>
-            <a href="<?= url('/account/branch-admin') ?>" class="srms-nav-link <?= ($activeNav ?? '') === 'branch_admin' ? 'is-active' : '' ?>">
-              <?= icon('graduation') ?> Attachees
-            </a>
-            <a href="<?= url('/account/reports') ?>" class="srms-nav-link <?= ($activeNav ?? '') === 'reports' ? 'is-active' : '' ?>">
-              <?= icon('chart') ?> Reports
-            </a>
-            <a href="<?= url('/account/student-lookup') ?>" class="srms-nav-link <?= ($activeNav ?? '') === 'verify_certificate' ? 'is-active' : '' ?>">
-              <?= icon('search') ?> Student lookup
-            </a>
-          <?php endif; ?>
+        <?php endif; ?>
+        <?php if (!in_array($navPortal, [\App\Core\AccountNav::PORTAL_STUDENT, \App\Core\AccountNav::PORTAL_ORGANISATION_ADMIN, \App\Core\AccountNav::PORTAL_ATTACHMENT_TRAINER, \App\Core\AccountNav::PORTAL_COURSE_BRANCH_ADMIN], true)): ?>
+          <?php // Extra links some tutors / branch admins are allowed (not part of a fixed portal menu). ?>
           <?php if ($canManageUsers): ?>
             <a href="<?= url('/account/people') ?>" class="srms-nav-link <?= ($activeNav ?? '') === 'people' ? 'is-active' : '' ?>">
               <?= icon('users') ?> People
@@ -158,13 +147,12 @@ $isStudent = $isStudent ?? (($loggedInUser['role_slug'] ?? '') === 'student');
         ];
         $tabItems = [['dashboard', 'dashboard', 'Home', '/account/dashboard']];
         if ($navPortal) {
+            $renamed = \App\Core\AccountNav::labelsFor($navPortal);
             foreach (\App\Core\AccountNav::orderedItems($navPortal) as $navId => [$navIcon, $navLabel, $navHref]) {
-                $tabItems[] = [$navId, $navIcon, $tabShort[$navId] ?? $navLabel, $navHref];
+                $tabItems[] = [$navId, $navIcon, isset($renamed[$navId]) ? $navLabel : ($tabShort[$navId] ?? $navLabel), $navHref];
             }
         } else {
             if ($canViewCourses) { $tabItems[] = ['courses', 'book', 'Courses', '/account/courses']; }
-            if (($currentUser['role_slug'] ?? '') === 'trainer') { $tabItems[] = ['wallet', 'wallet', 'Earnings', '/account/wallet']; }
-            if ($isBranchAdmin) { $tabItems[] = ['branch_admin', 'graduation', 'Attachees', '/account/branch-admin']; $tabItems[] = ['verify_certificate', 'search', 'Lookup', '/account/student-lookup']; }
             if ($canManageUsers) { $tabItems[] = ['people', 'users', 'People', '/account/people']; }
         }
         $tabItems = array_slice($tabItems, 0, 4);

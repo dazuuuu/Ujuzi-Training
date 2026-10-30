@@ -25,7 +25,10 @@ $exportUrl = url('/admin/attachments/export') . (($qs = $filters()) !== '' ? '?'
       <h1 class="mt-2 font-serif-heading text-3xl font-bold">Attachment requests</h1>
       <p class="mt-1 text-sm font-medium text-neutral-600">Every student who has sent a request to an organisation providing attachment, with where it stands.</p>
     </div>
-    <a href="<?= e($exportUrl) ?>" class="btn-primary inline-flex items-center gap-2"><?= icon('download', 'h-4 w-4') ?> Download Excel</a>
+    <div class="flex flex-wrap gap-2">
+      <a href="<?= url('/admin/attachment-payments') ?>" class="btn-secondary inline-flex items-center gap-2"><?= icon('file', 'h-4 w-4') ?> Completed list for payments</a>
+      <a href="<?= e($exportUrl) ?>" class="btn-primary inline-flex items-center gap-2"><?= icon('download', 'h-4 w-4') ?> Download Excel</a>
+    </div>
   </section>
 
   <nav class="flex flex-wrap gap-2" aria-label="Filter by status">

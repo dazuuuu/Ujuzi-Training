@@ -22,9 +22,35 @@ class SettingsController extends BaseAdminController
             'activeNav' => 'settings',
             'settings' => StoreSetting::all(),
             'smtpConfigured' => MailerService::isConfigured(),
+            'site' => \App\Services\PageBuilder::site(),
             'smtp' => $smtp,
             'smtpHasPassword' => $smtpHasPassword,
         ]);
+    }
+
+    /** Sends a test email to this admin, to check the SMTP settings work. */
+    public function testEmail(): void
+    {
+        if (!csrfVerify(Request::post('csrf_token'))) {
+            flashError('Your session expired. Please try again.');
+            redirect('/admin/settings');
+        }
+        $to = trim((string) Request::post('test_email', '')) ?: (string) ($this->admin['email'] ?? '');
+        if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            flashError('Enter an email address to send the test to.');
+            redirect('/admin/settings');
+        }
+        if (!MailerService::isConfigured()) {
+            flashError('Save the SMTP settings first.');
+            redirect('/admin/settings');
+        }
+        try {
+            MailerService::sendNotice($to, 'Test email from ' . appName(), 'SMTP works', "This is a test email. Your SMTP settings are working, so students will get their sign-up, approval, enrolment and receipt emails.", 'Open the site', \App\Core\Url::absolute('/'));
+            flashSuccess('Test email sent to ' . $to . '. Check the inbox (and spam).');
+        } catch (\Throwable $e) {
+            flashError('The test email failed: ' . $e->getMessage());
+        }
+        redirect('/admin/settings');
     }
 
     public function update(): void
@@ -81,6 +107,18 @@ class SettingsController extends BaseAdminController
             StoreSetting::set('platform_name', $platformName);
         }
 
+        // Contact details shown in the strip above the public navbar, the footer and the Contact page.
+        if (Request::post('save_contact') === '1') {
+            $site = \App\Services\PageBuilder::site();
+            foreach (['contact_phone', 'contact_email', 'contact_whatsapp', 'contact_address', 'contact_hours'] as $key) {
+                $site[$key] = trim((string) Request::post($key, ''));
+            }
+            $site['topbar_show'] = Request::post('topbar_show') === '1';
+            \App\Services\PageBuilder::saveSite($site);
+            flashSuccess('Contact details saved. They show above the navbar, in the footer and on the Contact page.');
+            redirect('/admin/settings#contact-details');
+        }
+
         if (Request::post('save_smtp') === '1') {
             $mailHost = trim((string) Request::post('mail_host', ''));
             StoreSetting::set('mail_host', $mailHost !== '' ? $mailHost : null);
@@ -99,6 +137,10 @@ class SettingsController extends BaseAdminController
             $number = preg_replace('/[^0-9]/', '', (string) Request::post('whatsapp_share_number', ''));
             StoreSetting::set('whatsapp_share_number', $number !== '' ? $number : null);
             flashSuccess('WhatsApp sharing number saved.');
+        } elseif (Request::post('save_final_grade') === '1') {
+            $exam = max(0, min(100, (int) Request::post('final_grade_exam_percent', 90)));
+            StoreSetting::set('final_grade_exam_percent', (string) $exam);
+            flashSuccess('Final grade split saved: ' . $exam . '% exam + ' . (100 - $exam) . '% attachment.');
         } elseif (Request::post('save_course_payments') === '1') {
             StoreSetting::set('course_payments_enabled', Request::post('course_payments_enabled') === '1' ? '1' : '0');
             $provider = Request::post('course_payment_provider', 'mpesa') === 'stripe' ? 'stripe' : 'mpesa';

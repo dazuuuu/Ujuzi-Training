@@ -53,12 +53,20 @@ $miniCourse = static function (array $course, string $meta): void {
       <p class="text-xs font-semibold text-neutral-500"><?= e($greeting) ?>,</p>
       <h1 class="truncate text-2xl font-black text-gray-900"><?= e($firstName) ?></h1>
     </div>
-    <?php if (!empty($registrationNumber)): ?>
-      <p class="rounded-lg border bg-white px-3 py-1.5 text-right" style="border-color:var(--ke-line)">
-        <span class="block text-[10px] font-black uppercase tracking-widest text-neutral-500">Registration no.</span>
-        <span class="block text-sm font-black tracking-wide text-gray-800"><?= e($registrationNumber) ?></span>
-      </p>
-    <?php endif; ?>
+    <div class="flex flex-wrap items-stretch justify-end gap-2">
+      <?php foreach ($myOrganisations ?? [] as $membership): ?>
+        <a href="<?= url('/account/course-organisations') ?>" class="me-chip" title="<?= e($membership['status'] === 'approved' ? 'Approved' : 'Waiting for approval') ?>">
+          <span class="me-chip-label"><?= e($membership['organisation_name']) ?><?= !empty($membership['branch_title']) ? ' · ' . e($membership['branch_title']) : '' ?><?= $membership['status'] !== 'approved' ? ' · waiting' : '' ?></span>
+          <span class="me-chip-value"><?= e($membership['categories'] ? implode(', ', $membership['categories']) : 'No category yet') ?></span>
+        </a>
+      <?php endforeach; ?>
+      <?php if (!empty($registrationNumber)): ?>
+        <p class="me-chip text-right">
+          <span class="me-chip-label">Registration no.</span>
+          <span class="me-chip-value tracking-wide"><?= e($registrationNumber) ?></span>
+        </p>
+      <?php endif; ?>
+    </div>
   </section>
 
   <?php if (!empty($needsProfile)): ?>

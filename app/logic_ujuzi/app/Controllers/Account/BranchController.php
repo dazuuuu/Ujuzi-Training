@@ -7,6 +7,7 @@ use App\Core\LoginRoles;
 use App\Core\Request;
 use App\Core\Url;
 use App\Models\OrganisationBranch;
+use App\Models\OrganisationMembership;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\MailerException;
@@ -19,11 +20,100 @@ class BranchController extends BaseAccountController
     public function index(): void
     {
         $this->requireBranchManager();
+        $branches = $this->branchesForCurrentUser();
+        // An organisation providing courses can give each branch its own tutors.
+        $tutors = [];
+        if ($this->branchOwnerType() === 'organisation') {
+            foreach ($branches as $branch) {
+                try {
+                    $tutors[(int) $branch['id']] = OrganisationMembership::tutorsForBranch((int) $branch['id']);
+                } catch (\Throwable $e) {
+                    $tutors[(int) $branch['id']] = [];
+                }
+            }
+        }
         $this->render('account.branches.index', [
             'pageTitle' => 'Branches',
             'activeNav' => 'branches',
-            'branches' => $this->branchesForCurrentUser(),
+            'branches' => $branches,
+            'tutorsByBranch' => $tutors,
+            'canAddTutors' => $this->branchOwnerType() === 'organisation',
         ]);
+    }
+
+    /** Adds a tutor to one of the organisation's branches: an existing tutor account, or a new one. */
+    public function addTutor(string $id): void
+    {
+        $this->requireBranchManager();
+        if (!csrfVerify(Request::post('csrf_token'))) {
+            flashError('Your session expired. Please try again.');
+            redirect('/account/branches');
+        }
+        $branch = $this->ownedBranch((int) $id);
+        $orgId = (int) ($branch['organisation_id'] ?? 0);
+        if ($this->branchOwnerType() !== 'organisation' || $orgId < 1) {
+            flashError('Only organisations providing courses add tutors to their branches.');
+            redirect('/account/branches');
+        }
+
+        $name = trim((string) Request::post('name', ''));
+        $email = strtolower(trim((string) Request::post('email', '')));
+        $phone = trim((string) Request::post('phone', ''));
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            flashError('Enter the tutor\'s email address.');
+            redirect('/account/branches#branch-' . (int) $branch['id']);
+        }
+
+        $created = false;
+        $tutor = User::findByIdentifier('email', $email);
+        if ($tutor) {
+            if (!OrganisationMembership::isTrainerRole((string) ($tutor['role_slug'] ?? ''))) {
+                flashError('That email is already used by an account that isn\'t a tutor. Use another email.');
+                redirect('/account/branches#branch-' . (int) $branch['id']);
+            }
+            $tutorId = (int) $tutor['id'];
+        } else {
+            $role = Role::findBySlug('trainer');
+            if (!$role) {
+                flashError('The tutor role is not set up yet. Run pending updates first.');
+                redirect('/account/branches');
+            }
+            [$firstName, $lastName] = array_pad(explode(' ', $name, 2), 2, '');
+            $tutorId = User::create([
+                'role_id' => (int) $role['id'],
+                'organisation_id' => $orgId,
+                'email' => $email,
+                'phone' => $phone,
+                'first_name' => $firstName !== '' ? $firstName : 'Branch',
+                'last_name' => $lastName !== '' ? $lastName : 'Tutor',
+                'password' => User::DEFAULT_PASSWORD,
+                'must_change_password' => 1,
+                'is_active' => 1,
+                'email_verified_at' => date('Y-m-d H:i:s'),
+            ]);
+            $created = true;
+        }
+
+        OrganisationMembership::assignTutorToBranch($tutorId, $orgId, (int) $branch['id'], (int) $this->user['id']);
+        if ($created) {
+            $this->notifyAccountCreated($email, 'trainer', 'branch tutor', 'Branch tutor');
+        } else {
+            flashSuccess('Tutor added to ' . $branch['title'] . '.');
+        }
+        redirect('/account/branches#branch-' . (int) $branch['id']);
+    }
+
+    public function removeTutor(string $id, string $userId): void
+    {
+        $this->requireBranchManager();
+        if (!csrfVerify(Request::post('csrf_token'))) {
+            flashError('Your session expired. Please try again.');
+            redirect('/account/branches');
+        }
+        $branch = $this->ownedBranch((int) $id);
+        OrganisationMembership::removeTutorFromBranch((int) $userId, (int) $branch['id']);
+        flashSuccess('Tutor removed from ' . $branch['title'] . '. They are still a tutor of your organisation.');
+        redirect('/account/branches#branch-' . (int) $branch['id']);
     }
 
     public function create(): void
@@ -72,19 +162,11 @@ class BranchController extends BaseAccountController
             redirect('/account/branches');
         }
         $branch = $this->ownedBranch((int) $id);
-        if (Request::post('cancel') === '1') {
-            \App\Models\BranchDeletionRequest::cancel((int) $branch['id']);
-            flashSuccess('Deletion request withdrawn. The branch stays.');
-            redirect('/account/branches');
-        }
-        // Deleting a branch needs the organisation head (you, now) and Super Admin.
-        try {
-            \App\Models\BranchDeletionRequest::request((int) $branch['id'], (int) $this->user['id'], trim((string) Request::post('reason', '')));
-        } catch (\Throwable $e) {
-            flashError('Branch deletion needs Super Admin to run the latest update first.');
-            redirect('/account/branches');
-        }
-        flashSuccess('Deletion requested. ' . $branch['title'] . ' is deleted once Super Admin approves.');
+        // Super Admin deletes it on approval.
+        $error = \App\Models\DeletionRequest::request('branch', (int) $branch['id'], (string) $branch['title'] . (!empty($branch['location']) ? ' — ' . $branch['location'] : ''), (string) ($this->user['organisation_name'] ?? ''), (int) $this->user['id'], (string) Request::post('reason', ''));
+        $error === null
+            ? flashSuccess('Delete request sent to Super Admin. It is deleted once Super Admin approves.')
+            : flashError($error);
         redirect('/account/branches');
     }
 
@@ -232,10 +314,13 @@ class BranchController extends BaseAccountController
     private function notifyBranchAdminCreated(string $email): void
     {
         $isCourseBranch = $this->branchOwnerType() === 'organisation';
-        $roleSlug = $isCourseBranch ? 'course_branch_admin' : 'branch_admin';
-        $roleLabel = $isCourseBranch ? 'course branch admin' : 'attachment branch admin';
+        $this->notifyAccountCreated($email, $isCourseBranch ? 'course_branch_admin' : 'branch_admin', $isCourseBranch ? 'course branch admin' : 'attachment branch admin', 'Branch admin');
+    }
+
+    private function notifyAccountCreated(string $email, string $roleSlug, string $roleLabel, string $who): void
+    {
         $loginUrl = Url::absolute(LoginRoles::loginPath($roleSlug));
-        $whatsappText = "Your Branch Admin login:\nEmail: {$email}\nPassword: " . User::DEFAULT_PASSWORD . "\nSign in: {$loginUrl}\nYou'll be asked to set your own password on first login.";
+        $whatsappText = "Your {$who} login:\nEmail: {$email}\nPassword: " . User::DEFAULT_PASSWORD . "\nSign in: {$loginUrl}\nYou'll be asked to set your own password on first login.";
         $whatsappUrl = whatsappShareUrl($whatsappText);
 
         $emailed = false;
@@ -247,8 +332,8 @@ class BranchController extends BaseAccountController
         }
 
         $message = $emailed
-            ? 'Branch admin created. Their login details were emailed to them.'
-            : 'Branch admin created. Give them their sign-in and this password: ' . User::DEFAULT_PASSWORD . ' — they will be asked to set their own on first login.';
+            ? $who . ' created. Their login details were emailed to them.'
+            : $who . ' created. Give them their sign-in and this password: ' . User::DEFAULT_PASSWORD . ' — they will be asked to set their own on first login.';
         if ($whatsappUrl) {
             $message .= ' <a href="' . e($whatsappUrl) . '" target="_blank" rel="noopener" class="underline font-bold">Share via WhatsApp</a>';
         }

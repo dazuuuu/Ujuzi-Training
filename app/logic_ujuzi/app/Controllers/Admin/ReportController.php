@@ -61,4 +61,33 @@ class ReportController extends BaseAdminController
         }
         SpreadsheetExport::download($name, $report['title'], $report['headers'], $rows);
     }
+
+    /** Organisation activity: pick the kind of organisation, one (or all), a branch (or all), status, finance and dates. */
+    public function activity(): void
+    {
+        $filters = \App\Services\ActivityReport::filters($_GET);
+        $report = \App\Services\ActivityReport::build($filters);
+        View::render('admin.reports.activity', [
+            'pageTitle' => 'Reports',
+            'activeNav' => 'reports',
+            'filters' => $filters,
+            'report' => $report,
+            'preview' => array_slice($report['rows'], 0, 200),
+            'organisations' => \App\Services\ActivityReport::organisations($filters['type']),
+            'branches' => \App\Services\ActivityReport::branches($filters['type'], $filters['org']),
+        ]);
+    }
+
+    public function activityDownload(string $format): void
+    {
+        $filters = \App\Services\ActivityReport::filters($_GET);
+        $report = \App\Services\ActivityReport::build($filters);
+        $name = 'activity-' . preg_replace('/[^a-z0-9]+/', '-', strtolower($report['title'] . '-' . ($filters['status'] ?: 'all') . '-' . date('Y-m-d')));
+        $rows = $report['rows'];
+        if ($format === 'pdf') {
+            PdfTable::download($name, $report['title'], appName() . ' · ' . $report['subtitle'] . ' · ' . count($rows) . ' record(s) · generated ' . date('j M Y H:i'), $report['headers'], $rows, $report['totals'], true);
+        }
+        $rows[] = $report['totals'];
+        SpreadsheetExport::download($name, 'Activity', $report['headers'], $rows);
+    }
 }

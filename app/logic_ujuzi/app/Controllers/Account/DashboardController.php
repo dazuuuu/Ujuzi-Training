@@ -276,6 +276,7 @@ class DashboardController extends BaseAccountController
             'newCourses' => array_slice($newCourses, 0, 8),
             'popularCourses' => array_slice($popular, 0, 8),
             'registrationNumber' => \App\Models\User::assignRegistrationNumber($userId),
+            'myOrganisations' => (function (): array { try { return $this->studentCategoryGroups(); } catch (\Throwable $e) { return []; } })(),
             'walletShort' => $walletShort,
             'pageTitle' => 'Dashboard',
             'activeNav' => 'dashboard',

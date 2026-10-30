@@ -94,7 +94,7 @@ class CourseModule
             $fields['video_url'] ?? null,
             !empty($fields['materials']) ? json_encode(array_values($fields['materials'])) : null,
             json_encode(self::normalizeQuestions($fields['quiz_questions'] ?? [])),
-            self::normalizePassPercent($fields['pass_percent'] ?? 80),
+            self::normalizePassPercent($fields['pass_percent'] ?? 50),
             $sort,
         ]);
         return (int) $pdo->lastInsertId();
@@ -117,7 +117,7 @@ class CourseModule
             $fields['video_url'] ?? null,
             !empty($fields['materials']) ? json_encode(array_values($fields['materials'])) : null,
             json_encode(self::normalizeQuestions($fields['quiz_questions'] ?? [])),
-            self::normalizePassPercent($fields['pass_percent'] ?? 80),
+            self::normalizePassPercent($fields['pass_percent'] ?? 50),
             $id,
         ]);
     }
@@ -148,7 +148,7 @@ class CourseModule
         if (!$id) {
             return null;
         }
-        return 'https://www.youtube-nocookie.com/embed/' . $id . '?rel=0&modestbranding=1&playsinline=1&fs=0';
+        return 'https://www.youtube-nocookie.com/embed/' . $id . '?rel=0&modestbranding=1&playsinline=1&fs=1';
     }
 
     public static function normalizeQuestions($raw): array
@@ -188,6 +188,11 @@ class CourseModule
                 $accepted
             ), static fn(string $answer): bool => $answer !== ''));
 
+            $image = trim((string) ($row['image'] ?? ''));
+            $image = preg_match('#^[A-Za-z0-9_./-]+$#', $image) && !str_contains($image, '..') ? $image : '';
+            if ($question === '' && $image !== '') {
+                $question = 'What does this picture show?'; // a picture question (e.g. a road sign) needs no words
+            }
             if ($question === '') {
                 continue;
             }
@@ -213,6 +218,7 @@ class CourseModule
                 'options' => $cleaned,
                 'correct' => $correct,
                 'accepted_answers' => $accepted,
+                'image' => $image,
             ];
         }
         return $out;
@@ -221,7 +227,7 @@ class CourseModule
     public static function normalizePassPercent($value): int
     {
         if ($value === null || $value === '') {
-            return 80;
+            return 50;
         }
         // The tutor decides the pass mark; only keep it within 1-100.
         return max(1, min(100, (int) $value));
@@ -241,7 +247,7 @@ class CourseModule
             }
         }
         $score = (int) round(($correctCount / $total) * 100);
-        $pass = self::normalizePassPercent($module['pass_percent'] ?? 80);
+        $pass = self::normalizePassPercent($module['pass_percent'] ?? 50);
         return [
             'score' => $score,
             'passed' => $score >= $pass,
@@ -250,11 +256,31 @@ class CourseModule
         ];
     }
 
+    /** Each question with the student's answer and the right one, shown after a quiz or exam. */
+    public static function review(array $questions, array $answers): array
+    {
+        $out = [];
+        foreach (array_values($questions) as $i => $question) {
+            $type = $question['type'] ?? 'single_choice';
+            $given = $answers[$i] ?? null;
+            $correct = array_values(array_map('intval', (array) ($question['correct'] ?? [])));
+            $out[] = [
+                'question' => (string) ($question['question'] ?? ''),
+                'image' => $question['image'] ?? null,
+                'ok' => self::answerIsCorrect($question, $given),
+                'given' => $type === 'text' ? (string) $given : implode(', ', array_map(static fn($o) => (string) ($question['options'][(int) $o] ?? '—'), array_filter((array) $given, static fn($o) => $o !== null && $o !== ''))),
+                'answer' => $type === 'text' ? implode(' / ', (array) ($question['accepted_answers'] ?? [])) : implode(', ', array_map(static fn(int $o) => (string) ($question['options'][$o] ?? ''), $correct)),
+            ];
+        }
+        return $out;
+    }
+
     /**
-     * Adds is_unlocked / is_passed / is_done to each module. A module is done
-     * once its quiz is passed (at the pass mark) or, without a quiz, ticked
-     * "Mark as done". The next module opens only when the one before it is
-     * done; paying for it is checked separately.
+     * Adds is_unlocked / is_passed / is_done to each module. Every module is
+     * open to the student (paying for it is checked separately) — quizzes
+     * never hold them back. A module is done once its quiz is taken (pass or
+     * fail — a failed quiz shows the right answers and the student goes on)
+     * or, without a quiz, ticked "Mark as done"; that only shows progress.
      */
     public static function withUnlockState(array $modules, array $progressByModule): array
     {
@@ -262,9 +288,9 @@ class CourseModule
         $out = [];
         foreach (array_values($modules) as $index => $module) {
             $progress = $progressByModule[(int) $module['id']] ?? null;
-            $module['is_unlocked'] = $index === 0 || $previousDone;
+            $module['is_unlocked'] = true;
             $module['is_passed'] = $progress && !empty($progress['passed']);
-            $module['is_done'] = $progress !== null && !empty($progress['passed']);
+            $module['is_done'] = $progress !== null;
             $module['progress'] = $progress;
             $module['has_quiz'] = !empty($module['quiz_questions']);
             $out[] = $module;
@@ -282,14 +308,14 @@ class CourseModule
             $row['materials'] = [];
         }
         $row['quiz_questions'] = self::normalizeQuestions($row['quiz_questions'] ?? []);
-        $row['pass_percent'] = self::normalizePassPercent($row['pass_percent'] ?? 80);
+        $row['pass_percent'] = self::normalizePassPercent($row['pass_percent'] ?? 50);
         $row['youtube_id'] = self::youtubeId($row['video_url'] ?? null);
         $row['embed_url'] = self::embedUrl($row['video_url'] ?? null);
         $row['duration_minutes'] = (int) ($row['duration_minutes'] ?? 10);
         return $row;
     }
 
-    private static function answerIsCorrect(array $question, $answer): bool
+    public static function answerIsCorrect(array $question, $answer): bool
     {
         $type = $question['type'] ?? 'single_choice';
         if ($type === 'multiple_choice') {

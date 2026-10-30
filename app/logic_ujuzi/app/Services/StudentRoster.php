@@ -60,6 +60,9 @@ class StudentRoster
         if ($phone !== '' && User::phoneTaken($phone)) {
             return $phone . ' already has an account.';
         }
+        if (User::nameTaken($first, $last, (string) ($fields['other_names'] ?? ''))) {
+            return 'An account already exists in the system with the name ' . trim($first . ' ' . ($fields['other_names'] ?? '') . ' ' . $last) . '.';
+        }
         $roleSlug = isset(self::ROLES[$roleSlug]) ? $roleSlug : 'student';
         $role = Role::findBySlug($roleSlug);
         if (!$role) {

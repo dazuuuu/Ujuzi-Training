@@ -4,6 +4,12 @@
  * Requires $fees: one entry from WalletService::feeSummaries(), or null.
  */
 $fees = $fees ?? null;
+// On an attachment request: only the course the request is for.
+if ($fees && !empty($standingCourseId)) {
+    $fees['items'] = array_values(array_filter($fees['items'], static fn(array $i): bool => (int) $i['course_id'] === (int) $standingCourseId));
+    $fees['courses'] = count($fees['items']);
+}
+$standingCourseId = null;
 $minPct = \App\Services\WalletService::minPaymentPercent();
 ?>
 <?php if (!$fees || $fees['courses'] === 0): ?>

@@ -54,11 +54,17 @@ require __DIR__ . '/../layout-header.php';
     <?php if (!$canEnrol): ?>
       <div class="flex items-start gap-3 rounded-lg border p-4 text-sm font-semibold" role="alert" style="border-color:#f59e0b;background:#fffbeb;color:#92400e">
         <?= icon('alert', 'h-5 w-5 shrink-0') ?>
-        <p>Your wallet has <?= ModuleAccess::coins($balanceKsh) ?> coins. Deposit at least <?= ModuleAccess::coins($depositKsh - $balanceKsh) ?> more coins (Ksh <?= number_format($depositKsh - $balanceKsh, 2) ?>) to enrol.</p>
+        <p>Your wallet has <?= ModuleAccess::coins($balanceKsh) ?> coins. Deposit at least <?= ModuleAccess::coins($depositKsh - $balanceKsh) ?> more coins (Ksh <?= number_format($depositKsh - $balanceKsh, 2) ?>) — you'll be enrolled straight after.</p>
       </div>
+      <?php // After depositing, come back here and enrol automatically. ?>
+      <?php $depositReturn = '/account/courses/' . (int) $course['id'] . '/checkout?auto=1'; require __DIR__ . '/../partials/deposit-form.php'; ?>
     <?php endif; ?>
 
-    <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/checkout') ?>" class="space-y-4">
+    <?php $autoEnrol = !$isEnrolled && $canEnrol && \App\Core\Request::query('auto', '') === '1'; ?>
+    <?php if ($autoEnrol): ?>
+      <p class="rounded-lg border p-3 text-sm font-bold" role="status" style="border-color:#b7e1c7;background:#ecf7f0;color:var(--ke-green)">Deposit received — enrolling you now…</p>
+    <?php endif; ?>
+    <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/checkout') ?>" class="space-y-4" id="checkout-form">
       <?= csrfField() ?>
       <?php if ($isEnrolled): ?>
         <label class="block text-xs font-bold uppercase text-neutral-600">Pay ahead (optional, Ksh)
@@ -78,4 +84,7 @@ require __DIR__ . '/../layout-header.php';
     </form>
   </section>
 </div>
+<?php if (!empty($autoEnrol)): ?>
+  <script>document.getElementById('checkout-form').submit();</script>
+<?php endif; ?>
 <?php require __DIR__ . '/../layout-footer.php'; ?>

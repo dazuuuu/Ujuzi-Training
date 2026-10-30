@@ -250,11 +250,12 @@ class AttachmentController extends BaseAccountController
 
     public function providerComplete(string $id): void
     {
-        $this->providerDecide((int) $id, AttachmentApplication::STATUS_ACCEPTED, AttachmentApplication::STATUS_RECOMMENDED, 'Attachment completed. Their recommendation letter is ready in their portal.');
+        // Any stage: the provider can mark the attachment completed whenever it likes.
+        $this->providerDecide((int) $id, [AttachmentApplication::STATUS_PENDING, AttachmentApplication::STATUS_PAUSED, AttachmentApplication::STATUS_ACCEPTED], AttachmentApplication::STATUS_RECOMMENDED, 'Attachment completed. Their recommendation letter is ready in their portal.');
     }
 
     /** An organisation with no branches reviews its own students; with branches, the branch admin does. */
-    private function providerDecide(int $id, string $from, string $to, string $message): void
+    private function providerDecide(int $id, string|array $from, string $to, string $message): void
     {
         if (($this->user['role_slug'] ?? '') !== 'attachment_trainer') {
             flashError('Only organisations providing attachment can do this.');
@@ -265,11 +266,11 @@ class AttachmentController extends BaseAccountController
             redirect('/account/people');
         }
         $application = AttachmentApplication::findForProvider($id, (int) $this->user['id']);
-        if (!$application || !empty($application['branch_id']) || $application['status'] !== $from) {
+        if (!$application || !empty($application['branch_id']) || !in_array($application['status'], (array) $from, true)) {
             flashError('That request could not be updated. Requests for a branch are handled by that branch admin.');
             redirect('/account/people');
         }
-        if ($to === AttachmentApplication::STATUS_RECOMMENDED && !\App\Models\AttachmentAssessment::isMarked($id)) {
+        if ($to === AttachmentApplication::STATUS_RECOMMENDED && AttachmentApplication::needsAssessment($application) && !\App\Models\AttachmentAssessment::isMarked($id)) {
             flashError(\App\Models\AttachmentAssessment::NOT_MARKED);
             redirect('/account/attachment-requests/' . $id . '#assessment');
         }

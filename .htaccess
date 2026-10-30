@@ -1,0 +1,27 @@
+# Root .htaccess — lets the site be served from the project root (e.g. a
+# subdomain whose document root is this folder) while the app actually lives
+# in public/. Every request is mapped into public/, so visitors see clean
+# URLs like https://sub.example.com/ instead of .../public/.
+#
+# Best option if your host allows it: point the (sub)domain's document root
+# straight at the public/ folder and you won't need this file at all.
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Old links that still show /public/ in the address: send them to the clean
+  # address (pages only — form posts keep working where they are).
+  RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$
+  RewriteCond %{THE_REQUEST} \s/+public/([^\s?]*) [NC]
+  RewriteRule ^ /%1 [R=301,L,NE]
+
+  # Don't re-map requests that are already inside public/.
+  RewriteCond %{REQUEST_URI} !^/public/
+  # Map the root itself and everything under it into public/.
+  RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+  # No rewrite module: fall back to the root front controller below.
+  DirectoryIndex index.php
+</IfModule>

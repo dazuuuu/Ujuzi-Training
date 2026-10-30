@@ -22,6 +22,8 @@ class PageBuilder
         'courses' => 'Courses',
         'signup' => 'Sign up page',
         'login' => 'Sign in page',
+        'contact' => 'Contact us',
+        'lookup' => 'Student lookup',
     ];
 
     /** Every editable page: the built-in ones, then Super Admin's own pages ('c-' + slug). */
@@ -73,7 +75,7 @@ class PageBuilder
     /** The public address of a page key. */
     public static function pageUrl(string $page): string
     {
-        $builtIn = ['home' => '/', 'about' => '/about', 'courses' => '/courses', 'signup' => '/account/register/choose', 'login' => '/account/login'];
+        $builtIn = ['home' => '/', 'about' => '/about', 'courses' => '/courses', 'signup' => '/account/register/choose', 'login' => '/account/login', 'contact' => '/contact', 'lookup' => '/student-lookup'];
         return $builtIn[$page] ?? (str_starts_with($page, 'c-') ? '/p/' . substr($page, 2) : '/');
     }
 
@@ -223,6 +225,91 @@ class PageBuilder
                     'link' => ['Link (tel:, mailto:, https://…)', 'url'],
                 ]],
             ]],
+            'hero_slider' => ['Hero slider (big pictures)', null, [
+                'slides' => ['Slides', 'items', [
+                    'image' => ['Picture', 'image'],
+                    'title' => ['Heading', 'text'],
+                    'title_highlight' => ['Highlighted words', 'text'],
+                    'text' => ['Text', 'textarea'],
+                ]],
+                'button_label' => ['Main button text', 'text'],
+                'button_url' => ['Main button link', 'url'],
+                'button2_label' => ['Second button text', 'text'],
+                'button2_url' => ['Second button link', 'url'],
+                'height' => ['Height (px)', 'number', [320, 900]],
+                'seconds' => ['Seconds per slide', 'number', [3, 30]],
+            ]],
+            'feature_strip' => ['Feature strip (white card under the hero)', null, [
+                'items' => ['Features', 'items', [
+                    'icon' => ['Icon', 'select', self::ICONS],
+                    'title' => ['Title', 'text'],
+                    'text' => ['Text', 'text'],
+                ]],
+            ]],
+            'welcome' => ['Welcome (picture, text and numbers)', null, [
+                'image' => ['Picture', 'image'],
+                'label' => ['Small label', 'text'],
+                'title' => ['Heading', 'text'],
+                'text' => ['Text', 'textarea'],
+                'stats' => ['Numbers ({students}, {courses}, {organisations} or {certificates} count live)', 'items', [
+                    'value' => ['Number', 'text'],
+                    'label' => ['Label', 'text'],
+                ]],
+                'button_label' => ['Button text', 'text'],
+                'button_url' => ['Button link', 'url'],
+            ]],
+            'explore' => ['Icon cards with a round picture', null, [
+                'label' => ['Small label', 'text'],
+                'title' => ['Heading', 'text'],
+                'items' => ['Cards', 'items', [
+                    'icon' => ['Icon', 'select', self::ICONS],
+                    'title' => ['Title', 'text'],
+                    'text' => ['Text', 'textarea'],
+                ]],
+                'image' => ['Round picture', 'image'],
+                'badge_title' => ['Badge title', 'text'],
+                'badge_text' => ['Badge text', 'text'],
+            ]],
+            'picture_cards' => ['Picture cards', null, [
+                'label' => ['Small label', 'text'],
+                'title' => ['Heading', 'text'],
+                'items' => ['Cards', 'items', [
+                    'image' => ['Picture', 'image'],
+                    'icon' => ['Icon', 'select', self::ICONS],
+                    'title' => ['Title', 'text'],
+                    'text' => ['Text', 'textarea'],
+                    'url' => ['Link (optional)', 'url'],
+                ]],
+                'button_label' => ['Button text', 'text'],
+                'button_url' => ['Button link', 'url'],
+            ]],
+            'gallery' => ['Picture gallery strip', null, [
+                'label' => ['Small label', 'text'],
+                'title' => ['Heading', 'text'],
+                'items' => ['Pictures', 'items', [
+                    'image' => ['Picture', 'image'],
+                    'caption' => ['Caption', 'text'],
+                ]],
+                'button_label' => ['Button text', 'text'],
+                'button_url' => ['Button link', 'url'],
+            ]],
+            'cta_band' => ['Announcement band', null, [
+                'icon' => ['Icon', 'select', self::ICONS],
+                'title' => ['Heading', 'textarea'],
+                'text' => ['Text', 'textarea'],
+                'button_label' => ['Button text', 'text'],
+                'button_url' => ['Button link', 'url'],
+            ]],
+            'contact_form' => ['Contact form (messages go to the contact email)', ['contact'], [
+                'title' => ['Heading', 'text'],
+                'text' => ['Text', 'textarea'],
+                'button_label' => ['Button text', 'text'],
+            ]],
+            'lookup_form' => ['Student lookup search', ['lookup'], [
+                'title' => ['Heading', 'text'],
+                'text' => ['Text', 'textarea'],
+                'placeholder' => ['Search box hint', 'text'],
+            ]],
             'html' => ['Custom HTML', null, [
                 'html' => ['HTML (scripts are removed)', 'html'],
             ]],
@@ -239,7 +326,12 @@ class PageBuilder
                 'columns' => ['Courses per row', 'select', ['2' => '2', '3' => '3', '4' => '4', '5' => '5']],
                 'card_size' => ['Card size', 'select', ['sm' => 'Small', 'md' => 'Medium', 'lg' => 'Large']],
             ]],
-            'signup_roles' => ['Sign-up choices', ['signup'], [
+            'signup_form' => ['Student sign-up form', ['signup'], [
+                'title' => ['Heading above the form', 'text'],
+                'button_label' => ['Button text', 'text'],
+                'note' => ['Small print under the form', 'textarea'],
+            ]],
+            'signup_roles' => ['Sign-up choices (old cards)', ['signup'], [
                 'student_title' => ['Student card title', 'text'],
                 'student_text' => ['Student card text', 'textarea'],
                 'provider_title' => ['Attachment organisation card title', 'text'],
@@ -253,8 +345,24 @@ class PageBuilder
         ];
     }
 
+    /** Icons the sections can show (drawn by sections/_icon.php). */
+    public const ICONS = ['cap' => 'Graduation cap', 'book' => 'Book', 'monitor' => 'Screen', 'users' => 'People', 'briefcase' => 'Briefcase', 'award' => 'Certificate', 'shield' => 'Shield', 'heart' => 'Heart', 'flask' => 'Lab flask', 'bulb' => 'Light bulb', 'trophy' => 'Trophy', 'tools' => 'Tools', 'car' => 'Car', 'globe' => 'Globe', 'phone' => 'Phone', 'clock' => 'Clock', 'map' => 'Map pin', 'star' => 'Star', 'check' => 'Tick'];
+
     /** Navbar and footer. */
     public const SITE_FIELDS = [
+        'topbar_show' => ['Show the contact strip above the navbar', 'checkbox'],
+        'contact_phone' => ['Contact phone', 'text'],
+        'contact_email' => ['Contact email (also receives contact-form messages)', 'text'],
+        'contact_whatsapp' => ['WhatsApp number', 'text'],
+        'contact_address' => ['Address / location', 'text'],
+        'contact_hours' => ['Opening hours', 'text'],
+        'topbar_bg' => ['Contact strip background', 'color'],
+        'topbar_links' => ['Contact strip links (right side)', 'items', [
+            'label' => ['Text', 'text'],
+            'url' => ['Link', 'url'],
+        ]],
+        'topbar_cta_label' => ['Contact strip highlighted button text', 'text'],
+        'topbar_cta_url' => ['Contact strip highlighted button link', 'url'],
         'nav_links' => ['Navbar links', 'items', [
             'label' => ['Text', 'text'],
             'url' => ['Link', 'url'],
@@ -272,6 +380,23 @@ class PageBuilder
             'label' => ['Text', 'text'],
             'url' => ['Link', 'url'],
         ]],
+        'footer_info_title' => ['Footer second links heading', 'text'],
+        'footer_info_links' => ['Footer second links', 'items', [
+            'label' => ['Text', 'text'],
+            'url' => ['Link', 'url'],
+        ]],
+        'footer_legal_links' => ['Footer bottom links (privacy, terms…)', 'items', [
+            'label' => ['Text', 'text'],
+            'url' => ['Link', 'url'],
+        ]],
+        'social_facebook' => ['Facebook link', 'url'],
+        'social_instagram' => ['Instagram link', 'url'],
+        'social_youtube' => ['YouTube link', 'url'],
+        'social_linkedin' => ['LinkedIn link', 'url'],
+        'social_x' => ['X (Twitter) link', 'url'],
+        'social_tiktok' => ['TikTok link', 'url'],
+        'newsletter_show' => ['Show the newsletter sign-up in the footer', 'checkbox'],
+        'newsletter_text' => ['Newsletter text', 'text'],
         'footer_bg' => ['Footer background', 'color'],
     ];
 
@@ -282,7 +407,34 @@ class PageBuilder
                 ['label' => 'Home', 'url' => '/'],
                 ['label' => 'Courses', 'url' => '/courses'],
                 ['label' => 'About', 'url' => '/about'],
+                ['label' => 'Student lookup', 'url' => '/student-lookup'],
+                ['label' => 'Contact', 'url' => '/contact'],
             ],
+            'topbar_show' => true,
+            'contact_phone' => '',
+            'contact_email' => '',
+            'contact_whatsapp' => '',
+            'contact_address' => '',
+            'contact_hours' => '',
+            'topbar_bg' => '',
+            'topbar_links' => [
+                ['label' => 'Student lookup', 'url' => '/student-lookup'],
+                ['label' => 'Courses', 'url' => '/courses'],
+                ['label' => 'Sign in', 'url' => '/account/login'],
+            ],
+            'topbar_cta_label' => 'Enrolment open',
+            'topbar_cta_url' => '/account/register/choose',
+            'footer_info_title' => 'Information',
+            'footer_info_links' => [
+                ['label' => 'Student lookup', 'url' => '/student-lookup'],
+                ['label' => 'Contact us', 'url' => '/contact'],
+                ['label' => 'Sign in', 'url' => '/account/login'],
+                ['label' => 'Create an account', 'url' => '/account/register/choose'],
+            ],
+            'footer_legal_links' => [],
+            'social_facebook' => '', 'social_instagram' => '', 'social_youtube' => '', 'social_linkedin' => '', 'social_x' => '', 'social_tiktok' => '',
+            'newsletter_show' => true,
+            'newsletter_text' => 'Subscribe for new courses, intakes and updates.',
             'nav_signin_label' => 'Sign in',
             'nav_signup_label' => 'Sign up',
             'nav_show_signup' => true,
@@ -298,7 +450,7 @@ class PageBuilder
                 ['label' => 'Sign in', 'url' => '/account/login'],
                 ['label' => 'Sign up', 'url' => '/account/register/choose'],
             ],
-            'footer_bg' => '#0f172a',
+            'footer_bg' => '#0b3d24',
         ];
     }
 
@@ -311,25 +463,83 @@ class PageBuilder
 
         switch ($page) {
             case 'home':
+                $heroImage = (string) (StoreSetting::get('hero_image') ?? '');
                 return [
-                    $s('hero', [
-                        'badge' => $h('hero_badge'), 'title' => $h('hero_title_1'), 'title_highlight' => $h('hero_title_2'),
-                        'text' => $h('hero_text'), 'button_label' => 'Sign up free', 'button_url' => '/account/register/choose',
-                        'button2_label' => $h('hero_button_1'), 'button2_url' => '/courses',
-                        'image' => (string) (StoreSetting::get('hero_image') ?? ''), 'image_side' => 'right', 'min_height' => 0,
-                    ], ['bg' => 'mint', 'padding' => 'lg']),
+                    $s('hero_slider', [
+                        'slides' => [
+                            ['image' => $heroImage, 'title' => 'Learn Practical Skills,', 'title_highlight' => 'Build Your Future', 'text' => 'At ' . $app . ', you learn job-ready skills from trusted training organisations, get attached to real workplaces, and earn certificates employers can verify.'],
+                            ['image' => '', 'title' => 'Train Anywhere,', 'title_highlight' => 'Get Certified', 'text' => 'Video lessons, notes and quizzes on your phone, a final exam, then an industry attachment and a certificate.'],
+                            ['image' => '', 'title' => 'From Classroom', 'title_highlight' => 'to the Workplace', 'text' => 'Every course connects you with organisations offering attachment, so you graduate with real experience.'],
+                        ],
+                        'button_label' => 'Enrol now', 'button_url' => '/account/register/choose',
+                        'button2_label' => 'Explore courses', 'button2_url' => '/courses',
+                        'height' => 560, 'seconds' => 6,
+                    ], ['bg' => 'dark', 'padding' => 'none', 'width' => 'full']),
+                    $s('feature_strip', ['items' => [
+                        ['icon' => 'monitor', 'title' => 'Learn online', 'text' => 'Videos, notes and quizzes'],
+                        ['icon' => 'users', 'title' => 'Expert tutors', 'text' => 'Trainers who know the trade'],
+                        ['icon' => 'briefcase', 'title' => 'Real attachment', 'text' => 'Placed with trusted organisations'],
+                        ['icon' => 'award', 'title' => 'Verified certificates', 'text' => 'Anyone can check them online'],
+                        ['icon' => 'phone', 'title' => 'Pay as you learn', 'text' => 'Wallet, deposits and receipts'],
+                    ]], ['bg' => 'white', 'padding' => 'none']),
+                    $s('welcome', [
+                        'image' => '', 'label' => 'Welcome to', 'title' => $app,
+                        'text' => $app . ' brings training organisations, tutors, students and workplaces together on one platform. Learn at your pace, prove your skills in a final exam, complete your attachment and walk away with a certificate that can be verified by anyone.',
+                        'stats' => [
+                            ['value' => '{courses}', 'label' => 'Courses'], ['value' => '{students}', 'label' => 'Students'],
+                            ['value' => '{organisations}', 'label' => 'Training organisations'], ['value' => '{certificates}', 'label' => 'Courses completed'],
+                        ],
+                        'button_label' => 'Read more about us', 'button_url' => '/about',
+                    ], ['bg' => 'white', 'padding' => 'lg']),
+                    $s('explore', [
+                        'label' => 'How it works', 'title' => 'Explore. Learn. Excel.',
+                        'items' => [
+                            ['icon' => 'book', 'title' => 'Structured courses', 'text' => 'Modules with video, notes and a quiz each, from beginner to expert.'],
+                            ['icon' => 'cap', 'title' => 'Qualified tutors', 'text' => 'Courses are built and taught by approved training organisations.'],
+                            ['icon' => 'bulb', 'title' => 'Practical learning', 'text' => 'Attachment at real workplaces, logged and assessed day by day.'],
+                            ['icon' => 'trophy', 'title' => 'Recognised results', 'text' => 'Final exam, grade and a certificate with its own verification number.'],
+                        ],
+                        'image' => '', 'badge_title' => 'Skills for life', 'badge_text' => 'Learn • Practise • Succeed',
+                    ], ['bg' => 'light', 'padding' => 'lg']),
                     $s('courses', [
                         'label' => $h('courses_label'), 'title' => $h('courses_title'), 'text' => $h('courses_text'),
                         'source' => 'featured', 'limit' => 8, 'columns' => '4', 'card_size' => 'md', 'layout' => 'swipe',
                         'button_label' => $h('courses_button'), 'button_url' => '/courses',
-                    ], ['bg' => 'light', 'anchor' => 'courses']),
-                    $s('logos', ['title' => $h('trusted_title'), 'logo_height' => 42], ['anchor' => 'partners', 'align' => 'center']),
-                    $s('cta', [
-                        'title' => $h('signup_title'), 'text' => $h('signup_text'),
-                        'button_label' => 'Sign up', 'button_url' => '/account/register/choose',
-                        'button2_label' => '', 'button2_url' => '', 'note' => 'Already have an account?',
-                        'note_link_label' => 'Sign in', 'note_link_url' => '/account/login',
-                    ], ['padding' => 'md', 'align' => 'center']),
+                    ], ['bg' => 'white', 'anchor' => 'courses']),
+                    $s('picture_cards', [
+                        'label' => 'What you get', 'title' => 'Everything You Need to Succeed',
+                        'items' => [
+                            ['image' => '', 'icon' => 'monitor', 'title' => 'Online classroom', 'text' => 'Watch lessons full-screen on any phone, then take the module quiz.', 'url' => '/courses'],
+                            ['image' => '', 'icon' => 'flask', 'title' => 'Hands-on practice', 'text' => 'Practical modules and assignments built around real tasks.', 'url' => ''],
+                            ['image' => '', 'icon' => 'briefcase', 'title' => 'Industry attachment', 'text' => 'Choose an attachment organisation near you and get assessed daily.', 'url' => ''],
+                            ['image' => '', 'icon' => 'award', 'title' => 'Certificates', 'text' => 'Download your certificate; employers verify it online in seconds.', 'url' => '/student-lookup'],
+                        ],
+                        'button_label' => 'View all courses', 'button_url' => '/courses',
+                    ], ['bg' => 'white', 'padding' => 'lg']),
+                    $s('gallery', [
+                        'label' => 'Student life', 'title' => 'Learning Beyond Classrooms',
+                        'items' => [['image' => '', 'caption' => 'Practical sessions'], ['image' => '', 'caption' => 'Attachment'], ['image' => '', 'caption' => 'Graduation'], ['image' => '', 'caption' => 'Workshops'], ['image' => '', 'caption' => 'Teamwork']],
+                        'button_label' => 'Contact us', 'button_url' => '/contact',
+                    ], ['bg' => 'light', 'padding' => 'lg']),
+                    $s('cta_band', [
+                        'icon' => 'cap', 'title' => "Enrolment Open for\nthe " . date('Y') . ' Intake',
+                        'text' => 'Start learning today and give your career the best start.',
+                        'button_label' => 'Enrol now', 'button_url' => '/account/register/choose',
+                    ], ['bg' => 'white', 'padding' => 'md']),
+                ];
+            case 'contact':
+                return [
+                    $s('text', ['title' => 'Contact us', 'text' => 'Questions about a course, fees, attachment or your account? Reach us below, or send a message and we will get back to you.'], ['bg' => 'mint', 'padding' => 'md', 'align' => 'center']),
+                    $s('contact', ['title' => '', 'text' => '', 'items' => []], ['bg' => 'white', 'padding' => 'md']),
+                    $s('contact_form', ['title' => 'Send us a message', 'text' => '', 'button_label' => 'Send message'], ['bg' => 'light', 'padding' => 'md', 'width' => 'narrow']),
+                ];
+            case 'lookup':
+                return [
+                    $s('lookup_form', [
+                        'title' => 'Student lookup',
+                        'text' => 'Check that a person really is a student here and see the courses they completed. Enter the registration number or certificate number printed on their certificate, or their National ID, passport or birth certificate number.',
+                        'placeholder' => 'Reg. no., certificate no., ID, passport or birth cert. no.',
+                    ], ['bg' => 'mint', 'padding' => 'lg', 'width' => 'narrow', 'align' => 'center']),
                 ];
             case 'about':
                 return [
@@ -382,16 +592,14 @@ class PageBuilder
             case 'signup':
                 return [
                     $s('text', [
-                        'label' => 'Choose your role', 'title' => 'Create your account',
-                        'text' => 'Sign up for the role that fits you. After you register you complete your profile and land on your dashboard.',
+                        'label' => 'Students', 'title' => 'Create your account',
+                        'text' => 'Create your student account. Next you fill in your registration details, then choose your courses.',
                         'button_label' => '', 'button_url' => '',
                     ], ['align' => 'center', 'padding' => 'sm', 'width' => 'narrow']),
-                    $s('signup_roles', [
-                        'student_title' => 'Student',
-                        'student_text' => 'Enrol in courses, track your progress, and earn certificates.',
-                        'provider_title' => 'Organisation providing attachment',
-                        'provider_text' => 'Take on students for attachment or internship. Each organisation providing courses approves you before its students can see you.',
-                        'note' => 'Tutors and branch admins get their sign-in details from their organisation. Organisations providing courses register through an invite link from Super Admin.',
+                    $s('signup_form', [
+                        'title' => '',
+                        'button_label' => 'Create my account',
+                        'note' => 'Tutors and branch admins get their sign-in details from their organisation. Organisations are registered by Super Admin through a one-time link.',
                     ], ['padding' => 'sm', 'width' => 'narrow']),
                 ];
             case 'login':

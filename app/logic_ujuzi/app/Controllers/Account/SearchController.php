@@ -54,6 +54,13 @@ class SearchController extends BaseAccountController
     {
         $scored = [];
         foreach ($items as $item) {
+            // A course code typed exactly finds that course first.
+            if (count($terms) === 1 && ($item['code'] ?? '') !== '' && $terms[0] === $item['code']) {
+                unset($item['keywords'], $item['code']);
+                $item['score'] = 1000;
+                $scored[] = $item;
+                continue;
+            }
             $title = mb_strtolower($item['title']);
             $haystack = $title . ' ' . mb_strtolower($item['keywords'] ?? '') . ' ' . mb_strtolower($item['subtitle'] ?? '');
             $words = preg_split('/[^\p{L}\p{N}]+/u', $haystack, -1, PREG_SPLIT_NO_EMPTY) ?: [];
@@ -89,7 +96,7 @@ class SearchController extends BaseAccountController
                 }
                 $score += $best;
             }
-            unset($item['keywords']);
+            unset($item['keywords'], $item['code']);
             $item['score'] = $score;
             $scored[] = $item;
         }
@@ -116,9 +123,11 @@ class SearchController extends BaseAccountController
         $out = [];
         foreach ($courses as $course) {
             $fee = (float) ($course['enrollment_fee_ksh'] ?? 0);
+            $code = !empty($course['course_code']) ? (string) $course['course_code'] : '';
             $out[] = [
+                'code' => $code,
                 'title' => (string) $course['title'],
-                'subtitle' => implode(' · ', array_filter([$course['category_name'] ?? '', $course['organisation_name'] ?? '', $fee > 0 ? 'Ksh ' . number_format($fee) : 'Free'])),
+                'subtitle' => implode(' · ', array_filter([$code !== '' ? 'Code ' . $code : '', $course['category_name'] ?? '', $course['organisation_name'] ?? '', $fee > 0 ? 'Ksh ' . number_format($fee) : 'Free'])),
                 'keywords' => implode(' ', [$course['description'] ?? '', $course['first_name'] ?? '', $course['last_name'] ?? '']),
                 'url' => url('/account/courses/' . (int) $course['id']),
                 'image' => !empty($course['cover_image']) && preg_match('/\.(jpe?g|png|webp|gif)$/i', (string) $course['cover_image']) ? imageUrl($course['cover_image']) : null,

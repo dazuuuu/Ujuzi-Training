@@ -34,6 +34,21 @@ class PagesController extends BaseAdminController
         ]);
     }
 
+    /** People who subscribed to the newsletter in the footer; ?export=xlsx downloads them. */
+    public function subscribers(): void
+    {
+        try {
+            $rows = \App\Core\Database::connection()->query('SELECT email, created_at FROM newsletter_subscribers ORDER BY created_at DESC')->fetchAll();
+        } catch (\Throwable $e) {
+            $rows = [];
+        }
+        if (Request::query('export') === 'xlsx') {
+            \App\Services\SpreadsheetExport::download('newsletter-subscribers-' . date('Y-m-d'), 'Subscribers', ['#', 'Email', 'Subscribed'],
+                array_map(static fn(array $r, int $i): array => [$i + 1, $r['email'], substr((string) $r['created_at'], 0, 10)], $rows, array_keys($rows)));
+        }
+        View::render('admin.pages.subscribers', ['pageTitle' => 'Newsletter subscribers', 'activeNav' => 'pages', 'rows' => $rows]);
+    }
+
     /** Saves the page's sections and the navbar & footer. */
     public function save(): void
     {

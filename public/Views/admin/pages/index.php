@@ -27,6 +27,15 @@ require __DIR__ . '/../layout-header.php';
   .pbe-item.is-dragging{opacity:.4;}
   .pbe-item.drop-before{box-shadow:0 -3px 0 #2563eb;}
   .pbe-grip{cursor:grab;color:#9ca3af;font-size:1rem;line-height:1;}
+  .pbe-act{display:inline-flex;align-items:center;height:26px;padding:0 9px;border:1px solid #d1d5db;border-radius:6px;background:#fff;font-size:.72rem;font-weight:800;color:#111827;cursor:pointer;white-space:nowrap;}
+  .pbe-act:hover{border-color:#2563eb;color:#2563eb;}
+  .pbe-act.is-del{color:#b91c1c;border-color:#fecaca;}
+  .pbe-act.is-del:hover{background:#fef2f2;border-color:#b91c1c;color:#b91c1c;}
+  .pbe-tools{display:flex;align-items:center;gap:2px;}
+  /* Phones: the name gets its own line, the buttons wrap underneath it. */
+  @media (max-width:520px){.pbe-list .pbe-item{flex-wrap:wrap;}.pbe-list .pbe-item .pbe-item-name{flex:1 1 calc(100% - 30px);}.pbe-list .pbe-item .pbe-tools{margin-left:22px;margin-right:auto;}}
+  .pbe-site-hint{margin:10px 0 0;padding:8px 10px;border:1px dashed #cbd5e1;border-radius:8px;font-size:.74rem;font-weight:600;color:#475569;}
+  .pbe-site-hint button{font-weight:800;color:#2563eb;text-decoration:underline;background:none;border:0;padding:0;cursor:pointer;}
   .pbe-item-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.84rem;font-weight:700;color:#111827;}
   .pbe-item-name small{display:block;font-weight:600;color:#6b7280;font-size:.72rem;overflow:hidden;text-overflow:ellipsis;}
   .pbe-icon-btn{border:0;background:none;padding:4px;border-radius:6px;cursor:pointer;color:#6b7280;font-size:.85rem;line-height:1;}
@@ -166,7 +175,9 @@ require __DIR__ . '/../layout-header.php';
     try { frame.contentWindow.postMessage({ pbSelected: mode === 'sections' && selected !== null ? selected : -1 }, location.origin); } catch (e) {}
   }
   window.addEventListener('message', function (event) {
-    if (event.origin !== location.origin || typeof event.data.pbSelect !== 'number') return;
+    if (event.origin !== location.origin) return;
+    if (event.data && event.data.pbSite) { mode = 'site'; selected = null; syncModeButtons(); render(); highlight(); return; }
+    if (typeof event.data.pbSelect !== 'number') return;
     mode = 'sections'; selected = event.data.pbSelect; sectionTab = 'content';
     syncModeButtons(); render();
   });
@@ -328,6 +339,7 @@ require __DIR__ . '/../layout-header.php';
       if (a === 'down' && i < state.sections.length - 1) { state.sections.splice(i + 1, 0, state.sections.splice(i, 1)[0]); selected = i + 1; }
       render(); changed(); return;
     }
+    if (t.hasAttribute('data-go-site')) { mode = 'site'; selected = null; syncModeButtons(); render(); highlight(); return; }
     if (t.hasAttribute('data-back')) { selected = null; render(); highlight(); return; }
     if ((a = t.getAttribute('data-tab')) !== null) { sectionTab = a; render(); return; }
     if ((a = t.getAttribute('data-select')) !== null) { selected = +a; sectionTab = 'content'; render(); highlight(); }
@@ -381,15 +393,19 @@ require __DIR__ . '/../layout-header.php';
       html += '<div class="pbe-item' + (hidden ? ' is-hidden' : '') + (selected === i ? ' is-selected' : '') + '" draggable="true" data-select="' + i + '">'
         + '<span class="pbe-grip" title="Drag to move">⠿</span>'
         + '<span class="pbe-item-name">' + esc(typeInfo(s.type).label) + '<small data-title-of="' + i + '">' + esc(summary(s)) + '</small></span>'
+        + '<span class="pbe-tools">'
         + '<button type="button" class="pbe-icon-btn" data-act="up" data-i="' + i + '" title="Move up">↑</button>'
         + '<button type="button" class="pbe-icon-btn" data-act="down" data-i="' + i + '" title="Move down">↓</button>'
         + '<button type="button" class="pbe-icon-btn" data-act="hide" data-i="' + i + '" title="' + (hidden ? 'Show' : 'Hide') + '">' + (hidden ? '🙈' : '👁') + '</button>'
         + '<button type="button" class="pbe-icon-btn" data-act="dup" data-i="' + i + '" title="Duplicate">⧉</button>'
-        + '<button type="button" class="pbe-icon-btn" data-act="del" data-i="' + i + '" title="Delete">🗑</button>'
+        + '</span>'
+        + '<button type="button" class="pbe-act" data-select="' + i + '">Edit</button>'
+        + '<button type="button" class="pbe-act is-del" data-act="del" data-i="' + i + '">Delete</button>'
         + '</div>';
     });
     if (!state.sections.length) html += '<p class="text-sm font-semibold text-neutral-500">This page has no sections. Add one below.</p>';
-    html += '</div><p class="text-[11px] font-black uppercase tracking-widest text-neutral-500" style="margin-top:16px">Add a section</p><div class="pbe-add">';
+    html += '</div><p class="pbe-site-hint">The contact strip, navbar and footer are on every page — edit them under <button type="button" data-go-site>Navbar &amp; footer</button>, or click them in the preview.</p>'
+      + '<p class="text-[11px] font-black uppercase tracking-widest text-neutral-500" style="margin-top:16px">Add a section</p><div class="pbe-add">';
     allowedTypes().forEach(function (t) { html += '<button type="button" data-add="' + t + '">+ ' + esc(SCHEMA.types[t].label) + '</button>'; });
     panel.innerHTML = html + '</div>';
   }

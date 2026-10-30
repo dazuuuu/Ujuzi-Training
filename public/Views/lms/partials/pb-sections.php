@@ -53,6 +53,12 @@ $pbHref = static fn(string $link): string => e(PageBuilder::href($link));
 <script>
   // Tell the editor which section was clicked, and follow its selection.
   document.addEventListener('click', function (event) {
+    // The contact strip, navbar and footer open "Navbar & footer" in the editor.
+    if (event.target.closest('.pub-topbar, .pub-nav, .pub-footer')) {
+      event.preventDefault();
+      parent.postMessage({ pbSite: true }, location.origin);
+      return;
+    }
     var sec = event.target.closest('[data-pb-index]');
     if (!sec) return;
     event.preventDefault();

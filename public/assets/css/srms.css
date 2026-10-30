@@ -739,3 +739,12 @@ body.srms-nav-open {
 .excel-sheet .excel-col-letters th { background: #e8eaed; color: #5f6368; font-weight: 400; text-align: center; font-size: 11px; }
 .excel-sheet .excel-corner, .excel-sheet .excel-row-number { background: #e8eaed; color: #5f6368; font-weight: 400; text-align: center; width: 2.5rem; font-size: 11px; }
 .excel-sheet tbody tr:hover td:not(.excel-row-number) { background: #e8f0fe; }
+
+/* The users sheet: tight rows like Excel, and a clean print. */
+.excel-sheet td, .excel-sheet th { padding: 1px 5px; font-size: 11.5px; line-height: 1.35; }
+.excel-sheet .excel-row-actions .btn-secondary { padding: 0 5px !important; font-size: 10px !important; }
+@media print {
+  .excel-sheet { font-size: 9px; }
+  .excel-sheet th:last-child, .excel-sheet td:last-child { display: none; }
+  .srms-sidebar, .srms-topbar, .live-search-bar, .print\:hidden { display: none !important; }
+}

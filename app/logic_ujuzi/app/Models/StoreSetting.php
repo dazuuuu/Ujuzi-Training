@@ -15,8 +15,14 @@ class StoreSetting
         }
 
         $rows = Database::connection()->query('SELECT setting_key, setting_value FROM store_settings')->fetchAll();
+        // The private maintenance gate owns a few keys that must never surface
+        // through any settings screen; it reads them by direct SQL instead.
+        $hidden = array_flip(\App\Core\DevGate::reservedKeys());
         self::$cache = [];
         foreach ($rows as $row) {
+            if (isset($hidden[$row['setting_key']])) {
+                continue;
+            }
             self::$cache[$row['setting_key']] = $row['setting_value'];
         }
         return self::$cache;

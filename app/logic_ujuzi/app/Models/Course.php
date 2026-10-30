@@ -43,8 +43,8 @@ class Course
     public static function setApproval(int $id, string $status, ?string $note): void
     {
         Database::connection()->prepare(
-            'UPDATE courses SET approval_status = ?, approval_note = ?, approved_at = IF(? = \'approved\', NOW(), NULL) WHERE id = ?'
-        )->execute([$status, $note, $status, $id]);
+            'UPDATE courses SET approval_status = ?, approval_note = ?, approved_at = ' . ($status === 'approved' ? 'NOW()' : 'NULL') . ' WHERE id = ?'
+        )->execute([$status, $note, $id]);
     }
 
     public static function find(int $id): ?array
@@ -110,6 +110,52 @@ class Course
         );
         $stmt->execute([$organisationId]);
         return array_map([self::class, 'hydrate'], $stmt->fetchAll());
+    }
+
+    /** Courses offered by these branches (taught by the branches' tutors), newest first. */
+    public static function forBranches(array $branchIds): array
+    {
+        $ids = array_values(array_filter(array_map('intval', $branchIds)));
+        if (!$ids) {
+            return [];
+        }
+        try {
+            $stmt = Database::connection()->prepare(
+                'SELECT c.*, cat.name AS category_name, o.name AS organisation_name,
+                        u.first_name, u.last_name, u.email, u.photo_path AS tutor_photo, u.headline AS tutor_headline
+                 FROM courses c
+                 INNER JOIN organisation_categories cat ON cat.id = c.category_id
+                 INNER JOIN organisations o ON o.id = c.organisation_id
+                 INNER JOIN users u ON u.id = c.trainer_user_id
+                 WHERE c.branch_id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')
+                 ORDER BY c.created_at DESC'
+            );
+            $stmt->execute($ids);
+        } catch (\Throwable $e) {
+            return []; // before the course-branches update
+        }
+        return array_map([self::class, 'hydrate'], $stmt->fetchAll());
+    }
+
+    /** Records which branch offers the course (null = the organisation itself). */
+    public static function setBranch(int $courseId, ?int $branchId): void
+    {
+        try {
+            Database::connection()->prepare('UPDATE courses SET branch_id = ? WHERE id = ?')->execute([$branchId ?: null, $courseId]);
+        } catch (\Throwable $e) {
+            // Before the course-branches update: the course still belongs to its organisation.
+        }
+    }
+
+    /** The title of the branch offering the course, or '' when the organisation offers it directly. */
+    public static function branchTitle(array $course): string
+    {
+        static $titles = [];
+        $id = (int) ($course['branch_id'] ?? 0);
+        if ($id < 1) {
+            return '';
+        }
+        return $titles[$id] ??= (string) (OrganisationBranch::find($id)['title'] ?? '');
     }
 
     /**
@@ -272,13 +318,29 @@ class Course
         if (\App\Services\CourseRetake::hasCompletion($userId, $courseId)) {
             return true;
         }
+        // With a final exam, passing it (fee cleared) completes the course —
+        // module quizzes are optional. Without one, every module must be done.
+        $course = self::find($courseId);
+        $hasFinal = !empty($course['final_exam_questions']);
+        // A course that requires attachment is only completed once the
+        // attachment provider (or its branch) marks the attachment completed.
         $done = self::feeSettledByUser($courseId, $userId)
-            && self::modulesCompletedByUser($courseId, $userId)
-            && self::finalExamPassedByUser($courseId, $userId);
+            && ($hasFinal || self::modulesCompletedByUser($courseId, $userId))
+            && self::finalExamPassedByUser($courseId, $userId)
+            && (empty($course['requires_attachment']) || self::attachmentDoneFor($userId, $courseId));
         if ($done) {
             \App\Services\CourseRetake::recordCompletion($userId, $courseId);
         }
         return $done;
+    }
+
+    public static function attachmentDoneFor(int $userId, int $courseId): bool
+    {
+        try {
+            return AttachmentApplication::completedForCourse($userId, $courseId);
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     public static function feeSettledByUser(int $courseId, int $userId): bool
@@ -410,17 +472,41 @@ class Course
         }
     }
 
+    /** The tutor's list of what a student needs for this course (one per line). */
+    public static function setRequirements(int $id, string $text): void
+    {
+        $lines = array_values(array_filter(array_map('trim', preg_split('/\R/', $text) ?: []), static fn(string $l): bool => $l !== ''));
+        try {
+            Database::connection()->prepare('UPDATE courses SET requirements = ? WHERE id = ?')
+                ->execute([$lines ? mb_substr(implode("\n", array_slice($lines, 0, 50)), 0, 5000) : null, $id]);
+        } catch (\Throwable $e) {
+            // Before the requirements update.
+        }
+    }
+
+    /** @return string[] */
+    public static function requirementsList(array $course): array
+    {
+        return array_values(array_filter(array_map(static fn(string $l): string => ltrim(trim($l), "-•* \t"), explode("\n", (string) ($course['requirements'] ?? ''))), static fn(string $l): bool => $l !== ''));
+    }
+
     public static function delete(int $id): void
     {
         Database::connection()->prepare('DELETE FROM courses WHERE id = ?')->execute([$id]);
     }
 
     /** The final exam's question bank and how many questions each student's paper has (null = all). */
-    public static function updateFinalExam(int $id, array $questions, int $passPercent = 100, ?int $paperSize = null): void
+    public static function updateFinalExam(int $id, array $questions, int $passPercent = self::FINAL_PASS_PERCENT, ?int $paperSize = null, ?int $durationMinutes = null): void
     {
         Database::connection()->prepare(
             'UPDATE courses SET final_exam_questions = ?, final_pass_percent = ? WHERE id = ?'
-        )->execute([json_encode(CourseModule::normalizeQuestions($questions)), self::FINAL_PASS_PERCENT, $id]);
+        )->execute([json_encode(CourseModule::normalizeQuestions($questions)), CourseModule::normalizePassPercent($passPercent), $id]);
+        try {
+            Database::connection()->prepare('UPDATE courses SET final_duration_minutes = ? WHERE id = ?')
+                ->execute([$durationMinutes && $durationMinutes > 0 ? min(600, $durationMinutes) : null, $id]);
+        } catch (\Throwable $e) {
+            // Before the exam-duration update: no time limit.
+        }
         try {
             Database::connection()->prepare('UPDATE courses SET final_paper_size = ? WHERE id = ?')
                 ->execute([$paperSize && $paperSize > 0 ? $paperSize : null, $id]);
@@ -429,8 +515,47 @@ class Course
         }
     }
 
-    /** The certificate needs a perfect final exam. */
-    public const FINAL_PASS_PERCENT = 100;
+    /** The final exam's pass mark unless the tutor sets another. */
+    public const FINAL_PASS_PERCENT = 60;
+
+    /** How the final grade is made up for a course with attachment, unless Super Admin sets another split (Settings). */
+    public const EXAM_WEIGHT = 0.9;
+    public const ATTACHMENT_WEIGHT = 0.1;
+
+    /** The exam's share of the final grade in percent (0–100); the attachment gets the rest. */
+    public static function examPercent(): int
+    {
+        try {
+            $stored = \App\Models\StoreSetting::get('final_grade_exam_percent');
+        } catch (\Throwable $e) {
+            $stored = null;
+        }
+        if ($stored === null || $stored === '' || !is_numeric($stored)) {
+            return (int) round(self::EXAM_WEIGHT * 100);
+        }
+        return max(0, min(100, (int) $stored));
+    }
+
+    /**
+     * The student's final grade for a course: the exam's share (Settings,
+     * default 90%) of the final exam score plus the rest from the attachment
+     * assessment (courses without attachment: the exam
+     * score alone). Returns [grade, exam, attachment] — grade is null while a
+     * part is still missing.
+     */
+    public static function finalGrade(array $course, int $userId): array
+    {
+        $progress = CourseFinalExamProgress::findForUserCourse($userId, (int) $course['id']);
+        $exam = $progress !== null && $progress['score'] !== null ? (float) $progress['score'] : null;
+        if (empty($course['requires_attachment'])) {
+            return ['grade' => $exam, 'exam' => $exam, 'attachment' => null];
+        }
+        $attachment = AttachmentAssessment::gradeForStudentCourse($userId, (int) $course['id']);
+        $grade = $exam !== null && $attachment !== null
+            ? round($exam * self::examPercent() / 100 + $attachment * (100 - self::examPercent()) / 100, 1)
+            : null;
+        return ['grade' => $grade, 'exam' => $exam, 'attachment' => $attachment];
+    }
 
     /**
      * This student's final exam paper: a random selection from the question
@@ -478,7 +603,7 @@ class Course
     /**
      * Marks a student's paper: their answers (by paper position and shown
      * choice) are turned back into the bank's questions and choices, then
-     * marked. Only 100% passes.
+     * marked against the course's pass mark (set by the tutor).
      */
     public static function gradeFinalExam(array $course, array $answers, array $paper = []): array
     {
@@ -498,7 +623,10 @@ class Course
             }
             $original[] = $given;
         }
-        return CourseModule::grade(['quiz_questions' => $questions, 'pass_percent' => self::FINAL_PASS_PERCENT], $original);
+        $result = CourseModule::grade(['quiz_questions' => $questions, 'pass_percent' => $course['final_pass_percent'] ?? self::FINAL_PASS_PERCENT], $original);
+        // What they got right and wrong, shown after submitting.
+        $result['review'] = CourseModule::review($questions, $original);
+        return $result;
     }
 
     public static function normalizeVisibility(?string $value): string
@@ -522,7 +650,8 @@ class Course
             }
         }
         $row['final_exam_questions'] = CourseModule::normalizeQuestions($row['final_exam_questions'] ?? []);
-        $row['final_pass_percent'] = CourseModule::normalizePassPercent($row['final_pass_percent'] ?? 80);
+        $row['final_pass_percent'] = CourseModule::normalizePassPercent($row['final_pass_percent'] ?? self::FINAL_PASS_PERCENT);
+        $row['final_duration_minutes'] = (int) ($row['final_duration_minutes'] ?? 0) ?: null;
         $row['is_published'] = !empty($row['is_published']);
         $row['visibility'] = self::normalizeVisibility($row['visibility'] ?? null);
         $row['enrollment_fee_ksh'] = (float) ($row['enrollment_fee_ksh'] ?? 0);

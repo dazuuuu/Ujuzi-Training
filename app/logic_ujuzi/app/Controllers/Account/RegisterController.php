@@ -72,9 +72,10 @@ class RegisterController
                 'is_active' => 1,
                 'email_verified_at' => date('Y-m-d H:i:s'),
             ]);
+            \App\Services\Notifier::toUser((int) $userId, 'Welcome to ' . appName(), 'Your account is ready', 'Thank you for registering. Sign in with your email or phone and your password, fill in your registration details, then choose your courses.', 'Sign in', '/account/login');
         } catch (\PDOException $e) {
             if ((string) $e->getCode() === '23000') {
-                $this->renderStudent('That email is already registered. Sign in instead.', $email);
+                $this->renderStudent('An account already exists in the system with this email. Sign in instead (or reset your password).', $email);
                 return;
             }
             throw $e;
@@ -97,6 +98,9 @@ class RegisterController
 
     public function showAttachmentTrainer(): void
     {
+        // Organisations are registered by Super Admin, who shares a one-time link.
+        flashError('Organisations are registered by Super Admin, who sends you a one-time registration link. If you already have an account, sign in here.');
+        redirect('/account/login');
         if (UserSession::current()) {
             redirect(AccountRedirect::home(UserSession::current()));
         }
@@ -105,6 +109,9 @@ class RegisterController
 
     public function storeAttachmentTrainer(): void
     {
+        // Organisations are registered by Super Admin, who shares a one-time link.
+        flashError('Organisations are registered by Super Admin, who sends you a one-time registration link. If you already have an account, sign in here.');
+        redirect('/account/login');
         if (UserSession::current()) {
             redirect(AccountRedirect::home(UserSession::current()));
         }
@@ -142,7 +149,7 @@ class RegisterController
             ]);
         } catch (\PDOException $e) {
             if ((string) $e->getCode() === '23000') {
-                $this->renderAttachmentTrainer('That email is already registered. Sign in instead.', $email);
+                $this->renderAttachmentTrainer('An account already exists in the system with this email. Sign in instead (or reset your password).', $email);
                 return;
             }
             throw $e;
@@ -238,7 +245,7 @@ class RegisterController
         } catch (\PDOException $e) {
             $pdo->rollBack();
             if ((string) $e->getCode() === '23000') {
-                $this->renderOrgAdmin($invite, $token, 'That email is already registered. Sign in instead.', $email);
+                $this->renderOrgAdmin($invite, $token, 'An account already exists in the system with this email. Sign in instead (or reset your password).', $email);
                 return;
             }
             $this->renderOrgAdmin($invite, $token, 'Could not create the account. Please try again.', $email);
@@ -266,7 +273,9 @@ class RegisterController
             return 'This organisation is not accepting registrations.';
         }
         if (!empty($invite['is_used'])) {
-            return 'This registration link has already been used. Only Super Admin can create a new secure URL.';
+            // A used link never opens the form again: it sends them to sign in.
+            flashSuccess('This registration link was already used. Sign in with the account you created.');
+            redirect('/account/login');
         }
         if (!empty($invite['is_expired'])) {
             return 'This registration link expired after 5 minutes. Ask Super Admin to generate a new secure URL.';
@@ -281,7 +290,7 @@ class RegisterController
         }
         $existing = User::findByIdentifier('email', $email);
         if ($existing) {
-            return 'That email is already registered. Sign in instead.';
+            return 'An account already exists in the system with this email. Sign in instead (or reset your password).';
         }
         return User::passwordError($password, $confirm) ?? '';
     }

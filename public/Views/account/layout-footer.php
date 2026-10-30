@@ -343,5 +343,6 @@
   </script>
 <script src="<?= asset('assets/js/app-shell.js') ?>" defer></script>
 <?php require __DIR__ . '/../partials/image-cropper.php'; ?>
+<?php require __DIR__ . '/../partials/phone-smart.php'; ?>
 </body>
 </html>

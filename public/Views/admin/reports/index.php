@@ -7,12 +7,11 @@ $total = count($report['rows']);
 ?>
 <div class="space-y-5">
   <section>
-    <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">Reports</p>
-    <h1 class="mt-2 font-serif-heading text-3xl font-bold">Reports</h1>
-    <p class="mt-1 text-sm font-medium text-neutral-600">Pick a report, narrow it by dates if you like, then download it as Excel or PDF.</p>
+    <p class="text-sm text-neutral-600">Pick a report, narrow it by dates, then download it as Excel or PDF. <a href="<?= url('/admin/reports/activity') ?>" class="font-bold underline" style="color:var(--ke-green)">Organisation activity</a> filters by organisation, branch, status and finance.</p>
   </section>
 
   <nav class="course-tabs" aria-label="Reports">
+    <a href="<?= url('/admin/reports/activity') ?>" role="tab" aria-selected="false" style="text-decoration:none">Organisation activity</a>
     <a href="<?= url('/admin/reports') . e($query(['view' => 'charts'])) ?>" role="tab" aria-selected="<?= $view === 'charts' ? 'true' : 'false' ?>" style="text-decoration:none">📊 Charts</a>
     <?php foreach ($sections as $key => [$title]): ?>
       <a href="<?= url('/admin/reports') . e($query(['section' => $key])) ?>" role="tab" aria-selected="<?= $view !== 'charts' && $key === $section ? 'true' : 'false' ?>" style="text-decoration:none"><?= e($title) ?></a>

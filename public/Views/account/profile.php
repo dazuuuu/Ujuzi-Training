@@ -43,7 +43,7 @@ require __DIR__ . '/layout-header.php';
             <div>
               <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Email</label>
               <input type="email" value="<?= e($currentUser['email']) ?>" readonly class="mt-1 w-full rounded-lg border border-neutral-200 bg-neutral-100 p-2.5 text-sm text-neutral-600" />
-              <p class="field-hint">Your sign-in email can't be changed here.</p>
+              <p class="field-hint">Locked — use <a href="#change-request" class="underline">Request a change</a> below.</p>
             </div>
           <?php else: ?>
             <div>
@@ -55,6 +55,56 @@ require __DIR__ . '/layout-header.php';
             </div>
           <?php endif; ?>
         </form>
+      </section>
+
+      <?php
+        $changeCurrent = $changeCurrent ?? [];
+        $changePending = $changePending ?? null;
+        $changeLatest = $changeLatest ?? null;
+        $changeLabels = \App\Models\ChangeRequest::FIELDS;
+      ?>
+      <section id="change-request" class="profile-form-card rounded-xl border bg-white p-4 shadow-sm" style="border-color:var(--ke-line)">
+        <h2 class="text-base font-bold">Request a change</h2>
+        <p class="text-xs" style="color:var(--ke-muted)">Your names, sign-in email and ID number are locked. To correct them, send a request — they change once Super Admin approves.</p>
+        <?php if ($changePending): ?>
+          <div class="mt-3 rounded-lg bg-amber-50 p-3 text-sm">
+            <p class="font-bold">Waiting for Super Admin · sent <?= e(date('j M Y, H:i', strtotime($changePending['created_at']))) ?></p>
+            <ul class="mt-1 text-xs">
+              <?php foreach ($changePending['changes'] as $key => $change): ?>
+                <li><?= e($changeLabels[$key] ?? $key) ?>: <s class="text-neutral-500"><?= e($change['from'] ?: '—') ?></s> → <b><?= e($change['to']) ?></b></li>
+              <?php endforeach; ?>
+            </ul>
+          </div>
+        <?php else: ?>
+          <?php if ($changeLatest): ?>
+            <p class="mt-2 text-xs font-semibold" style="color:<?= $changeLatest['status'] === 'approved' ? 'var(--ke-green)' : 'var(--ke-red)' ?>">Your last request was <?= e($changeLatest['status']) ?><?= !empty($changeLatest['admin_note']) ? ' — ' . e($changeLatest['admin_note']) : '' ?>.</p>
+          <?php endif; ?>
+          <details class="mt-2">
+            <summary class="cursor-pointer text-sm font-bold" style="color:var(--ke-green)">Change my details…</summary>
+            <form method="post" action="<?= url('/account/profile/change-request') ?>" class="mt-3 grid gap-2 sm:grid-cols-2">
+              <?= csrfField() ?>
+              <?php foreach (['first_name', 'other_names', 'last_name', 'email'] as $key): ?>
+                <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)"><?= e($changeLabels[$key]) ?>
+                  <input type="<?= $key === 'email' ? 'email' : 'text' ?>" name="change[<?= $key ?>]" placeholder="<?= e(($changeCurrent[$key] ?? '') ?: 'Not set') ?>" class="mt-0.5 w-full rounded-md border border-neutral-300 p-2 text-sm normal-case font-normal">
+                </label>
+              <?php endforeach; ?>
+              <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">ID document
+                <select name="change[id_type]" class="mt-0.5 w-full rounded-md border border-neutral-300 p-2 text-sm normal-case font-normal">
+                  <option value="">Keep: <?= e(($changeCurrent['id_type'] ?? '') ?: 'not set') ?></option>
+                  <?php foreach (\App\Models\FormFieldTypes::idDocumentTypes() as $doc): ?><option><?= e($doc) ?></option><?php endforeach; ?>
+                </select>
+              </label>
+              <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">ID / birth certificate number
+                <input name="change[id_number]" maxlength="30" placeholder="<?= e(($changeCurrent['id_number'] ?? '') ?: 'Not set') ?>" class="mt-0.5 w-full rounded-md border border-neutral-300 p-2 text-sm normal-case font-normal">
+              </label>
+              <label class="text-[11px] font-bold uppercase sm:col-span-2" style="color:var(--ke-muted)">Why the change?
+                <input name="reason" required maxlength="500" placeholder="e.g. My surname is misspelt" class="mt-0.5 w-full rounded-md border border-neutral-300 p-2 text-sm normal-case font-normal">
+              </label>
+              <p class="text-xs sm:col-span-2" style="color:var(--ke-muted)">Fill in only what should change; blank fields stay as they are.</p>
+              <div class="sm:col-span-2"><button type="submit" class="btn-primary">Send request</button></div>
+            </form>
+          </details>
+        <?php endif; ?>
       </section>
 
       <?php if (($currentUser['role_slug'] ?? '') !== 'trainer'): ?>

@@ -22,11 +22,6 @@ $registerPath = $registerPath ?? LoginRoles::registerPath((string) ($roleSlug ??
       </p>
     </div>
 
-    <div class="flex mb-6 bg-gray-100 rounded-lg p-1 text-xs font-bold uppercase tracking-wider relative z-20">
-      <button type="button" data-tab="email" class="account-tab flex-1 py-2.5 rounded-md transition-colors text-gray-600 focus:outline-none">Email</button>
-      <button type="button" data-tab="phone" class="account-tab flex-1 py-2.5 rounded-md transition-colors text-gray-600 focus:outline-none">Phone Number</button>
-    </div>
-
     <?php if ($error): ?>
       <div class="bg-red-50 text-red-700 p-4 rounded-lg text-sm font-semibold mb-6 flex items-start gap-3 border border-red-200">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
@@ -36,19 +31,19 @@ $registerPath = $registerPath ?? LoginRoles::registerPath((string) ($roleSlug ??
       </div>
     <?php endif; ?>
 
-    <form method="post" action="<?= url($loginPath) ?>" id="email-form" class="space-y-5 relative z-20">
+    <form method="post" action="<?= url($loginPath) ?>" class="space-y-5 relative z-20">
       <?= csrfField() ?>
-      <input type="hidden" name="method" value="email" />
       <div>
-        <label class="block text-sm font-bold text-gray-700 mb-1">Email Address</label>
-        <input type="email" name="email" required value="<?= e($old['email'] ?? '') ?>" placeholder="you@example.com" autocomplete="email" class="w-full bg-white px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition text-gray-900" />
+        <label class="block text-sm font-bold text-gray-700 mb-1" for="login-id">Email or phone number</label>
+        <input id="login-id" type="text" name="login" required value="<?= e($old['login'] ?? '') ?>" placeholder="you@example.com or 0712 345 678" autocomplete="username" data-phone-smart class="w-full bg-white px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition text-gray-900" />
+        <p class="mt-1 text-xs text-gray-500">The email or phone number on your registration form.</p>
       </div>
       <div>
         <div class="flex items-center justify-between mb-1">
-          <label class="block text-sm font-bold text-gray-700">Password</label>
+          <label class="block text-sm font-bold text-gray-700" for="login-password">Password</label>
           <a href="<?= url('/account/forgot-password?role=' . rawurlencode((string) ($roleSlug ?? ''))) ?>" class="text-xs font-semibold text-red-600 hover:text-blue-800 transition">Forgot password?</a>
         </div>
-        <input type="password" name="password" autocomplete="current-password" class="w-full bg-white px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition text-gray-900" />
+        <input id="login-password" type="password" name="password" autocomplete="current-password" class="w-full bg-white px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition text-gray-900" />
         <p class="mt-2 text-xs text-gray-500">Leave blank only if an admin created your account and you still use an email login code.</p>
       </div>
       <div class="pt-2">
@@ -56,19 +51,6 @@ $registerPath = $registerPath ?? LoginRoles::registerPath((string) ($roleSlug ??
       </div>
     </form>
 
-    <form method="post" action="<?= url($loginPath) ?>" id="phone-form" class="space-y-5 hidden relative z-20">
-      <?= csrfField() ?>
-      <input type="hidden" name="method" value="phone" />
-      <div>
-        <label class="block text-sm font-bold text-gray-700 mb-1">Phone Number</label>
-        <input type="tel" name="phone" required value="<?= e($old['phone'] ?? '') ?>" placeholder="254712345678" class="w-full bg-white px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition text-gray-900 font-mono" />
-      </div>
-      <div class="pt-2">
-        <button type="submit" class="srms-btn-green w-full text-lg py-3 shadow-md shadow-green-500/20">Continue</button>
-      </div>
-      <p class="text-xs text-gray-500 text-center mt-3">Use the exact phone number your admin saved.</p>
-    </form>
-    
     <div class="mt-8 pt-6 border-t border-gray-100 relative z-20">
       <p class="font-bold text-gray-800 uppercase tracking-wider text-[11px] text-center mb-3">Don't have an account?</p>
 
@@ -83,29 +65,6 @@ $registerPath = $registerPath ?? LoginRoles::registerPath((string) ($roleSlug ??
 
 
 
-<script>
-(function () {
-  var tabs = document.querySelectorAll('.account-tab');
-  var forms = { email: document.getElementById('email-form'), phone: document.getElementById('phone-form') };
-  var initial = <?= json_encode($method === 'phone' ? 'phone' : 'email') ?>;
 
-  function setActive(method) {
-    tabs.forEach(function (t) {
-      var active = t.getAttribute('data-tab') === method;
-      t.classList.toggle('bg-white', active);
-      t.classList.toggle('shadow-sm', active);
-      t.style.color = active ? '#006b3f' : '#2f3f37';
-      t.style.fontWeight = active ? '800' : '700';
-    });
-    forms.email.classList.toggle('hidden', method !== 'email');
-    forms.phone.classList.toggle('hidden', method !== 'phone');
-  }
-
-  tabs.forEach(function (t) {
-    t.addEventListener('click', function () { setActive(t.getAttribute('data-tab')); });
-  });
-  setActive(initial);
-})();
-</script>
 
 <?php require __DIR__ . '/layout-footer.php'; ?>

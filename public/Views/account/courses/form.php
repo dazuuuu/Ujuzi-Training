@@ -34,6 +34,15 @@ require __DIR__ . '/../layout-header.php';
   ?>
     <form method="post" action="<?= $action ?>" enctype="multipart/form-data" class="rounded-xl border bg-white p-6 shadow-sm space-y-4" style="border-color:var(--ke-line)">
       <?= csrfField() ?>
+      <?php $courseCodes = $courseCodes ?? []; $currentCode = $course['course_code'] ?? ''; ?>
+      <div>
+        <label class="text-[11px] font-bold uppercase text-neutral-600" for="course-code">Course code <span class="text-red-600">*</span></label>
+        <input id="course-code" name="course_code" required maxlength="20" pattern="[A-Za-z0-9][A-Za-z0-9\-\/]{1,19}" value="<?= e((string) $currentCode) ?>" placeholder="e.g. CS101" list="course-code-suggestions" autocomplete="off" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm uppercase" />
+        <?php if ($courseCodes): ?>
+          <datalist id="course-code-suggestions"><?php foreach (array_slice($courseCodes, 0, 50) as $code): ?><option value="<?= e((string) $code) ?>"><?php endforeach; ?></datalist>
+        <?php endif; ?>
+        <p class="field-hint">Make up a short unique code — letters, numbers or dashes. Students type it in search to find the course; it is not printed on certificates.</p>
+      </div>
       <input type="hidden" name="form_id" value="<?= (int) $form['id'] ?>" />
       <div class="border-b border-neutral-100 pb-3">
         <h2 class="font-serif-heading text-lg font-bold"><?= e($form['title']) ?></h2>
@@ -73,8 +82,8 @@ require __DIR__ . '/../layout-header.php';
       <label class="flex items-start gap-2 text-sm font-bold">
         <input type="checkbox" name="requires_attachment" value="1" <?= !empty($course['requires_attachment']) ? 'checked' : '' ?> class="mt-1 h-4 w-4" />
         <span>
-          Requires attachment after passing
-          <span class="block text-xs font-semibold text-neutral-600">Students will see attachment organisations after passing this course and must be recommended before the certificate opens.</span>
+          This course requires attachment
+          <span class="block text-xs font-semibold text-neutral-600">Students can do their attachment while or after taking the course. The course only counts as completed once the attachment provider (or its branch) marks their attachment completed, and the attachment marks count for 10% of the final grade. Leave it off and attachment is optional — its marks don't count.</span>
         </span>
       </label>
       <input type="hidden" name="certificate_enabled" value="0" />
@@ -85,6 +94,11 @@ require __DIR__ . '/../layout-header.php';
           <span class="block text-xs font-semibold text-neutral-600">Turn this off for free courses without certificates, or paid courses that should not appear on certificates.</span>
         </span>
       </label>
+      <div>
+        <label class="text-sm font-bold" for="course-requirements">Course requirements</label>
+        <span class="block text-xs font-semibold text-neutral-600">What a student needs before or for this course — one per line (e.g. National ID, Form 4 certificate, a laptop).</span>
+        <textarea id="course-requirements" name="requirements" rows="4" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" placeholder="National ID or birth certificate&#10;KCSE certificate&#10;Own protective boots"><?= e((string) ($course['requirements'] ?? '')) ?></textarea>
+      </div>
       <input type="hidden" name="requires_full_registration" value="0" />
       <label class="flex items-start gap-2 text-sm font-bold">
         <input type="checkbox" name="requires_full_registration" value="1" <?= !empty($course['requires_full_registration']) ? 'checked' : '' ?> class="mt-1 h-4 w-4" />

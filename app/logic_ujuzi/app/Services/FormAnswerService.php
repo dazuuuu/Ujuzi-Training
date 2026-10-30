@@ -21,6 +21,7 @@ class FormAnswerService
         if (!$user) {
             return false;
         }
+        // id_document is locked in collect() once it has a number.
         if ($type === 'email') {
             return !empty($user['email']);
         }
@@ -47,6 +48,48 @@ class FormAnswerService
             if ($onlyKey !== null && $key !== $onlyKey) {
                 continue;
             }
+            if ($type === 'name' && self::isIdentityFieldLocked($type, $user)) {
+                // First and last name are locked; other names can be added once, then lock too.
+                $saved = is_array($existing[$key] ?? null) ? $existing[$key] : [];
+                $value = [
+                    'first' => (string) (($saved['first'] ?? '') !== '' ? $saved['first'] : ($user['first_name'] ?? '')),
+                    'last' => (string) (($saved['last'] ?? '') !== '' ? $saved['last'] : ($user['last_name'] ?? '')),
+                    'other' => (string) (($saved['other'] ?? '') !== '' ? $saved['other'] : ($user['other_names'] ?? '')),
+                ];
+                if ($value['other'] === '') {
+                    $raw = is_array($posted[$key] ?? null) ? $posted[$key] : [];
+                    $value['other'] = trim((string) ($raw['other'] ?? ''));
+                }
+                $answers[$key] = $value;
+                continue;
+            }
+
+            if ($type === 'id_document') {
+                // Once saved, the document number only changes through a
+                // change request Super Admin approves (Profile → Request a change).
+                $saved = is_array($existing[$key] ?? null) ? $existing[$key] : [];
+                if ($user && trim((string) ($saved['number'] ?? '')) !== '') {
+                    $answers[$key] = $saved;
+                    continue;
+                }
+                $raw = is_array($posted[$key] ?? null) ? $posted[$key] : [];
+                $docType = trim((string) ($raw['type'] ?? ''));
+                $number = trim((string) ($raw['number'] ?? ''));
+                if ($docType !== '' && !in_array($docType, FormFieldTypes::idDocumentTypes(), true)) {
+                    $docType = '';
+                }
+                // Always required: pick one document and give its number.
+                if ($docType === '' || $number === '') {
+                    $errors[] = $field['label'] . ': choose National ID, passport or birth certificate and enter its number.';
+                } elseif (!preg_match('/^[A-Za-z0-9 \/-]{4,30}$/', $number)) {
+                    $errors[] = $field['label'] . ': enter a valid document number.';
+                } elseif (User::idNumberTaken($number, isset($user['id']) ? (int) $user['id'] : null)) {
+                    $errors[] = 'An account already exists in the system with this ' . ($docType !== '' ? strtolower($docType) : 'document') . ' number (' . $number . '). Each person can have one account only — sign in to yours instead.';
+                }
+                $answers[$key] = ['type' => $docType, 'number' => $number];
+                continue;
+            }
+
             if (self::isIdentityFieldLocked($type, $user)) {
                 // Already set at account creation (by Super Admin or an organisation admin) —
                 // ignore whatever was posted for it, but still seed $answers from the account

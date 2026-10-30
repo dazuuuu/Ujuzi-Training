@@ -68,7 +68,29 @@ class ProfileController extends BaseAccountController
             'activeNav' => 'profile',
             'forms' => $withFields,
             'organisationMemberships' => OrganisationMembership::forUser((int) $this->user['id']),
+            'changeCurrent' => \App\Models\ChangeRequest::currentValues($this->user),
+            'changePending' => \App\Models\ChangeRequest::pendingFor((int) $this->user['id']),
+            'changeLatest' => \App\Models\ChangeRequest::latestDecidedFor((int) $this->user['id']),
         ]);
+    }
+
+    /** Asks Super Admin to change locked details (names, email, ID number). */
+    public function requestChange(): void
+    {
+        if (!csrfVerify(Request::post('csrf_token'))) {
+            flashError('Your session expired. Please try again.');
+            redirect('/account/profile#change-request');
+        }
+        $posted = Request::post('change', []);
+        try {
+            $error = \App\Models\ChangeRequest::submit($this->user, is_array($posted) ? $posted : [], (string) Request::post('reason', ''));
+        } catch (\Throwable $e) {
+            $error = 'Change requests are not available yet. Ask Super Admin to install the latest updates.';
+        }
+        $error === null
+            ? flashSuccess('Request sent. Super Admin will review it; your details change once it is approved.')
+            : flashError($error);
+        redirect('/account/profile#change-request');
     }
 
     /** Anyone's profile picture (tutors set theirs with the rest of what students see). */

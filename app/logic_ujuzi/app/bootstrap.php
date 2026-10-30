@@ -15,17 +15,28 @@ date_default_timezone_set(App\Core\Env::get('APP_TIMEZONE', 'Africa/Nairobi'));
 
 error_reporting(E_ALL);
 ini_set('display_errors', App\Core\Env::get('APP_DEBUG', '1') === '1' ? '1' : '0');
+// Every error and uncaught exception goes to one file a main Super Admin can
+// read from Admin → Error logs, so the real cause is never hidden behind
+// "Something went wrong".
+ini_set('log_errors', '1');
+ini_set('error_log', App\Core\ErrorLog::path());
 
 // A page that needs a table or column from a migration not yet run shows a
 // clear "run the updates" page instead of a fatal error. Anything else is
 // shown in full when APP_DEBUG is on, and logged.
 set_exception_handler(static function (Throwable $e): void {
+    // A new install whose database isn't connected yet goes to the installer.
+    if ($e instanceof PDOException && in_array((int) $e->getCode(), [1044, 1045, 1049, 2002, 2005], true)
+        && App\Core\Env::get('INSTALLED') !== '1' && !headers_sent()) {
+        header('Location: ' . url('/setup'));
+        return;
+    }
     $needsUpdate = $e instanceof PDOException && in_array((string) $e->getCode(), ['42S02', '42S22'], true);
     if (!headers_sent()) {
         http_response_code($needsUpdate ? 503 : 500);
         header('Content-Type: text/html; charset=utf-8');
     }
-    error_log((string) $e);
+    App\Core\ErrorLog::exception($e);
     if ($needsUpdate) {
         $updates = htmlspecialchars(url('/admin/updates'));
         echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'

@@ -88,6 +88,7 @@ class WalletService
             "INSERT INTO wallet_transactions (user_id, type, amount_ksh, provider, reference, note)
              VALUES (?, 'deposit', ?, ?, ?, ?)"
         )->execute([$userId, $amountKsh, $payment['provider'], $payment['reference'], 'Deposit from ' . $phone]);
+        Receipts::issue($userId, 'deposit', $amountKsh, 'Wallet deposit (M-Pesa ' . $phone . ')', null, (string) $payment['reference']);
         return $payment;
     }
 
@@ -165,6 +166,8 @@ class WalletService
             $pdo->rollBack();
             throw $e;
         }
+        // The receipt is emailed to the student and kept in their payment history.
+        Receipts::issue($studentId, 'course_payment', $amountKsh, $note, (int) $course['id'], $reference);
         return $reference;
     }
 

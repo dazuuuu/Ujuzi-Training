@@ -117,71 +117,47 @@ class OrganisationCertificateController extends BaseAccountController
      */
     private function earnedCertificates(int $orgId, ?int $onlyCourseId = null): array
     {
-        $params = [$orgId, $orgId];
-        $courseFilter = '';
-        if ($onlyCourseId) {
-            $courseFilter = ' AND c.id = ?';
-            $params[] = $onlyCourseId;
-        }
-        $rows = Database::connection()->prepare(
-            "SELECT DISTINCT x.user_id, c.id AS course_id FROM (
-                SELECT e.user_id, e.course_id FROM course_enrollments e
-                INNER JOIN courses c2 ON c2.id = e.course_id AND c2.organisation_id = ?
-                UNION
-                SELECT cc.user_id, cc.course_id FROM course_completions cc
-                INNER JOIN courses c3 ON c3.id = cc.course_id AND c3.organisation_id = ?
-             ) x
-             INNER JOIN courses c ON c.id = x.course_id
-             WHERE c.certificate_enabled = 1" . $courseFilter
-        );
-        try {
-            $rows->execute($params);
-            $pairs = $rows->fetchAll();
-        } catch (\Throwable $e) {
-            return []; // before the completions migration
-        }
-
-        $branchStudents = null;
+        $filters = ['organisation_id' => $orgId, 'course_id' => $onlyCourseId];
         if (($this->user['role_slug'] ?? '') === 'course_branch_admin') {
             $branchIds = array_map(static fn(array $b): int => (int) $b['id'], OrganisationBranch::forBranchAdmin((int) $this->user['id']));
-            $branchStudents = [];
+            $filters['user_ids'] = [];
             if ($branchIds) {
                 $stmt = Database::connection()->prepare(
                     "SELECT DISTINCT user_id FROM organisation_memberships WHERE status = 'approved' AND organisation_id = ? AND branch_id IN ("
                     . implode(',', array_fill(0, count($branchIds), '?')) . ')'
                 );
                 $stmt->execute(array_merge([$orgId], $branchIds));
-                $branchStudents = array_map('intval', $stmt->fetchAll(\PDO::FETCH_COLUMN));
+                $filters['user_ids'] = array_map('intval', $stmt->fetchAll(\PDO::FETCH_COLUMN));
             }
         }
-
-        $courses = [];
-        $out = [];
-        foreach ($pairs as $pair) {
-            $userId = (int) $pair['user_id'];
-            $courseId = (int) $pair['course_id'];
-            if ($branchStudents !== null && !in_array($userId, $branchStudents, true)) {
-                continue;
-            }
-            $courses[$courseId] ??= Course::find($courseId);
-            if (!$courses[$courseId] || !Course::isCertifiableFor($userId, $courses[$courseId])) {
-                continue;
-            }
-            $student = User::find($userId);
-            if (!$student) {
-                continue;
-            }
-            $out[] = [
-                'user_id' => $userId,
-                'course_id' => $courseId,
-                'name' => userFullName($student),
-                'registration_number' => (string) ($student['registration_number'] ?? ''),
-                'phone' => (string) ($student['phone'] ?? ''),
-                'course_title' => (string) $courses[$courseId]['title'],
-            ];
-        }
+        $out = \App\Services\CertificateRegistry::earned($filters);
         usort($out, static fn(array $a, array $b): int => [$a['course_title'], $a['name']] <=> [$b['course_title'], $b['name']]);
         return $out;
+    }
+
+    /** Many of this organisation's certificates on one page, one per sheet, to save as one PDF. */
+    public function download(): void
+    {
+        $orgId = $this->organisationId();
+        $allowed = [];
+        foreach ($this->earnedCertificates($orgId) as $row) {
+            $allowed[$row['user_id'] . '-' . $row['course_id']] = true;
+        }
+        $payloads = [];
+        foreach (array_slice((array) Request::query('pairs', []), 0, 300) as $pair) {
+            if (!isset($allowed[(string) $pair])) {
+                continue; // not one of this organisation's (or this branch's) certificates
+            }
+            [$userId, $courseId] = array_map('intval', explode('-', (string) $pair));
+            if ($payload = \App\Services\CertificateRegistry::earnedPayload($userId, $courseId)) {
+                $payloads[] = $payload;
+            }
+        }
+        \App\Core\View::render('partials.certificate-batch', [
+            'payloads' => $payloads,
+            'batchTitle' => 'Certificates (' . count($payloads) . ')',
+            'backUrl' => '/account/certificates',
+        ]);
     }
 
     /** The organisation this person issues certificates for: their own, or their branch's. */

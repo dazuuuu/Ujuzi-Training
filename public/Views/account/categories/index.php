@@ -38,10 +38,7 @@ require __DIR__ . '/../layout-header.php';
             <td class="px-5 py-4">
               <div class="flex items-center gap-2">
                 <a href="<?= url('/account/categories/' . (int) $category['id'] . '/edit') ?>" class="btn-secondary" style="padding:0.35rem 0.65rem;">Edit</a>
-                <form method="post" action="<?= url('/account/categories/' . (int) $category['id'] . '/delete') ?>" onsubmit="return confirm('Delete this category?');">
-                  <?= csrfField() ?>
-                  <button type="submit" class="btn-danger" style="padding:0.35rem 0.65rem;">Delete</button>
-                </form>
+                <?php $drType = 'category'; $drId = (int) $category['id']; $drAction = url('/account/categories/' . (int) $category['id'] . '/delete'); $drWhat = 'this category'; require __DIR__ . '/../partials/delete-request.php'; ?>
               </div>
             </td>
           </tr>

@@ -9,6 +9,11 @@
   --app-accent: var(--ke-green, #006b3f);
 }
 
+/* Grid and flex children may shrink below their content: one long unbroken
+   line (a truncated title, an email) must not push a card past the phone screen. */
+.srms-main .grid > *, .srms-main .flex-1 { min-width: 0; }
+.srms-main { overflow-wrap: break-word; }
+
 html {
   -webkit-tap-highlight-color: transparent;
   -webkit-text-size-adjust: 100%;
@@ -195,18 +200,43 @@ body.admin-shell {
   -webkit-line-clamp: unset;
   min-height: 0;
 }
-/* Four cards a row on a laptop, three on a tablet, two on a phone. */
+/* Five cards a row on a desktop, four on a laptop, three on a tablet, two on a phone. */
 .course-tile-grid {
   display: grid;
   gap: 0.9rem;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: stretch;
+}
+@media (max-width: 1279px) {
+  .course-tile-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 @media (max-width: 1023px) {
   .course-tile-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 639px) {
   .course-tile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+}
+/* A course's requirements on its card: small and short, the full list on hover / the course page. */
+.course-tile-reqs { margin-top: 0.4rem; font-size: 0.68rem; line-height: 1.3; color: #374151; }
+.course-tile-reqs-label { display: block; font-size: 0.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: #6b7280; }
+.course-tile-reqs ul { margin: 0.15rem 0 0; padding-left: 0.9rem; list-style: disc; }
+.course-tile-reqs li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.course-tile-reqs li.is-more { list-style: none; margin-left: -0.9rem; font-weight: 700; color: #15803d; }
+@media (max-width: 639px) {
+  .course-tile-reqs { font-size: 0.62rem; }
+  .course-tile-reqs ul { padding-left: 0.75rem; }
+}
+
+/* Attachment organisation cards: two a row on a phone, up to five on a desktop. */
+.provider-card-grid { display: grid; gap: 0.9rem; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 1279px) { .provider-card-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 1023px) { .provider-card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 639px) {
+  .provider-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+  .provider-card-grid > * { padding: 0.75rem !important; }
+  .provider-card-grid h3 { font-size: 0.9rem !important; line-height: 1.25; }
+  .provider-card-grid .btn-primary { padding: 0.3rem 0.55rem !important; font-size: 0.7rem; }
+  .provider-card-grid .provider-card-foot { flex-direction: column; align-items: flex-start; gap: 0.4rem; }
 }
 
 /* Student dashboard tiles. */
@@ -418,7 +448,13 @@ img.srms-avatar { display: block; }
 .mini-card:hover { border-color: var(--ke-green, #006b3f); }
 .mini-card-icon { display: inline-flex; align-items: center; justify-content: center; width: 2.1rem; height: 2.1rem; flex-shrink: 0; border-radius: 0.6rem; background: #ecf7f0; color: var(--ke-green, #006b3f); }
 .mini-card-icon svg { width: 1.1rem; height: 1.1rem; }
-.mini-card-label { display: block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #6b7280; }
+.mini-card-label { display: block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mini-card > .outline-btn { flex-shrink: 0; }
+@media (max-width: 480px) {
+  /* A tile with a button: the icon makes room, so the label and value stay readable. */
+  .mini-card:has(> .outline-btn) .mini-card-icon { display: none; }
+  .mini-card { gap: 0.5rem; padding: 0.65rem 0.7rem; }
+}
 .mini-card-value { display: block; font-size: 1rem; font-weight: 900; color: #111827; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mini-grid { display: grid; gap: 0.6rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); }
 .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; }
@@ -530,3 +566,159 @@ input[type=file]::file-selector-button:hover { filter: brightness(.9); }
 .deposit-row input { flex: 1 1 7.5rem; min-width: 0; padding: 0.45rem 0.6rem; border: 1px solid #d1d5db; border-radius: 0.55rem; font-size: 0.85rem; }
 .deposit-row .btn-primary { padding: 0.45rem 0.9rem !important; }
 @media (max-width: 480px) { .deposit-title { flex-basis: 100%; } .deposit-row .btn-primary { flex: 1 1 100%; } }
+
+/* Student dashboard: organisation / categories / registration number as small cards. */
+.me-chip { display: flex; flex-direction: column; justify-content: center; min-width: 0; max-width: 16rem; padding: 0.35rem 0.7rem; border: 1px solid var(--ke-line, #e5e7eb); border-radius: 0.6rem; background: #fff; text-decoration: none; }
+.me-chip-label { display: block; font-size: 0.6rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.me-chip-value { display: block; font-size: 0.8rem; font-weight: 900; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+a.me-chip:hover { border-color: var(--ke-green); }
+
+/* A module not paid for yet: shown, but nothing in it can be used. */
+.module-paybar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin: 0.75rem; padding: 0.75rem 0.9rem; border: 1px solid #fde68a; border-radius: 0.75rem; background: #fffbeb; color: #92400e; font-size: 0.85rem; }
+.module-paybar > div { flex: 1 1 14rem; min-width: 0; }
+.module-paybar > form, .module-paybar > a { flex: 0 0 auto; }
+@media (max-width: 640px) {
+  .module-paybar > form, .module-paybar > a { flex: 1 1 100%; }
+  .module-paybar .btn-primary { width: 100%; justify-content: center; text-align: center; }
+}
+.module-paybar-icon { display: flex; align-items: center; justify-content: center; width: 2.2rem; height: 2.2rem; flex-shrink: 0; border-radius: 0.6rem; background: #fef3c7; }
+.learn-video { position: relative; }
+.learn-video.is-preview iframe, .learn-video.is-preview video { pointer-events: none; filter: saturate(.6) brightness(.85); }
+.learn-video.is-preview::after { content: ""; position: absolute; inset: 0; cursor: not-allowed; }
+.learn-video-lock { position: absolute; top: 50%; left: 50%; z-index: 2; display: flex; align-items: center; justify-content: center; width: 3.4rem; height: 3.4rem; margin: -1.7rem 0 0 -1.7rem; border-radius: 999px; background: rgba(17, 24, 39, .7); color: #fff; pointer-events: none; }
+.module-preview { opacity: .6; user-select: none; }
+.video-fullscreen { display: inline-flex; align-items: center; gap: 0.35rem; margin: 0.5rem 0.75rem 0; padding: 0.35rem 0.7rem; border: 1px solid var(--ke-line, #e5e7eb); border-radius: 0.6rem; background: #fff; font-size: 0.75rem; font-weight: 800; color: #374151; cursor: pointer; }
+.learn-video:fullscreen, .learn-video:-webkit-full-screen { width: 100%; height: 100%; background: #000; border-radius: 0; }
+.learn-video:fullscreen iframe, .learn-video:fullscreen video { width: 100%; height: 100%; }
+
+/* Phones: calmer text sizes on the learning pages and portal headings. */
+@media (max-width: 640px) {
+  .srms-main h1, .srms-main .text-3xl { font-size: 1.35rem !important; line-height: 1.25; }
+  .srms-main h2.text-2xl, .srms-main .text-2xl { font-size: 1.15rem !important; line-height: 1.3; }
+  .srms-main .text-xl { font-size: 1.05rem !important; }
+  .srms-main .text-lg { font-size: 0.98rem !important; }
+  .learn-prose { font-size: 0.9rem; line-height: 1.6; }
+  .learn-section-title { font-size: 0.68rem; }
+  .learn-option { font-size: 0.86rem; padding: 0.55rem 0.7rem; }
+  #lesson .p-5, #lesson .sm\:p-6 { padding: 1rem !important; }
+  .srms-main .btn-primary, .srms-main .btn-secondary { font-size: 0.72rem; }
+}
+
+/* A picture question (e.g. a road sign). */
+.quiz-picture { display: block; max-width: min(100%, 320px); max-height: 240px; margin: 0.25rem 0 0.5rem; border-radius: 0.6rem; border: 1px solid var(--ke-line, #e5e7eb); background: #fff; object-fit: contain; }
+
+/* Phones: smaller module / course titles and descriptions. */
+@media (max-width: 640px) {
+  #lesson-title, .learn-card h2.font-serif-heading { font-size: 1.05rem !important; line-height: 1.3 !important; }
+  .learn-shell h1.font-serif-heading, .learn-card h1 { font-size: 1.15rem !important; line-height: 1.3 !important; }
+  .learn-prose, .learn-prose p, .learn-prose li { font-size: 0.85rem !important; line-height: 1.5 !important; }
+  .learn-section-title { font-size: 0.65rem !important; }
+  .module-card h3 { font-size: 0.95rem !important; line-height: 1.3 !important; }
+  .module-card p, .module-card .learn-prose { font-size: 0.8rem !important; }
+}
+
+/* Timed final exam countdown: stays in view while answering. */
+.exam-timer { position: sticky; top: 70px; z-index: 5; display: inline-block; padding: .35rem .8rem; border-radius: 999px; background: #ecf7f0; color: var(--ke-green); font-weight: 800; font-size: .9rem; }
+.exam-timer.is-low { background: #fef2f2; color: var(--ke-red); }
+
+/* ---- Spreadsheet look (MS Excel): name box + formula bar, column letters,
+   row numbers, hairline gridlines, no gaps. Built by assets/js/excel-grid.js
+   from any <table data-xl>. ---- */
+.xl-book { --xl-green: #217346; --xl-grid: #e1e1e1; --xl-head: #f3f3f3; --xl-head-line: #c8c8c8; border: 1px solid #c8c8c8; background: #fff; font-family: Calibri, Carlito, "Segoe UI", Arial, sans-serif; font-size: 13px; color: #000; }
+.xl-bar { display: flex; align-items: stretch; height: 26px; border-bottom: 1px solid #d4d4d4; background: #fff; }
+.xl-namebox { width: 74px; flex-shrink: 0; display: flex; align-items: center; padding: 0 6px; border-right: 1px solid #d4d4d4; font-size: 12px; }
+.xl-fx { display: flex; align-items: center; padding: 0 8px; border-right: 1px solid #d4d4d4; color: #777; font-style: italic; font-family: "Times New Roman", serif; font-size: 13px; }
+.xl-formula { flex: 1; min-width: 0; display: flex; align-items: center; padding: 0 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; }
+.xl-scroll { overflow: auto; max-height: 72vh; }
+.xl-book table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; table-layout: auto; }
+.xl-book th, .xl-book td { height: 21px; padding: 0 6px; border-right: 1px solid var(--xl-grid); border-bottom: 1px solid var(--xl-grid); white-space: nowrap; vertical-align: middle; text-align: left; font-weight: 400; line-height: 20px; }
+.xl-book td { max-width: 340px; overflow: hidden; text-overflow: ellipsis; background: #fff; cursor: cell; }
+/* Column letters (A, B, C…) and the corner. */
+.xl-book table .xl-letters th { position: sticky; top: 0; z-index: 3; height: 20px; background: var(--xl-head) !important; color: #444 !important; text-align: center; font-size: 11.5px; font-weight: 400; text-transform: none; letter-spacing: 0; border-right: 1px solid var(--xl-head-line); border-bottom: 1px solid var(--xl-head-line); }
+.xl-book table .xl-letters th.is-active { background: #d2d2d2 !important; color: var(--xl-green) !important; border-bottom: 2px solid var(--xl-green); }
+/* Row 1 = the field names, bold, frozen under the letters. */
+.xl-book table .xl-header th { position: sticky; top: 21px; z-index: 2; background: #fff !important; color: #000 !important; font-weight: 700; text-transform: none; letter-spacing: 0; border-bottom: 1px solid #a6a6a6; }
+/* Row numbers down the left, frozen. */
+.xl-book table .xl-rownum { position: sticky; left: 0; z-index: 1; width: 40px; min-width: 40px; padding: 0 4px; background: var(--xl-head) !important; color: #444 !important; font-weight: 400; text-align: center !important; font-size: 11.5px; border-right: 1px solid var(--xl-head-line); cursor: default; }
+.xl-book .xl-letters .xl-rownum, .xl-book .xl-header .xl-rownum { z-index: 4; }
+.xl-book table tr.is-active .xl-rownum { background: #d2d2d2 !important; color: var(--xl-green) !important; box-shadow: inset -2px 0 0 var(--xl-green); }
+.xl-book td.is-sel { outline: 2px solid var(--xl-green); outline-offset: -2px; background: #fff; }
+.xl-book tbody tr:hover td:not(.xl-rownum):not(.is-sel) { background: #f5faf7; }
+.xl-book td.xl-num { text-align: right; }
+.xl-book td a { color: #0563c1; text-decoration: underline; }
+.xl-book td input[type=checkbox], .xl-book th input[type=checkbox] { margin: 0; vertical-align: middle; accent-color: var(--xl-green); }
+.xl-book .xl-empty td { color: #777; font-style: italic; }
+.xl-tabs { display: flex; align-items: stretch; gap: 0; height: 26px; border-top: 1px solid #c8c8c8; background: var(--xl-head); font-size: 12px; }
+.xl-tabs a, .xl-tabs span { display: flex; align-items: center; padding: 0 14px; border-right: 1px solid #c8c8c8; color: #333; text-decoration: none; }
+.xl-tabs .is-active { background: #fff; color: var(--xl-green); font-weight: 700; box-shadow: inset 0 -2px 0 var(--xl-green); }
+.xl-tabs .xl-count { margin-left: auto; border-right: 0; border-left: 1px solid #c8c8c8; color: #555; }
+
+/* A compact toolbar for filters and actions above a sheet (no big fields). */
+.xl-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0; border: 1px solid #c8c8c8; border-bottom: 0; background: #f8f8f8; font-family: Calibri, Carlito, "Segoe UI", Arial, sans-serif; font-size: 12px; }
+.xl-toolbar > * { display: flex; align-items: center; gap: 5px; height: 30px; padding: 0 8px; border-right: 1px solid #e0e0e0; }
+.xl-toolbar label { font-weight: 700; color: #444; white-space: nowrap; }
+.xl-toolbar input, .xl-toolbar select { height: 22px; padding: 0 4px; border: 1px solid #c8c8c8; border-radius: 2px; background: #fff; font: inherit; font-weight: 400; color: #000; }
+.xl-toolbar input[type=search] { width: 170px; }
+.xl-toolbar input[type=date] { width: 120px; }
+.xl-toolbar select { max-width: 190px; }
+.xl-toolbar button, .xl-toolbar a.xl-btn { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px; border: 1px solid #c8c8c8; border-radius: 2px; background: #fff; color: #222; font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; white-space: nowrap; }
+.xl-toolbar button:hover, .xl-toolbar a.xl-btn:hover { background: #e9f3ee; border-color: #217346; }
+.xl-toolbar .xl-btn.is-green, .xl-toolbar button.is-green { background: #217346; border-color: #217346; color: #fff; }
+.xl-toolbar .xl-btn.is-green:hover, .xl-toolbar button.is-green:hover { background: #185c37; }
+.xl-toolbar button:disabled { opacity: .45; cursor: default; }
+.xl-toolbar .xl-grow { flex: 1; border-right: 0; }
+@media (max-width: 640px) {
+  .xl-toolbar > * { height: auto; min-height: 30px; padding: 4px 6px; flex-wrap: wrap; }
+  .xl-toolbar input[type=search] { width: 130px; }
+  .xl-namebox { width: 54px; }
+  .xl-book { font-size: 12px; }
+}
+@media print {
+  .xl-bar, .xl-tabs, .xl-toolbar, .xl-book .xl-letters { display: none !important; }
+  .xl-scroll { max-height: none; overflow: visible; }
+}
+
+/* ------------------------------------------------------------------
+ * Compact, minimal cards across the portals and Super Admin.
+ * Tighter padding and gaps, flat cards (a hairline border instead of
+ * shadows), and smaller page headings — the topbar already names the page.
+ * ------------------------------------------------------------------ */
+.srms-main, .workspace-content { --card-pad: 0.75rem; --card-radius: 0.6rem; }
+:is(.srms-main, .workspace-content) :is(.rounded-xl, .rounded-2xl).border { border-radius: var(--card-radius); }
+:is(.srms-main, .workspace-content) :is(.rounded-xl, .rounded-2xl, .learn-card).p-6,
+:is(.srms-main, .workspace-content) :is(.rounded-xl, .rounded-2xl, .learn-card).p-5 { padding: var(--card-pad); }
+:is(.srms-main, .workspace-content) :is(.rounded-xl, .rounded-2xl).p-4 { padding: 0.7rem; }
+:is(.srms-main, .workspace-content) .shadow-sm,
+:is(.srms-main, .workspace-content) .shadow,
+:is(.srms-main, .workspace-content) .shadow-md { box-shadow: none; }
+:is(.srms-main, .workspace-content) .hover\:shadow-md:hover { box-shadow: 0 2px 8px rgb(0 0 0 / 0.06); }
+:is(.srms-main, .workspace-content) .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem; }
+:is(.srms-main, .workspace-content) .space-y-5 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.85rem; }
+:is(.srms-main, .workspace-content) .space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.7rem; }
+:is(.srms-main, .workspace-content) :is(.gap-6) { gap: 0.85rem; }
+:is(.srms-main, .workspace-content) :is(.gap-5) { gap: 0.75rem; }
+:is(.srms-main, .workspace-content) :is(.gap-4) { gap: 0.65rem; }
+:is(.srms-main, .workspace-content) h1.font-serif-heading.text-3xl { font-size: 1.4rem; line-height: 1.25; margin-top: 0.15rem; }
+:is(.srms-main, .workspace-content) .p-8 { padding: 1rem; }
+.learn-card { border-radius: var(--card-radius, 0.6rem); box-shadow: none; }
+.srms-card, .srms-stat-card { padding: 0.85rem; border-radius: 0.6rem; box-shadow: none; border: 1px solid var(--ke-line, #e5e7eb); }
+.srms-stat-grid { gap: 0.6rem; margin-bottom: 0.85rem; }
+.srms-stat-icon { width: 36px; height: 36px; border-radius: 9px; font-size: 1.1rem; }
+.attachee-card { padding: 0.7rem; gap: 0.45rem; border-radius: 0.6rem; box-shadow: none; }
+.mini-card { padding: 0.55rem 0.7rem; border-radius: 0.6rem; }
+.module-card { padding: 0.65rem; border-radius: 0.6rem; }
+.profile-form-card { box-shadow: none !important; }
+.provider-card-grid { gap: 0.6rem; }
+
+/* Student attachment page */
+.att-h { margin-bottom: 0.4rem; font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: #374151; }
+.att-card { display: flex; flex-direction: column; gap: 0.4rem; min-width: 0; padding: 0.6rem 0.7rem; border: 1px solid var(--ke-line, #e5e7eb); border-radius: 0.6rem; background: #fff; color: inherit; text-decoration: none; }
+.att-grid { display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.att-provider.is-open:hover { border-color: var(--ke-green); }
+.att-provider.is-chosen { border-color: var(--ke-green); }
+.att-provider.is-off { opacity: 0.5; }
+.att-pill { flex-shrink: 0; border-radius: 99px; padding: 1px 7px; font-size: 10px; font-weight: 800; text-transform: uppercase; background: #e7f4ec; color: #0b6b3a; }
+.att-pill.is-bad { background: #fdecec; color: #a11; }
+.att-btn { display: inline-flex; align-items: center; padding: 0.2rem 0.6rem; border: 1px solid var(--ke-line, #d1d5db); border-radius: 99px; font-size: 0.72rem; font-weight: 700; color: #374151; background: #fff; text-decoration: none; }
+.att-btn:hover { border-color: var(--ke-green); color: var(--ke-green); }
+.att-btn.is-primary { background: var(--ke-green); border-color: var(--ke-green); color: #fff; }

@@ -9,6 +9,8 @@ require dirname(__DIR__) . '/app/logic_ujuzi/app/bootstrap.php';
 
 use App\Core\Router;
 use App\Controllers\SetupController;
+use App\Controllers\DevController;
+use App\Core\DevGate;
 use App\Controllers\LmsController;
 use App\Controllers\Admin\AuthController as AdminAuthController;
 use App\Controllers\Admin\DashboardController;
@@ -44,6 +46,7 @@ use App\Controllers\Account\BranchAdminController;
 use App\Controllers\Account\CourseBranchAdminController;
 use App\Controllers\Account\OrganisationProfileController;
 use App\Controllers\Account\WalletController;
+use App\Controllers\Account\PaymentController;
 use App\Controllers\Account\DirectoryController;
 use App\Controllers\Account\CertificateVerifyController;
 use App\Controllers\Account\AttachmentPartnerController;
@@ -58,6 +61,19 @@ use App\Controllers\Api\FormLookupController;
 
 $router = new Router();
 
+// --- Private maintenance gate (reached only at /devs; see App\Core\DevGate) ---
+// Must run before any route: when engaged, every path except /devs is replaced
+// by the notice. Fails open (does nothing) if the database isn't ready.
+DevGate::enforce(\App\Core\Url::currentPath());
+$router->get('/devs', [DevController::class, 'login']);
+$router->post('/devs', [DevController::class, 'authenticate']);
+$router->get('/devs/dashboard', [DevController::class, 'dashboard']);
+$router->post('/devs/update', [DevController::class, 'update']);
+$router->get('/devs/activity', [DevController::class, 'activity']);
+$router->get('/devs/export', [DevController::class, 'export']);
+$router->post('/devs/import', [DevController::class, 'import']);
+$router->get('/devs/logout', [DevController::class, 'logout']);
+
 // --- First-run setup ---
 $router->get('/setup', [SetupController::class, 'index']);
 $router->post('/setup', [SetupController::class, 'store']);
@@ -66,6 +82,10 @@ $router->post('/setup', [SetupController::class, 'store']);
 $router->get('/', [LmsController::class, 'home']);
 $router->get('/courses', [LmsController::class, 'courses']);
 $router->get('/about', [LmsController::class, 'about']);
+$router->get('/contact', [LmsController::class, 'contact']);
+$router->post('/contact', [LmsController::class, 'sendContact']);
+$router->post('/newsletter', [LmsController::class, 'subscribe']);
+$router->get('/student-lookup', [LmsController::class, 'lookup']);
 $router->get('/p/{slug}', [LmsController::class, 'customPage']);
 $router->get('/api/form/organisations', [FormLookupController::class, 'organisations']);
 $router->get('/api/form/attachment-providers', [FormLookupController::class, 'attachmentProviders']);
@@ -124,6 +144,7 @@ $router->post('/admin/forms/{id}/delete', [FormController::class, 'destroy']);
 // --- Super admin: settings ---
 $router->get('/admin/settings', [SettingsController::class, 'index']);
 $router->post('/admin/settings', [SettingsController::class, 'update']);
+$router->post('/admin/settings/test-email', [SettingsController::class, 'testEmail']);
 $router->get('/admin/admins', [AdminAccountsController::class, 'index']);
 $router->post('/admin/admins', [AdminAccountsController::class, 'store']);
 $router->post('/admin/admins/{id}', [AdminAccountsController::class, 'update']);
@@ -132,7 +153,15 @@ $router->get('/admin/course-approvals', [\App\Controllers\Admin\CourseApprovalCo
 $router->get('/admin/course-approvals/{id}/preview', [\App\Controllers\Admin\CourseApprovalController::class, 'preview']);
 $router->post('/admin/course-approvals/{id}', [\App\Controllers\Admin\CourseApprovalController::class, 'decide']);
 $router->post('/admin/branch-deletions/{id}', [\App\Controllers\Admin\CourseApprovalController::class, 'branchDeletion']);
+$router->get('/admin/change-requests', [\App\Controllers\Admin\ChangeRequestController::class, 'index']);
+$router->post('/admin/change-requests/{id}', [\App\Controllers\Admin\ChangeRequestController::class, 'decide']);
+$router->get('/admin/guide', [\App\Controllers\Admin\GuideController::class, 'index']);
+$router->get('/admin/reports/activity', [ReportController::class, 'activity']);
+$router->get('/admin/reports/activity/{format}', [ReportController::class, 'activityDownload']);
+$router->get('/admin/delete-requests', [\App\Controllers\Admin\DeleteRequestController::class, 'index']);
+$router->post('/admin/delete-requests/{id}', [\App\Controllers\Admin\DeleteRequestController::class, 'decide']);
 $router->get('/admin/pages', [PagesController::class, 'index']);
+$router->get('/admin/pages/subscribers', [PagesController::class, 'subscribers']);
 $router->post('/admin/pages/save', [PagesController::class, 'save']);
 $router->post('/admin/pages/preview', [PagesController::class, 'preview']);
 $router->post('/admin/pages/upload', [PagesController::class, 'upload']);
@@ -156,6 +185,8 @@ $router->get('/admin/reports', [ReportController::class, 'index']);
 $router->get('/admin/reports/{section}/{format}', [ReportController::class, 'download']);
 $router->get('/admin/attachments', [AdminAttachmentController::class, 'index']);
 $router->get('/admin/attachments/export', [AdminAttachmentController::class, 'export']);
+$router->get('/admin/attachment-payments', [\App\Controllers\Admin\AttachmentPaymentController::class, 'index']);
+$router->get('/admin/attachment-payments/{format}', [\App\Controllers\Admin\AttachmentPaymentController::class, 'export']);
 $router->get('/admin/finance', [FinanceController::class, 'index']);
 $router->get('/admin/finance/organisations/{id}', [FinanceController::class, 'organisation']);
 $router->post('/admin/finance/rate', [FinanceController::class, 'updateRate']);
@@ -163,6 +194,10 @@ $router->post('/admin/finance/min-payment', [FinanceController::class, 'updateMi
 $router->get('/admin/navigation', [NavigationController::class, 'index']);
 $router->post('/admin/navigation/{portal}', [NavigationController::class, 'update']);
 
+$router->get('/admin/certificates', [\App\Controllers\Admin\CertificateRegisterController::class, 'index']);
+$router->get('/admin/certificates/download', [\App\Controllers\Admin\CertificateRegisterController::class, 'download']);
+$router->get('/admin/certificates/generate', [\App\Controllers\Admin\CertificateRegisterController::class, 'generateForm']);
+$router->post('/admin/certificates/generate', [\App\Controllers\Admin\CertificateRegisterController::class, 'generate']);
 $router->get('/admin/certificate', [AdminCertificateController::class, 'index']);
 $router->post('/admin/certificate', [AdminCertificateController::class, 'update']);
 $router->get('/admin/documents', [DocumentController::class, 'index']);
@@ -171,6 +206,10 @@ $router->post('/admin/documents/{type}', [DocumentController::class, 'update']);
 $router->get('/admin/data-cleanup', [DataCleanupController::class, 'index']);
 $router->post('/admin/data-cleanup', [DataCleanupController::class, 'destroy']);
 $router->post('/admin/data-cleanup/reset-everything', [DataCleanupController::class, 'resetEverything']);
+
+// --- Super admin: error logs (main Super Admins only) ---
+$router->get('/admin/error-logs', [\App\Controllers\Admin\ErrorLogController::class, 'index']);
+$router->post('/admin/error-logs/clear', [\App\Controllers\Admin\ErrorLogController::class, 'clear']);
 
 // --- Super admin: updates ---
 $router->get('/admin/updates', [UpdateController::class, 'index']);
@@ -207,6 +246,7 @@ $router->get('/account/profile', [ProfileController::class, 'index']);
 $router->post('/account/profile', [ProfileController::class, 'update']);
 $router->post('/account/profile/public', [ProfileController::class, 'updatePublic']);
 $router->post('/account/profile/photo', [ProfileController::class, 'updatePhoto']);
+$router->post('/account/profile/change-request', [ProfileController::class, 'requestChange']);
 $router->get('/account/change-password', [ChangePasswordController::class, 'show']);
 $router->post('/account/change-password', [ChangePasswordController::class, 'update']);
 $router->post('/account/change-password/code', [ChangePasswordController::class, 'sendCode']);
@@ -239,10 +279,15 @@ $router->post('/account/attachment-audience', [AttachmentAudienceController::cla
 $router->post('/account/attachments/select', [AttachmentController::class, 'select']);
 $router->post('/account/attachments/bulk-accept', [AttachmentController::class, 'providerBulkAccept']);
 $router->get('/account/attachments-export', [AttachmentController::class, 'providerExport']);
+$router->get('/account/attachment-payments', [\App\Controllers\Account\AttachmentPaymentController::class, 'index']);
+$router->get('/account/attachment-payments/{format}', [\App\Controllers\Account\AttachmentPaymentController::class, 'export']);
 $router->post('/account/attachments/{id}/cancel', [AttachmentController::class, 'cancel']);
 $router->get('/account/attachments/{id}', [AttachmentController::class, 'thread']);
 $router->post('/account/attachments/{id}/reply', [AttachmentController::class, 'reply']);
 $router->post('/account/attachment-requests/{id}/assessment', [\App\Controllers\Account\AttachmentReviewController::class, 'assessment']);
+$router->get('/account/attachment-requests/{id}/assessment', [AttachmentReviewController::class, 'assessmentPage']);
+$router->get('/account/assessment-template', [\App\Controllers\Account\AssessmentTemplateController::class, 'index']);
+$router->post('/account/assessment-template', [\App\Controllers\Account\AssessmentTemplateController::class, 'update']);
 $router->get('/account/attachment-requests/{id}', [AttachmentReviewController::class, 'show']);
 $router->post('/account/attachment-requests/{id}/respond', [AttachmentReviewController::class, 'respond']);
 $router->post('/account/attachment-requests/{id}/resend-letter', [AttachmentReviewController::class, 'resendLetter']);
@@ -265,6 +310,7 @@ $router->get('/account/reports/export', [\App\Controllers\Account\ReportControll
 $router->post('/account/certificates/template', [\App\Controllers\Account\OrganisationCertificateController::class, 'upload']);
 $router->post('/account/certificates/layout', [\App\Controllers\Account\OrganisationCertificateController::class, 'layout']);
 $router->post('/account/certificates/mode', [\App\Controllers\Account\OrganisationCertificateController::class, 'mode']);
+$router->get('/account/certificates/download', [\App\Controllers\Account\OrganisationCertificateController::class, 'download']);
 $router->get('/account/certificates/{userId}/{courseId}', [\App\Controllers\Account\OrganisationCertificateController::class, 'show']);
 $router->get('/account/course-organisations', [CourseOrganisationController::class, 'index']);
 $router->post('/account/course-organisations/request', [CourseOrganisationController::class, 'request']);
@@ -293,10 +339,14 @@ $router->post('/account/branches', [AccountBranchController::class, 'store']);
 $router->get('/account/branches/{id}/edit', [AccountBranchController::class, 'edit']);
 $router->post('/account/branches/{id}', [AccountBranchController::class, 'update']);
 $router->post('/account/branches/{id}/delete', [AccountBranchController::class, 'destroy']);
+$router->post('/account/branches/{id}/tutors', [AccountBranchController::class, 'addTutor']);
+$router->post('/account/branches/{id}/tutors/{userId}/remove', [AccountBranchController::class, 'removeTutor']);
 
 $router->get('/account/wallet', [WalletController::class, 'index']);
 $router->get('/account/wallet/export/{format}', [WalletController::class, 'export']);
 $router->post('/account/wallet/deposit', [WalletController::class, 'deposit']);
+$router->get('/account/payments', [PaymentController::class, 'index']);
+$router->get('/account/payments/{id}', [PaymentController::class, 'show']);
 $router->get('/account/courses', [CourseController::class, 'index']);
 $router->get('/account/courses/create', [CourseController::class, 'create']);
 $router->post('/account/courses', [CourseController::class, 'store']);

@@ -16,6 +16,7 @@ class FormFieldTypes
                 'url' => 'Website / URL',
                 'number' => 'Number',
                 'password' => 'Password / PIN',
+                'id_document' => 'ID document (National ID / passport / birth certificate + number)',
             ],
             'Choices' => [
                 'dropdown' => 'Dropdown',
@@ -104,6 +105,12 @@ class FormFieldTypes
         return in_array($type, ['heading', 'instructions'], true);
     }
 
+    /** The documents a person can identify with on an ID document field. */
+    public static function idDocumentTypes(): array
+    {
+        return ['National ID', 'Passport', 'Birth certificate'];
+    }
+
     public static function isFile(string $type): bool
     {
         return in_array($type, ['file', 'image', 'files'], true);
@@ -111,7 +118,7 @@ class FormFieldTypes
 
     public static function isComposite(string $type): bool
     {
-        return in_array($type, ['name', 'duration', 'branches'], true);
+        return in_array($type, ['name', 'duration', 'branches', 'id_document'], true);
     }
 
     public static function allowsOther(string $type): bool

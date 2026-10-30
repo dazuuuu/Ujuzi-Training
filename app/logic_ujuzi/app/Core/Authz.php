@@ -141,6 +141,7 @@ class Authz
     {
         return self::isOrganisationAdmin($actor)
             || ($actor['role_slug'] ?? '') === 'trainer'
+            || ($actor['role_slug'] ?? '') === 'course_branch_admin'
             || self::isStudent($actor);
     }
 
@@ -159,6 +160,11 @@ class Authz
             return true;
         }
         if ((int) ($course['trainer_user_id'] ?? 0) === (int) $actor['id'] && self::canCreateCourses($actor)) {
+            return true;
+        }
+        // A branch admin sees (but doesn't edit) the courses their branch's tutors offer.
+        if (($actor['role_slug'] ?? '') === 'course_branch_admin' && !empty($course['branch_id'])
+            && in_array((int) $course['branch_id'], \App\Services\BranchScope::branchIds((int) $actor['id']), true)) {
             return true;
         }
         if (!self::isStudent($actor) || empty($course['is_published'])) {

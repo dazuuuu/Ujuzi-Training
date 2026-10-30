@@ -195,6 +195,29 @@ $hasStripeWebhookSecret = !empty($settings['stripe_webhook_secret']);
     <button type="submit" class="btn-primary">Save payments</button>
   </form>
 
+  <form method="post" action="<?= url('/admin/settings') ?>" id="contact-details" class="rounded-xl border bg-white p-6 shadow-sm space-y-5" style="border-color:var(--ke-line);scroll-margin-top:90px">
+    <?= csrfField() ?>
+    <input type="hidden" name="save_contact" value="1" />
+    <div class="flex flex-col gap-3 border-b border-neutral-200 pb-4 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">Website</p>
+        <h2 class="mt-2 text-2xl font-black text-black">Contact details</h2>
+        <p class="mt-1 text-sm font-medium text-neutral-700">Shown in the thin strip above the website's navbar, in the footer and on the Contact page. Leave a box empty to hide it. Contact-form messages are emailed to the contact email.</p>
+      </div>
+      <button type="submit" class="btn-primary">Save contact details</button>
+    </div>
+    <?php $site = $site ?? []; $cf = 'mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold'; ?>
+    <div class="grid gap-4 md:grid-cols-2">
+      <div><label class="text-[11px] font-black uppercase tracking-widest text-neutral-700" for="c-phone">Phone</label><input id="c-phone" name="contact_phone" value="<?= e($site['contact_phone'] ?? '') ?>" placeholder="+254 700 000 000" class="<?= $cf ?>"></div>
+      <div><label class="text-[11px] font-black uppercase tracking-widest text-neutral-700" for="c-email">Email</label><input id="c-email" type="email" name="contact_email" value="<?= e($site['contact_email'] ?? '') ?>" placeholder="info@yourdomain.com" class="<?= $cf ?>"></div>
+      <div><label class="text-[11px] font-black uppercase tracking-widest text-neutral-700" for="c-wa">WhatsApp number</label><input id="c-wa" name="contact_whatsapp" value="<?= e($site['contact_whatsapp'] ?? '') ?>" placeholder="+254 700 000 000" class="<?= $cf ?>"></div>
+      <div><label class="text-[11px] font-black uppercase tracking-widest text-neutral-700" for="c-addr">Address / location</label><input id="c-addr" name="contact_address" value="<?= e($site['contact_address'] ?? '') ?>" placeholder="e.g. Moi Avenue, Nairobi" class="<?= $cf ?>"></div>
+      <div class="md:col-span-2"><label class="text-[11px] font-black uppercase tracking-widest text-neutral-700" for="c-hours">Opening hours</label><input id="c-hours" name="contact_hours" value="<?= e($site['contact_hours'] ?? '') ?>" placeholder="Mon – Fri: 8:00 AM – 5:00 PM" class="<?= $cf ?>"></div>
+    </div>
+    <label class="flex items-center gap-2 text-sm font-bold"><input type="checkbox" name="topbar_show" value="1" <?= !empty($site['topbar_show']) ? 'checked' : '' ?> class="h-4 w-4"> Show the contact strip above the navbar</label>
+    <p class="text-xs font-semibold text-neutral-600">The strip's links, its highlighted button and its colour are under <a class="underline" href="<?= url('/admin/pages?page=home') ?>">Pages → Navbar &amp; footer</a>.</p>
+  </form>
+
   <form method="post" action="<?= url('/admin/settings') ?>" class="rounded-xl border bg-white p-6 shadow-sm space-y-6" style="border:2px solid var(--ke-green)">
     <?= csrfField() ?>
     <input type="hidden" name="save_smtp" value="1" />
@@ -247,6 +270,12 @@ $hasStripeWebhookSecret = !empty($settings['stripe_webhook_secret']);
     <p class="text-xs font-medium text-neutral-600">Gmail example: host <span class="font-mono">smtp.gmail.com</span>, port <span class="font-mono">587</span>, encryption TLS, username your full Gmail, password a Google App Password.</p>
     <button type="submit" class="btn-primary">Save SMTP</button>
   </form>
+  <form method="post" action="<?= url('/admin/settings/test-email') ?>" class="flex flex-wrap items-center gap-2 rounded-xl border bg-white p-4 shadow-sm">
+    <?= csrfField() ?>
+    <span class="text-sm font-bold">Send a test email to</span>
+    <input type="email" name="test_email" placeholder="your email" class="rounded-lg border border-neutral-400 px-3 py-2 text-sm" />
+    <button type="submit" class="btn-primary">Send test email</button>
+  </form>
 
   <form method="post" action="<?= url('/admin/settings') ?>" class="rounded-xl border bg-white p-6 shadow-sm space-y-4" style="border:2px solid var(--ke-green)">
     <?= csrfField() ?>
@@ -261,6 +290,28 @@ $hasStripeWebhookSecret = !empty($settings['stripe_webhook_secret']);
       <input type="text" name="whatsapp_share_number" value="<?= e($settings['whatsapp_share_number'] ?? '') ?>" placeholder="2547XXXXXXXX" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold" />
     </div>
     <button type="submit" class="btn-primary">Save WhatsApp number</button>
+  </form>
+
+  <?php $examPercent = \App\Models\Course::examPercent(); ?>
+  <form method="post" action="<?= url('/admin/settings') ?>" class="rounded-xl border bg-white p-6 shadow-sm space-y-4" style="border:2px solid var(--ke-green)">
+    <?= csrfField() ?>
+    <input type="hidden" name="save_final_grade" value="1" />
+    <div>
+      <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">Final grade</p>
+      <h2 class="mt-2 text-2xl font-black text-black">Exam and attachment percentages</h2>
+      <p class="mt-1 text-sm font-medium text-neutral-700">For courses with attachment, the final grade is made of the final exam score and the attachment assessment. Set the exam's share — the attachment gets the rest. Courses without attachment use the exam score alone.</p>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div>
+        <label for="finalGradeExam" class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Exam (%)</label>
+        <input id="finalGradeExam" type="number" name="final_grade_exam_percent" min="0" max="100" step="1" required value="<?= $examPercent ?>" oninput="document.getElementById('finalGradeAttachment').value = Math.max(0, Math.min(100, 100 - (parseInt(this.value, 10) || 0)))" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold" />
+      </div>
+      <div>
+        <label for="finalGradeAttachment" class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Attachment assessment (%)</label>
+        <input id="finalGradeAttachment" type="number" min="0" max="100" step="1" value="<?= 100 - $examPercent ?>" oninput="document.getElementById('finalGradeExam').value = Math.max(0, Math.min(100, 100 - (parseInt(this.value, 10) || 0)))" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold" />
+      </div>
+    </div>
+    <button type="submit" class="btn-primary">Save final grade split</button>
   </form>
 </div>
 

@@ -50,7 +50,7 @@ $date = static fn(?string $at): string => $at ? date('j M Y', strtotime($at)) : 
           <ul class="mt-2 divide-y" style="border-color:var(--ke-line)">
             <?php foreach ($record['certificates'] as $course): ?>
               <li class="flex flex-wrap items-center justify-between gap-2 py-2">
-                <span class="min-w-0"><span class="block font-bold text-gray-800"><?= e($course['title']) ?></span><span class="block text-xs font-semibold text-neutral-500"><?= e($course['organisation_name'] ?? '') ?></span></span>
+                <span class="min-w-0"><span class="block font-bold text-gray-800"><?= e($course['title']) ?></span><span class="block text-xs font-semibold text-neutral-500"><?= e(($course['issued_under'] ?? '') ?: ($course['organisation_name'] ?? '')) ?><?= !empty($course['certificate_no']) ? ' · Certificate No. ' . e($course['certificate_no']) : '' ?></span></span>
                 <span class="text-xs font-bold text-neutral-600">Completed <?= e($date($course['completed_on'] ?? null)) ?></span>
               </li>
             <?php endforeach; ?>
