@@ -159,6 +159,17 @@ $hasStripeWebhookSecret = !empty($settings['stripe_webhook_secret']);
           </select>
         </div>
         <div>
+          <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Paybill or Till</label>
+          <select name="daraja_account_type" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold">
+            <option value="paybill" <?= ($settings['daraja_account_type'] ?? '') !== 'till' ? 'selected' : '' ?>>Paybill</option>
+            <option value="till" <?= ($settings['daraja_account_type'] ?? '') === 'till' ? 'selected' : '' ?>>Till (Buy Goods)</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Till number (only for Till)</label>
+          <input type="text" name="daraja_till_number" value="<?= e($settings['daraja_till_number'] ?? '') ?>" autocomplete="off" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold" />
+        </div>
+        <div>
           <label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Daraja shortcode</label>
           <input type="text" name="daraja_shortcode" value="<?= e($settings['daraja_shortcode'] ?? '') ?>" autocomplete="off" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold" />
         </div>

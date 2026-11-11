@@ -301,6 +301,11 @@ class RegisterController
         UserSession::login($userId);
         $user = UserSession::current();
         flashSuccess($message);
+        $after = (string) ($_SESSION['after_login'] ?? '');
+        unset($_SESSION['after_login']);
+        if ($user && $after !== '' && str_starts_with($after, '/account/courses/') && AccountRedirect::home($user) !== '/account/profile') {
+            redirect($after);
+        }
         redirect($user ? AccountRedirect::home($user) : '/account/dashboard');
     }
 

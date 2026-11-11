@@ -395,7 +395,14 @@ function filterCourses(){
 }
 ['courseSearch','courseSearchNav','courseSearchMobile'].forEach(function(id){
   var el = document.getElementById(id);
-  if(el){ el.addEventListener('keyup', filterCourses); el.addEventListener('input', filterCourses); }
+  if(el){ el.addEventListener('keydown', function(e){
+    // Enter on something that matches no title: try it as a course code.
+    if(e.key==='Enter' && el.value.trim() && !document.querySelector('.c-card:not([style*="display: none"])')){
+      e.preventDefault();
+      window.location = <?= json_encode(url('/find-course')) ?> + '?code=' + encodeURIComponent(el.value.trim());
+    }
+  });
+  el.addEventListener('keyup', filterCourses); el.addEventListener('input', filterCourses); }
 });
 
 /* ── Course Modal ── */

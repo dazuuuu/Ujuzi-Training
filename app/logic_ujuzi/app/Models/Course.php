@@ -47,6 +47,23 @@ class Course
         )->execute([$status, $note, $id]);
     }
 
+    /** Id of the approved course with this code (case/space-insensitive), or null. */
+    public static function idByCode(string $code): ?int
+    {
+        $code = strtoupper(preg_replace('/\s+/', '', trim($code)));
+        if ($code === '') {
+            return null;
+        }
+        try {
+            $stmt = Database::connection()->prepare('SELECT c.id FROM courses c WHERE UPPER(c.course_code) = ?' . self::approvedSql('c') . ' LIMIT 1');
+            $stmt->execute([$code]);
+            $id = $stmt->fetchColumn();
+        } catch (\Throwable $e) {
+            return null;
+        }
+        return $id ? (int) $id : null;
+    }
+
     public static function find(int $id): ?array
     {
         $stmt = Database::connection()->prepare(

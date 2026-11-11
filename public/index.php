@@ -80,7 +80,10 @@ $router->post('/setup', [SetupController::class, 'store']);
 
 // --- Public LMS ---
 $router->get('/', [LmsController::class, 'home']);
+$router->post('/payments/mpesa/callback', [\App\Controllers\MpesaCallbackController::class, 'handle']);
 $router->get('/courses', [LmsController::class, 'courses']);
+$router->get('/find-course', [LmsController::class, 'findByCode']);
+$router->get('/course-code/{code}', [LmsController::class, 'findByCode']);
 $router->get('/about', [LmsController::class, 'about']);
 $router->get('/contact', [LmsController::class, 'contact']);
 $router->post('/contact', [LmsController::class, 'sendContact']);

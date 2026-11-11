@@ -231,6 +231,11 @@ class AuthController
             redirect('/account/change-password');
         }
         $home = AccountRedirect::home($fresh);
+        $after = (string) ($_SESSION['after_login'] ?? '');
+        unset($_SESSION['after_login']);
+        if ($after !== '' && $home !== '/account/profile' && str_starts_with($after, '/account/courses/')) {
+            redirect($after);
+        }
         if ($home === '/account/profile') {
             flashSuccess('Complete the registration form assigned to your role to finish signing in.');
         }

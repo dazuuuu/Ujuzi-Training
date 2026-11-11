@@ -84,12 +84,62 @@ class WalletService
         } catch (PaymentException $e) {
             throw new WalletException($e->getMessage());
         }
+        if (!empty($payment['pending'])) {
+            // STK push sent: the wallet is credited when Safaricom confirms (see settleMpesa).
+            Database::connection()->prepare(
+                'INSERT INTO mpesa_payments (user_id, checkout_request_id, merchant_request_id, phone, amount_ksh) VALUES (?, ?, ?, ?, ?)'
+            )->execute([$userId, $payment['reference'], $payment['merchant_request_id'] ?? null, $phone, $amountKsh]);
+            return $payment;
+        }
+        self::creditDeposit($userId, $amountKsh, $payment['provider'], (string) $payment['reference'], $phone);
+        return $payment;
+    }
+
+    private static function creditDeposit(int $userId, float $amountKsh, string $provider, string $reference, string $phone): void
+    {
         Database::connection()->prepare(
             "INSERT INTO wallet_transactions (user_id, type, amount_ksh, provider, reference, note)
              VALUES (?, 'deposit', ?, ?, ?, ?)"
-        )->execute([$userId, $amountKsh, $payment['provider'], $payment['reference'], 'Deposit from ' . $phone]);
-        Receipts::issue($userId, 'deposit', $amountKsh, 'Wallet deposit (M-Pesa ' . $phone . ')', null, (string) $payment['reference']);
-        return $payment;
+        )->execute([$userId, $amountKsh, $provider, $reference, 'Deposit from ' . $phone]);
+        Receipts::issue($userId, 'deposit', $amountKsh, 'Wallet deposit (M-Pesa ' . $phone . ')', null, $reference);
+    }
+
+    /** Safaricom's STK callback body: credits the wallet once, on success only. */
+    public static function settleMpesa(array $body): void
+    {
+        $cb = $body['Body']['stkCallback'] ?? null;
+        if (!$cb || empty($cb['CheckoutRequestID'])) {
+            return;
+        }
+        $pdo = Database::connection();
+        $pdo->beginTransaction();
+        $stmt = $pdo->prepare("SELECT * FROM mpesa_payments WHERE checkout_request_id = ? AND status = 'pending' FOR UPDATE");
+        $stmt->execute([(string) $cb['CheckoutRequestID']]);
+        $row = $stmt->fetch();
+        if (!$row) {
+            $pdo->commit();
+            return;
+        }
+        if ((int) ($cb['ResultCode'] ?? -1) !== 0) {
+            $pdo->prepare("UPDATE mpesa_payments SET status = 'failed', result_desc = ? WHERE id = ?")
+                ->execute([substr((string) ($cb['ResultDesc'] ?? ''), 0, 255), $row['id']]);
+            $pdo->commit();
+            return;
+        }
+        $receipt = '';
+        $paid = (float) $row['amount_ksh'];
+        foreach ($cb['CallbackMetadata']['Item'] ?? [] as $item) {
+            if (($item['Name'] ?? '') === 'MpesaReceiptNumber') {
+                $receipt = (string) $item['Value'];
+            }
+            if (($item['Name'] ?? '') === 'Amount') {
+                $paid = (float) $item['Value'];
+            }
+        }
+        $pdo->prepare("UPDATE mpesa_payments SET status = 'success', mpesa_receipt = ?, result_desc = ? WHERE id = ?")
+            ->execute([$receipt, substr((string) ($cb['ResultDesc'] ?? ''), 0, 255), $row['id']]);
+        self::creditDeposit((int) $row['user_id'], $paid, 'mpesa', $receipt !== '' ? $receipt : (string) $row['checkout_request_id'], (string) $row['phone']);
+        $pdo->commit();
     }
 
     public static function paidForCourse(int $userId, int $courseId): float

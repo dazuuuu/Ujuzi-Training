@@ -40,6 +40,31 @@ class LmsController
         ]);
     }
 
+    /**
+     * A course code typed anywhere (public search, shared link): go to that
+     * course. Signed-in people land on the course page (enrolment form if not
+     * enrolled, otherwise they continue); everyone else logs in first and is
+     * brought back to the course.
+     */
+    public function findByCode(?string $code = null): void
+    {
+        $code = $code ?? (string) \App\Core\Request::query('code', '');
+        $id = Course::idByCode($code);
+        if ($id === null) {
+            \App\Core\UserSession::start();
+            flashError('No course found with the code "' . trim($code) . '".');
+            redirect('/courses');
+        }
+        \App\Core\UserSession::start();
+        $target = '/account/courses/' . $id;
+        if (!\App\Core\UserSession::current()) {
+            $_SESSION['after_login'] = $target;
+            flashSuccess('Log in (or create an account) to open this course.');
+            redirect('/account/login');
+        }
+        redirect($target);
+    }
+
     public function courses(): void
     {
         try {

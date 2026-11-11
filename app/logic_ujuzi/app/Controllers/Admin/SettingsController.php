@@ -148,6 +148,8 @@ class SettingsController extends BaseAdminController
             StoreSetting::set('course_payment_provider', $provider);
             StoreSetting::set('course_ksh_usd_rate', $rate > 0 ? (string) $rate : '130');
             StoreSetting::set('daraja_environment', Request::post('daraja_environment') === 'live' ? 'live' : 'sandbox');
+            StoreSetting::set('daraja_account_type', Request::post('daraja_account_type') === 'till' ? 'till' : 'paybill');
+            StoreSetting::set('daraja_till_number', trim((string) Request::post('daraja_till_number', '')) ?: null);
             StoreSetting::set('daraja_shortcode', trim((string) Request::post('daraja_shortcode', '')) ?: null);
             StoreSetting::set('daraja_callback_url', trim((string) Request::post('daraja_callback_url', '')) ?: null);
             StoreSetting::set('stripe_publishable_key', trim((string) Request::post('stripe_publishable_key', '')) ?: null);

@@ -121,6 +121,9 @@ class WalletController extends BaseAccountController
         try {
             $payment = WalletService::deposit((int) $this->user['id'], $amount, (string) Request::post('phone', ''));
             $coins = WalletService::coins($amount);
+            if (!empty($payment['pending'])) {
+                flashSuccess('Check your phone: enter your M-Pesa PIN to pay Ksh ' . number_format($amount, 2) . '. Your coins appear in your wallet as soon as the payment is confirmed.');
+            } else
             flashSuccess('Deposit of Ksh ' . number_format($amount, 2) . ' received (' . $payment['reference'] . '). You earned ' . rtrim(rtrim(number_format($coins, 2), '0'), '.') . ' coins.');
         } catch (WalletException $e) {
             flashError($e->getMessage());

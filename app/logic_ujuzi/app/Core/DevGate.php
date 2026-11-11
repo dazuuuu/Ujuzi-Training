@@ -149,7 +149,8 @@ class DevGate
      */
     public static function enforce(string $path): void
     {
-        if ($path === '/devs' || strpos($path, '/devs/') === 0 || !self::isLocked()) {
+        // Locked: only the landing page, the gate itself and the payment callback (so money in flight isn't lost) still answer.
+        if ($path === '/' || $path === '/devs' || strpos($path, '/devs/') === 0 || $path === '/payments/mpesa/callback' || !self::isLocked()) {
             return;
         }
         http_response_code(503);
