@@ -32,7 +32,7 @@ require __DIR__ . '/../layout-header.php';
     </form>
 
     <?php if ($template): ?>
-      <form method="post" action="<?= url('/admin/certificate') ?>" onsubmit="return confirm('Remove the certificate template?');">
+      <form method="post" action="<?= url('/admin/certificate') ?>" data-confirm="Remove the certificate template?">
         <?= csrfField() ?>
         <input type="hidden" name="remove_template" value="1" />
         <button type="submit" class="btn-danger">Remove template</button>

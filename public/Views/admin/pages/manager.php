@@ -40,7 +40,7 @@ $builtIn = PageBuilder::PAGES;
           <div class="flex flex-wrap gap-2">
             <a href="<?= url('/admin/pages?page=c-' . $slug) ?>" class="btn-primary">Edit page</a>
             <?php if ($meta['published']): ?><a href="<?= url('/p/' . $slug) ?>" target="_blank" rel="noopener" class="btn-secondary">View</a><?php endif; ?>
-            <form method="post" action="<?= url('/admin/pages/custom/' . $slug . '/delete') ?>" onsubmit="return confirm('Delete this page for good?');"><?= csrfField() ?><button type="submit" class="btn-danger">Delete</button></form>
+            <form method="post" action="<?= url('/admin/pages/custom/' . $slug . '/delete') ?>" data-confirm="Delete this page for good?"><?= csrfField() ?><button type="submit" class="btn-danger">Delete</button></form>
           </div>
         </div>
         <details>

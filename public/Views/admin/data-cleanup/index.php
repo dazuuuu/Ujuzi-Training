@@ -12,7 +12,7 @@ require __DIR__ . '/../layout-header.php';
   </section>
 
   <section class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
-    <form method="post" action="<?= url('/admin/data-cleanup') ?>" onsubmit="return confirm('This permanently deletes the selected data. Continue?');" class="space-y-5">
+    <form method="post" action="<?= url('/admin/data-cleanup') ?>" data-confirm="This permanently deletes the selected data. Continue?" class="space-y-5">
       <?= csrfField() ?>
 
       <div class="space-y-3">
@@ -51,7 +51,7 @@ require __DIR__ . '/../layout-header.php';
       </p>
     </div>
 
-    <form method="post" action="<?= url('/admin/data-cleanup/reset-everything') ?>" onsubmit="return confirm('This deletes EVERY organisation, user, and their data. This cannot be undone. Continue?');">
+    <form method="post" action="<?= url('/admin/data-cleanup/reset-everything') ?>" data-confirm="This deletes EVERY organisation, user, and their data. This cannot be undone. Continue?">
       <?= csrfField() ?>
       <button type="submit" class="btn-danger">Reset the entire database</button>
     </form>

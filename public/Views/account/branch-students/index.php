@@ -34,12 +34,30 @@ $exportBar = static function (string $list) use ($dateQs): void {
       <input type="search" id="bs-search" placeholder="Search name, reg. no., phone or email…" class="w-full sm:max-w-sm rounded-lg border border-neutral-300 p-2 text-sm print:hidden">
       <?php $exportBar('students'); ?>
     </div>
+    <form method="post" action="<?= url('/account/branch-students/assign-categories') ?>" id="bs-assign" class="mb-3 rounded-xl border border-neutral-300 bg-white p-3 print:hidden">
+      <?= csrfField() ?>
+      <div class="flex flex-wrap items-end gap-3">
+        <div>
+          <p class="text-[11px] font-black uppercase tracking-wide text-neutral-600">Put selected students in category</p>
+          <div class="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+            <?php foreach (($categories ?? []) as $cat): ?>
+              <label class="flex items-center gap-1.5 text-sm font-semibold"><input type="checkbox" name="category_ids[]" value="<?= (int) $cat['id'] ?>"> <?= e($cat['name']) ?></label>
+            <?php endforeach; ?>
+            <?php if (empty($categories)): ?><span class="text-sm text-neutral-500">No categories yet — create one under Categories.</span><?php endif; ?>
+          </div>
+        </div>
+        <select name="mode" class="rounded-lg border border-neutral-300 p-2 text-sm"><option value="add">Add to their categories</option><option value="replace">Replace their categories</option></select>
+        <button class="btn-primary" type="submit">Assign <span id="bs-count">0</span> selected</button>
+        <span class="text-xs text-neutral-500">Tip: search, then tick the header box to select everyone shown (works for 100+ students).</span>
+      </div>
+    </form>
     <div class="overflow-x-auto rounded-xl border border-neutral-300 bg-white shadow-sm">
       <table class="excel-table admin-data-table" id="bs-table">
-        <thead><tr><th>Reg. No.</th><th>Name</th><th>Phone</th><th>Email</th><th>Branch</th><th>Courses</th><th>Joined</th></tr></thead>
+        <thead><tr><th><input type="checkbox" id="bs-all" aria-label="Select all shown"></th><th>Reg. No.</th><th>Name</th><th>Phone</th><th>Email</th><th>Branch</th><th>Courses</th><th>Joined</th><th>Status</th><th class="print:hidden">Actions</th></tr></thead>
         <tbody>
           <?php foreach ($students as $s): ?>
             <tr data-search="<?= e(strtolower($s['name'] . ' ' . $s['registration_number'] . ' ' . $s['phone'] . ' ' . $s['email'])) ?>">
+              <td><input type="checkbox" class="bs-pick" name="user_ids[]" value="<?= (int) $s['id'] ?>" form="bs-assign"></td>
               <td class="font-mono"><?= e($s['registration_number']) ?></td>
               <td class="font-black"><?= e($s['name']) ?></td>
               <td><?= $s['phone'] !== '' ? '<a class="underline" href="tel:' . e(preg_replace('/[^0-9+]/', '', $s['phone'])) . '">' . e($s['phone']) . '</a>' : '—' ?></td>
@@ -47,12 +65,29 @@ $exportBar = static function (string $list) use ($dateQs): void {
               <td><?= e($s['branch_title'] ?? '') ?></td>
               <td><?= (int) $s['courses'] ?></td>
               <td><?= $s['joined_at'] ? e(date('j M Y', strtotime($s['joined_at']))) : '—' ?></td>
+              <td><?= !empty($s['is_active']) ? '<span style="color:#166534;font-weight:700">Active</span>' : '<span style="color:#b91c1c;font-weight:700">Suspended</span>' ?></td>
+              <td class="whitespace-nowrap print:hidden">
+                <a class="btn-secondary" style="padding:.2rem .5rem;font-size:.7rem" href="<?= url('/account/branch-students/' . (int) $s['id'] . '/edit') ?>">Edit</a>
+                <form method="post" action="<?= url('/account/branch-students/' . (int) $s['id'] . '/suspend') ?>" class="inline" data-confirm="<?= !empty($s['is_active']) ? 'Suspend this student? They will not be able to sign in.' : 'Activate this student again?' ?>"><?= csrfField() ?><button class="btn-secondary" style="padding:.2rem .5rem;font-size:.7rem"><?= !empty($s['is_active']) ? 'Suspend' : 'Activate' ?></button></form>
+                <form method="post" action="<?= url('/account/branch-students/' . (int) $s['id'] . '/delete') ?>" class="inline" data-confirm="Ask Super Admin to delete this student? Nothing is removed until it is approved."><?= csrfField() ?><button class="btn-danger" style="padding:.2rem .5rem;font-size:.7rem">Delete</button></form>
+              </td>
             </tr>
           <?php endforeach; ?>
-          <?php if (!$students): ?><tr><td colspan="7" class="text-center font-bold text-neutral-500">No students in your branch yet. Add them under "Add students".</td></tr><?php endif; ?>
+          <?php if (!$students): ?><tr><td colspan="10" class="text-center font-bold text-neutral-500">No students in your branch yet. Add them under "Add students".</td></tr><?php endif; ?>
         </tbody>
       </table>
     </div>
+    <script>
+      (function () {
+        var all = document.getElementById('bs-all'), count = document.getElementById('bs-count');
+        function recount() { count.textContent = document.querySelectorAll('.bs-pick:checked').length; }
+        all.addEventListener('change', function () {
+          document.querySelectorAll('#bs-table tbody tr[data-search]').forEach(function (tr) { if (!tr.hidden) tr.querySelector('.bs-pick').checked = all.checked; });
+          recount();
+        });
+        document.getElementById('bs-table').addEventListener('change', function (e) { if (e.target.classList.contains('bs-pick')) recount(); });
+      })();
+    </script>
     <script>
       document.getElementById('bs-search').addEventListener('input', function () {
         var q = this.value.trim().toLowerCase();

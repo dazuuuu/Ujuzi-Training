@@ -23,7 +23,7 @@ class PageBuilder
         'signup' => 'Sign up page',
         'login' => 'Sign in page',
         'contact' => 'Contact us',
-        'lookup' => 'Student lookup',
+        'lookup' => 'Verify Certificate',
     ];
 
     /** Every editable page: the built-in ones, then Super Admin's own pages ('c-' + slug). */
@@ -305,7 +305,7 @@ class PageBuilder
                 'text' => ['Text', 'textarea'],
                 'button_label' => ['Button text', 'text'],
             ]],
-            'lookup_form' => ['Student lookup search', ['lookup'], [
+            'lookup_form' => ['Verify Certificate search', ['lookup'], [
                 'title' => ['Heading', 'text'],
                 'text' => ['Text', 'textarea'],
                 'placeholder' => ['Search box hint', 'text'],
@@ -407,7 +407,7 @@ class PageBuilder
                 ['label' => 'Home', 'url' => '/'],
                 ['label' => 'Courses', 'url' => '/courses'],
                 ['label' => 'About', 'url' => '/about'],
-                ['label' => 'Student lookup', 'url' => '/student-lookup'],
+                ['label' => 'Verify Certificate', 'url' => '/student-lookup'],
                 ['label' => 'Contact', 'url' => '/contact'],
             ],
             'topbar_show' => true,
@@ -418,7 +418,7 @@ class PageBuilder
             'contact_hours' => '',
             'topbar_bg' => '',
             'topbar_links' => [
-                ['label' => 'Student lookup', 'url' => '/student-lookup'],
+                ['label' => 'Verify Certificate', 'url' => '/student-lookup'],
                 ['label' => 'Courses', 'url' => '/courses'],
                 ['label' => 'Sign in', 'url' => '/account/login'],
             ],
@@ -426,7 +426,7 @@ class PageBuilder
             'topbar_cta_url' => '/account/register/choose',
             'footer_info_title' => 'Information',
             'footer_info_links' => [
-                ['label' => 'Student lookup', 'url' => '/student-lookup'],
+                ['label' => 'Verify Certificate', 'url' => '/student-lookup'],
                 ['label' => 'Contact us', 'url' => '/contact'],
                 ['label' => 'Sign in', 'url' => '/account/login'],
                 ['label' => 'Create an account', 'url' => '/account/register/choose'],
@@ -536,7 +536,7 @@ class PageBuilder
             case 'lookup':
                 return [
                     $s('lookup_form', [
-                        'title' => 'Student lookup',
+                        'title' => 'Verify Certificate',
                         'text' => 'Check that a person really is a student here and see the courses they completed. Enter the registration number or certificate number printed on their certificate, or their National ID, passport or birth certificate number.',
                         'placeholder' => 'Reg. no., certificate no., ID, passport or birth cert. no.',
                     ], ['bg' => 'mint', 'padding' => 'lg', 'width' => 'narrow', 'align' => 'center']),

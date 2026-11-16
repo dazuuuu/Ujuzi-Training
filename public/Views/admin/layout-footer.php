@@ -75,5 +75,6 @@
     });
   </script>
 <script src="<?= asset('assets/js/app-shell.js') ?>" defer></script>
+<script src="<?= asset('assets/js/ui-confirm.js') ?>" defer></script>
 </body>
 </html>

@@ -81,7 +81,10 @@ $router->post('/setup', [SetupController::class, 'store']);
 // --- Public LMS ---
 $router->get('/', [LmsController::class, 'home']);
 $router->post('/payments/mpesa/callback', [\App\Controllers\MpesaCallbackController::class, 'handle']);
+$router->get('/exams', [LmsController::class, 'exams']);
 $router->get('/courses', [LmsController::class, 'courses']);
+$router->get('/open-course/{id}', [LmsController::class, 'openCourse']);
+$router->get('/search-courses', [LmsController::class, 'searchCourses']);
 $router->get('/find-course', [LmsController::class, 'findByCode']);
 $router->get('/course-code/{code}', [LmsController::class, 'findByCode']);
 $router->get('/about', [LmsController::class, 'about']);
@@ -211,6 +214,7 @@ $router->post('/admin/data-cleanup', [DataCleanupController::class, 'destroy']);
 $router->post('/admin/data-cleanup/reset-everything', [DataCleanupController::class, 'resetEverything']);
 
 // --- Super admin: error logs (main Super Admins only) ---
+$router->get('/admin/audit-trail', [\App\Controllers\Admin\AuditTrailController::class, 'index']);
 $router->get('/admin/error-logs', [\App\Controllers\Admin\ErrorLogController::class, 'index']);
 $router->post('/admin/error-logs/clear', [\App\Controllers\Admin\ErrorLogController::class, 'clear']);
 
@@ -306,6 +310,11 @@ $router->post('/account/locked', [\App\Controllers\Account\AccountLockController
 $router->get('/account/verify-email/{token}', [\App\Controllers\Account\EmailVerificationController::class, 'verify']);
 $router->get('/account/branch-students', [\App\Controllers\Account\BranchStudentsController::class, 'index']);
 $router->post('/account/branch-students', [\App\Controllers\Account\BranchStudentsController::class, 'store']);
+$router->post('/account/branch-students/assign-categories', [\App\Controllers\Account\BranchStudentsController::class, 'assignCategories']);
+$router->get('/account/branch-students/{id}/edit', [\App\Controllers\Account\BranchStudentsController::class, 'edit']);
+$router->post('/account/branch-students/{id}/edit', [\App\Controllers\Account\BranchStudentsController::class, 'update']);
+$router->post('/account/branch-students/{id}/suspend', [\App\Controllers\Account\BranchStudentsController::class, 'toggleSuspend']);
+$router->post('/account/branch-students/{id}/delete', [\App\Controllers\Account\BranchStudentsController::class, 'destroy']);
 $router->post('/account/branch-students/import', [\App\Controllers\Account\BranchStudentsController::class, 'import']);
 $router->get('/account/branch-students/template', [\App\Controllers\Account\BranchStudentsController::class, 'template']);
 $router->get('/account/branch-students/export/{list}/{format}', [\App\Controllers\Account\BranchStudentsController::class, 'export']);
@@ -347,9 +356,16 @@ $router->post('/account/branches/{id}/tutors/{userId}/remove', [AccountBranchCon
 
 $router->get('/account/wallet', [WalletController::class, 'index']);
 $router->get('/account/wallet/export/{format}', [WalletController::class, 'export']);
+$router->post('/account/wallet/paypal', [WalletController::class, 'paypalStart']);
+$router->get('/account/wallet/paypal/return', [WalletController::class, 'paypalReturn']);
 $router->post('/account/wallet/deposit', [WalletController::class, 'deposit']);
 $router->get('/account/payments', [PaymentController::class, 'index']);
 $router->get('/account/payments/{id}', [PaymentController::class, 'show']);
+$router->get('/account/exam-results', [\App\Controllers\Account\ExamResultsController::class, 'index']);
+$router->get('/account/announcements', [\App\Controllers\Account\AnnouncementController::class, 'index']);
+$router->get('/account/announcements/new', [\App\Controllers\Account\AnnouncementController::class, 'create']);
+$router->post('/account/announcements', [\App\Controllers\Account\AnnouncementController::class, 'store']);
+$router->get('/account/announcements/{id}', [\App\Controllers\Account\AnnouncementController::class, 'show']);
 $router->get('/account/courses', [CourseController::class, 'index']);
 $router->get('/account/courses/create', [CourseController::class, 'create']);
 $router->post('/account/courses', [CourseController::class, 'store']);

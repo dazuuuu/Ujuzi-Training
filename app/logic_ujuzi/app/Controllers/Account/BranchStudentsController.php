@@ -36,6 +36,7 @@ class BranchStudentsController extends BaseAccountController
             'from' => $from,
             'to' => $to,
             'problems' => $_SESSION['roster_problems'] ?? [],
+            'categories' => \App\Models\OrganisationCategory::forBranches($orgId, array_map(static fn(array $b): int => (int) $b['id'], $branches), true),
         ]);
         unset($_SESSION['roster_problems']);
     }
@@ -116,7 +117,7 @@ class BranchStudentsController extends BaseAccountController
     {
         $ids = array_map(static fn(array $b): int => (int) $b['id'], $branches);
         $stmt = Database::connection()->prepare(
-            "SELECT u.id, u.first_name, u.other_names, u.last_name, u.email, u.phone, u.registration_number,
+            "SELECT u.id, u.first_name, u.other_names, u.last_name, u.email, u.phone, u.registration_number, u.is_active, m.category_ids,
                     b.title AS branch_title, m.reviewed_at AS joined_at,
                     (SELECT COUNT(*) FROM course_enrollments e INNER JOIN courses c ON c.id = e.course_id
                       WHERE e.user_id = u.id AND c.organisation_id = m.organisation_id) AS courses
@@ -180,6 +181,109 @@ class BranchStudentsController extends BaseAccountController
     }
 
     /** [organisation id, branches] for this course branch admin. */
+    /** Puts the ticked students (any number, e.g. 100) into the chosen categories — only categories of this admin's branches. */
+    public function assignCategories(): void
+    {
+        [$orgId, $branches] = $this->scope();
+        $this->csrf();
+        $branchIds = array_map(static fn(array $b): int => (int) $b['id'], $branches);
+        $allowed = array_map(static fn(array $c): int => (int) $c['id'], \App\Models\OrganisationCategory::forBranches($orgId, $branchIds, true));
+        $categoryIds = array_values(array_intersect(array_map('intval', (array) Request::post('category_ids', [])), $allowed));
+        $userIds = array_values(array_unique(array_filter(array_map('intval', (array) Request::post('user_ids', [])))));
+        if (!$categoryIds || !$userIds) {
+            flashError('Tick at least one student and choose at least one category.');
+            redirect('/account/branch-students');
+        }
+        $replace = Request::post('mode') === 'replace';
+        $pdo = Database::connection();
+        $select = $pdo->prepare("SELECT id, category_ids FROM organisation_memberships WHERE user_id = ? AND organisation_id = ? AND status = 'approved' AND branch_id IN (" . implode(',', $branchIds) . ')');
+        $save = $pdo->prepare('UPDATE organisation_memberships SET category_ids = ? WHERE id = ?');
+        $done = 0;
+        foreach ($userIds as $uid) {
+            $select->execute([$uid, $orgId]);
+            if (!($m = $select->fetch())) {
+                continue; // not a student of this branch admin
+            }
+            $current = $replace ? [] : array_map('intval', json_decode((string) ($m['category_ids'] ?? ''), true) ?: []);
+            $save->execute([json_encode(array_values(array_unique(array_merge($current, $categoryIds)))), $m['id']]);
+            $done++;
+        }
+        flashSuccess($done . ' student' . ($done === 1 ? '' : 's') . ' ' . ($replace ? 'set to' : 'added to') . ' the chosen categories. They now see those categories\' courses.');
+        redirect('/account/branch-students');
+    }
+
+    public function edit(string $id): void
+    {
+        [$orgId, $branches] = $this->scope();
+        $student = $this->ownStudent((int) $id, $orgId, $branches);
+        $this->render('account.branch-students.edit', ['pageTitle' => 'Edit student', 'activeNav' => 'branch_students', 'student' => $student]);
+    }
+
+    public function update(string $id): void
+    {
+        [$orgId, $branches] = $this->scope();
+        $this->csrf();
+        $student = $this->ownStudent((int) $id, $orgId, $branches);
+        $first = trim((string) Request::post('first_name', ''));
+        $last = trim((string) Request::post('last_name', ''));
+        if ($first === '' || $last === '') {
+            flashError('First and last name are needed.');
+            redirect('/account/branch-students/' . (int) $id . '/edit');
+        }
+        try {
+            \App\Models\User::update((int) $id, [
+                'role_id' => (int) $student['role_id'], 'organisation_id' => $student['organisation_id'],
+                'email' => strtolower(trim((string) Request::post('email', ''))), 'phone' => \App\Models\User::normalizePhone((string) Request::post('phone', '')),
+                'first_name' => $first, 'last_name' => $last, 'other_names' => trim((string) Request::post('other_names', '')),
+                'is_active' => $student['is_active'], 'account_status' => $student['account_status'] ?? null,
+            ]);
+            flashSuccess('Student details saved.');
+        } catch (\Throwable $e) {
+            flashError($e->getMessage());
+            redirect('/account/branch-students/' . (int) $id . '/edit');
+        }
+        redirect('/account/branch-students');
+    }
+
+    /** Suspend (can't sign in) or reactivate a student. */
+    public function toggleSuspend(string $id): void
+    {
+        [$orgId, $branches] = $this->scope();
+        $this->csrf();
+        $student = $this->ownStudent((int) $id, $orgId, $branches);
+        $suspend = !empty($student['is_active']);
+        \App\Models\User::setStatus((int) $id, $suspend ? 'suspended' : 'active');
+        flashSuccess(userFullName($student) . ($suspend ? ' is suspended and cannot sign in.' : ' is active again.'));
+        redirect('/account/branch-students');
+    }
+
+    /** Deleting asks Super Admin (as for branches, courses and categories); nothing is lost until it is approved. */
+    public function destroy(string $id): void
+    {
+        [$orgId, $branches] = $this->scope();
+        $this->csrf();
+        $student = $this->ownStudent((int) $id, $orgId, $branches);
+        $error = \App\Models\DeletionRequest::request('student', (int) $id, userFullName($student), (string) ($this->user['organisation_name'] ?? ''), (int) $this->user['id'], (string) Request::post('reason', ''));
+        $error === null ? flashSuccess('Delete request sent to Super Admin. The student is removed once it is approved.') : flashError($error);
+        redirect('/account/branch-students');
+    }
+
+    private function ownStudent(int $id, int $orgId, array $branches): array
+    {
+        $ids = array_map(static fn(array $b): int => (int) $b['id'], $branches);
+        $stmt = Database::connection()->prepare(
+            "SELECT u.* FROM users u INNER JOIN organisation_memberships m ON m.user_id = u.id
+             WHERE u.id = ? AND m.organisation_id = ? AND m.status = 'approved' AND m.branch_id IN (" . implode(',', $ids) . ') LIMIT 1'
+        );
+        $stmt->execute([$id, $orgId]);
+        $row = $stmt->fetch();
+        if (!$row) {
+            flashError('That student is not in your branch.');
+            redirect('/account/branch-students');
+        }
+        return $row;
+    }
+
     private function scope(): array
     {
         if (($this->user['role_slug'] ?? '') !== 'course_branch_admin') {

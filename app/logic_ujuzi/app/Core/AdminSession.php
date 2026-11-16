@@ -23,8 +23,10 @@ class AdminSession
             self::claim((int) $admin['id']);
             $_SESSION['admin_email'] = $admin['email'];
             $_SESSION['admin_name'] = $admin['name'] ?? null;
+            \App\Models\LoginAudit::record('admin', (int) $admin['id'], (string) $admin['email'], $admin['name'] ?? null, 'super_admin', true);
             return true;
         }
+        \App\Models\LoginAudit::record('admin', $admin ? (int) $admin['id'] : null, $email, $admin['name'] ?? null, null, false, $admin ? 'Wrong password or account off' : 'Unknown email');
         return false;
     }
 

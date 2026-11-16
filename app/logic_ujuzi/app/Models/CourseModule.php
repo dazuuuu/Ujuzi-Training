@@ -276,9 +276,9 @@ class CourseModule
     }
 
     /**
-     * Adds is_unlocked / is_passed / is_done to each module. Every module is
-     * open to the student (paying for it is checked separately) — quizzes
-     * never hold them back. A module is done once its quiz is taken (pass or
+     * Adds is_unlocked / is_passed / is_done to each module. Students learn
+     * strictly in order: a module opens only when the previous one is done
+     * (paying for it is checked separately). A module is done once its quiz is taken (pass or
      * fail — a failed quiz shows the right answers and the student goes on)
      * or, without a quiz, ticked "Mark as done"; that only shows progress.
      */
@@ -288,7 +288,8 @@ class CourseModule
         $out = [];
         foreach (array_values($modules) as $index => $module) {
             $progress = $progressByModule[(int) $module['id']] ?? null;
-            $module['is_unlocked'] = true;
+            // Strictly in order: a module opens only after the one before it is done.
+            $module['is_unlocked'] = $previousDone;
             $module['is_passed'] = $progress && !empty($progress['passed']);
             $module['is_done'] = $progress !== null;
             $module['progress'] = $progress;

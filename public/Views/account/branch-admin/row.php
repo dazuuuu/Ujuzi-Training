@@ -39,7 +39,7 @@ $small = 'padding:.15rem .45rem;font-size:.7rem';
         <form method="post" action="<?= url('/account/branch-admin/' . (int) $application['id'] . '/accept') ?>"><?= csrfField() ?><button class="btn-primary" style="<?= $small ?>">Accept</button></form>
       <?php endif; ?>
       <?php if (empty($completedRow) && in_array($status, ['pending', 'paused', 'accepted'], true)): ?>
-        <form method="post" action="<?= url('/account/branch-admin/' . (int) $application['id'] . '/complete') ?>" onsubmit="return confirm('Mark this attachment complete? This sends the assessment to the course organisation and generates their recommendation letter.');"><?= csrfField() ?><button class="btn-primary" style="<?= $small ?>">Complete</button></form>
+        <form method="post" action="<?= url('/account/branch-admin/' . (int) $application['id'] . '/complete') ?>" data-confirm="Mark this attachment complete? This sends the assessment to the course organisation and generates their recommendation letter."><?= csrfField() ?><button class="btn-primary" style="<?= $small ?>">Complete</button></form>
       <?php endif; ?>
       <?php if (empty($completedRow) && in_array($status, ['pending', 'paused', 'accepted'], true)): $rejectId = (int) $application['id']; require __DIR__ . '/../partials/reject-request.php'; endif; ?>
     </span>

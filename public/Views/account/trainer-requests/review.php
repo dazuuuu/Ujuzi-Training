@@ -31,7 +31,7 @@ $pending = ($request['status'] ?? '') === 'pending';
       <?php endif; ?>
     </form>
     <?php if ($pending): ?>
-      <form method="post" action="<?= url('/account/trainer-requests/' . (int) $request['id'] . '/reject') ?>" onsubmit="return confirm('Reject this student?');">
+      <form method="post" action="<?= url('/account/trainer-requests/' . (int) $request['id'] . '/reject') ?>" data-confirm="Reject this student?">
         <?= csrfField() ?>
         <button type="submit" class="btn-danger">Reject</button>
       </form>

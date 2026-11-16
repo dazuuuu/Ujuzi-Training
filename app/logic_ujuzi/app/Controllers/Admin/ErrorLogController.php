@@ -19,6 +19,8 @@ class ErrorLogController extends BaseAdminController
             'lines' => $lines,
             'size' => ErrorLog::size(),
             'path' => ErrorLog::path(),
+            'checks' => Request::query('check') === '1' ? \App\Services\SystemCheck::run() : null,
+            'recent' => \App\Services\SystemCheck::recentErrors(),
         ]);
     }
 

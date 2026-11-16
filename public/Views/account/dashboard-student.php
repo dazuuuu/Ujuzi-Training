@@ -219,4 +219,24 @@ $miniCourse = static function (array $course, string $meta): void {
   <?php endif; ?>
 </div>
 
+<script>
+/* Course rows drift along on their own (marquee) and pause when touched or hovered. */
+(function () {
+  document.querySelectorAll('.h-scroll').forEach(function (row) {
+    if (row.children.length < 2) return;
+    var paused = false, dir = 1;
+    ['mouseenter', 'touchstart', 'focusin'].forEach(function (ev) { row.addEventListener(ev, function () { paused = true; }, { passive: true }); });
+    ['mouseleave', 'touchend', 'focusout'].forEach(function (ev) { row.addEventListener(ev, function () { setTimeout(function () { paused = false; }, 1500); }, { passive: true }); });
+    setInterval(function () {
+      if (paused || document.hidden || row.scrollWidth <= row.clientWidth + 4) return;
+      var step = row.children[0].getBoundingClientRect().width + 12;
+      var atEnd = row.scrollLeft + row.clientWidth >= row.scrollWidth - 4;
+      if (atEnd) { dir = -1; } else if (row.scrollLeft <= 2) { dir = 1; }
+      if (dir === -1 && row.scrollLeft <= 2) { dir = 1; }
+      if (dir === -1) { row.scrollTo({ left: 0, behavior: 'smooth' }); dir = 1; return; }
+      row.scrollBy({ left: step, behavior: 'smooth' });
+    }, 2000);
+  });
+})();
+</script>
 <?php require __DIR__ . '/layout-footer.php'; ?>

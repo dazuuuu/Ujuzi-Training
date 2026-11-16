@@ -161,7 +161,7 @@ class ActivityReport
                     CONCAT(t.first_name, ' ', t.last_name) AS tutor,
                     (SELECT COUNT(*) FROM course_modules m WHERE m.course_id = c.id) AS modules_total,
                     (SELECT COUNT(*) FROM course_module_progress p INNER JOIN course_modules m ON m.id = p.module_id
-                       WHERE p.user_id = e.user_id AND p.course_id = c.id AND p.passed = 1) AS modules_passed,
+                       WHERE p.user_id = e.user_id AND p.course_id = c.id AND p.id IS NOT NULL) AS modules_passed,
                     (SELECT cc.completed_at FROM course_completions cc WHERE cc.user_id = e.user_id AND cc.course_id = c.id LIMIT 1) AS completed_at,
                     (SELECT f.completed_at FROM course_final_exam_progress f WHERE f.user_id = e.user_id AND f.course_id = c.id AND f.passed = 1 LIMIT 1) AS final_passed_at,
                     COALESCE((SELECT SUM(t2.amount_ksh) FROM wallet_transactions t2

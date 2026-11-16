@@ -26,6 +26,45 @@ class Course
         return $ready ? " AND $alias.approval_status = 'approved'" : '';
     }
 
+    /** " AND c.exam_only = 0" once the exams-only update has run, so exams stay off the normal course lists. */
+    public static function notExamSql(string $alias = 'c'): string
+    {
+        static $ready = null;
+        if ($ready === null) {
+            try {
+                $ready = (bool) Database::connection()->query("SHOW COLUMNS FROM courses LIKE 'exam_only'")->fetch();
+            } catch (\Throwable $e) {
+                $ready = false;
+            }
+        }
+        return $ready ? " AND $alias.exam_only = 0" : '';
+    }
+
+    public static function examsReady(): bool
+    {
+        return self::notExamSql() !== '';
+    }
+
+    /** Public exam-only courses. */
+    public static function publicExams(): array
+    {
+        if (!self::examsReady()) {
+            return [];
+        }
+        $stmt = Database::connection()->prepare(
+            'SELECT c.*, cat.name AS category_name, o.name AS organisation_name,
+                    u.first_name, u.last_name, u.email, u.photo_path AS tutor_photo, u.headline AS tutor_headline
+             FROM courses c
+             INNER JOIN organisation_categories cat ON cat.id = c.category_id
+             INNER JOIN organisations o ON o.id = c.organisation_id
+             INNER JOIN users u ON u.id = c.trainer_user_id
+             WHERE c.is_published = 1 AND c.exam_only = 1' . self::approvedSql() . ' AND c.visibility = \'global\'
+             ORDER BY c.created_at DESC'
+        );
+        $stmt->execute();
+        return array_map([self::class, 'hydrate'], $stmt->fetchAll());
+    }
+
     /** Courses waiting for Super Admin, oldest first. */
     public static function pendingApproval(): array
     {
@@ -252,7 +291,7 @@ class Course
              INNER JOIN organisation_categories cat ON cat.id = c.category_id
              INNER JOIN organisations o ON o.id = c.organisation_id
              INNER JOIN users u ON u.id = c.trainer_user_id
-             WHERE c.is_published = 1' . self::approvedSql() . ' AND c.visibility = \'global\'
+             WHERE c.is_published = 1' . self::approvedSql() . self::notExamSql() . ' AND c.visibility = \'global\'
              ORDER BY c.created_at DESC'
         );
         $stmt->execute();

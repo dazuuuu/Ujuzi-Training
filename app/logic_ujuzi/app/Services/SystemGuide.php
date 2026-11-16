@@ -43,7 +43,7 @@ class SystemGuide
                 'body' => [
                     'Registered users lists everyone; the Students and provider menu items are the same list filtered by role. Open a user to see their details, edit, block, suspend or unlock them.',
                     'Every student gets a registration number automatically (e.g. UJ0012709/26).',
-                    'Student lookup finds a student by name, registration number, phone or certificate number.',
+                    'Verify Certificate finds a student by name, registration number, phone or certificate number.',
                 ],
             ],
             [
@@ -129,7 +129,7 @@ class SystemGuide
                 'keywords' => 'certificate template number verify document letter layout generate',
                 'where' => 'Documents, Certificates',
                 'body' => [
-                    'Students who pass a course\'s final exam earn a certificate with its own number, which anyone can verify on the public Student lookup page.',
+                    'Students who pass a course\'s final exam earn a certificate with its own number, which anyone can verify on the public Verify Certificate page.',
                     'Documents sets the certificate and letter layouts; Certificates lists every certificate issued and can generate batches.',
                 ],
             ],

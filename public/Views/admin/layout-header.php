@@ -36,6 +36,7 @@ try {
 <!doctype html>
 <html lang="en">
 <head>
+  <meta name="ui-admin" content="1">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <?php require __DIR__ . "/../partials/pwa-head.php"; ?>

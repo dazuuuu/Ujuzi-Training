@@ -303,6 +303,48 @@ $hasStripeWebhookSecret = !empty($settings['stripe_webhook_secret']);
     <button type="submit" class="btn-primary">Save WhatsApp number</button>
   </form>
 
+  <form method="post" action="<?= url('/admin/settings') ?>" class="rounded-xl border bg-white p-6 shadow-sm space-y-4">
+    <?= csrfField() ?>
+    <input type="hidden" name="save_notifications" value="1" />
+    <div>
+      <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">Notifications</p>
+      <h2 class="mt-2 text-2xl font-black text-black">SMS (Africa's Talking) and alerts</h2>
+      <p class="mt-1 text-xs font-medium text-neutral-600">Used for announcements and new-course alerts. Leave the API key blank to keep the saved one.</p>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-3">
+      <div><label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Username</label>
+        <input type="text" name="sms_username" value="<?= e($settings['sms_username'] ?? '') ?>" autocomplete="off" class="mt-2 w-full rounded-lg border border-neutral-400 px-4 py-3 text-sm font-semibold" /></div>
+      <div><label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">API key</label>
+        <input type="password" name="sms_api_key" value="" placeholder="<?= !empty($settings['sms_api_key']) ? 'Saved - leave blank to keep' : 'API key' ?>" autocomplete="new-password" class="mt-2 w-full rounded-lg border border-neutral-400 px-4 py-3 text-sm font-semibold" /></div>
+      <div><label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Sender ID (optional)</label>
+        <input type="text" name="sms_sender" value="<?= e($settings['sms_sender'] ?? '') ?>" autocomplete="off" class="mt-2 w-full rounded-lg border border-neutral-400 px-4 py-3 text-sm font-semibold" /></div>
+    </div>
+    <div class="space-y-1">
+      <label class="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="notify_course_email" value="1" <?= ($settings['notify_course_email'] ?? '1') !== '0' ? 'checked' : '' ?>> Email learners when a new course is published for their category</label>
+      <label class="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="notify_course_sms" value="1" <?= ($settings['notify_course_sms'] ?? '0') === '1' ? 'checked' : '' ?>> SMS learners when a new course is published for their category</label>
+    </div>
+    <button type="submit" class="btn-primary">Save notification settings</button>
+  </form>
+
+  <form method="post" action="<?= url('/admin/settings') ?>" class="rounded-xl border bg-white p-6 shadow-sm space-y-4">
+    <?= csrfField() ?>
+    <input type="hidden" name="save_paypal" value="1" />
+    <div>
+      <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">Payments</p>
+      <h2 class="mt-2 text-2xl font-black text-black">PayPal</h2>
+      <p class="mt-1 text-xs font-medium text-neutral-600">Students buy coins with PayPal as well as M-Pesa. The Ksh→USD rate is the one under course payments.</p>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-3">
+      <div><label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Environment</label>
+        <select name="paypal_environment" class="mt-2 w-full rounded-lg border border-neutral-400 bg-white px-4 py-3 text-sm font-semibold"><option value="sandbox">Sandbox</option><option value="live" <?= ($settings['paypal_environment'] ?? '') === 'live' ? 'selected' : '' ?>>Live</option></select></div>
+      <div><label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Client ID</label>
+        <input type="text" name="paypal_client_id" value="<?= e($settings['paypal_client_id'] ?? '') ?>" autocomplete="off" class="mt-2 w-full rounded-lg border border-neutral-400 px-4 py-3 text-sm font-semibold" /></div>
+      <div><label class="text-[11px] font-black uppercase tracking-widest text-neutral-700">Secret</label>
+        <input type="password" name="paypal_secret" value="" placeholder="<?= !empty($settings['paypal_secret']) ? 'Saved - leave blank to keep' : 'Secret' ?>" autocomplete="new-password" class="mt-2 w-full rounded-lg border border-neutral-400 px-4 py-3 text-sm font-semibold" /></div>
+    </div>
+    <button type="submit" class="btn-primary">Save PayPal</button>
+  </form>
+
   <?php $examPercent = \App\Models\Course::examPercent(); ?>
   <form method="post" action="<?= url('/admin/settings') ?>" class="rounded-xl border bg-white p-6 shadow-sm space-y-4" style="border:2px solid var(--ke-green)">
     <?= csrfField() ?>

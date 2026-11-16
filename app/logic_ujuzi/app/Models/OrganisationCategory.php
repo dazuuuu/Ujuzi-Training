@@ -18,6 +18,23 @@ class OrganisationCategory
         return $stmt->fetchAll();
     }
 
+    /** Categories a branch admin may use: the organisation-wide ones plus their own branches'. */
+    public static function forBranches(int $organisationId, array $branchIds, bool $activeOnly = false): array
+    {
+        $branchIds = array_values(array_filter(array_map('intval', $branchIds)));
+        try {
+            $sql = 'SELECT * FROM organisation_categories WHERE organisation_id = ? AND (branch_id IS NULL' . ($branchIds ? ' OR branch_id IN (' . implode(',', $branchIds) . ')' : '') . ')';
+            if ($activeOnly) {
+                $sql .= ' AND is_active = 1';
+            }
+            $stmt = Database::connection()->prepare($sql . ' ORDER BY sort_order ASC, name ASC');
+            $stmt->execute([$organisationId]);
+            return $stmt->fetchAll();
+        } catch (\Throwable $e) {
+            return self::forOrganisation($organisationId, $activeOnly); // before the branch-categories update
+        }
+    }
+
     public static function find(int $id): ?array
     {
         $stmt = Database::connection()->prepare(
@@ -105,10 +122,7 @@ class OrganisationCategory
     public static function create(array $fields): int
     {
         $pdo = Database::connection();
-        $pdo->prepare(
-            'INSERT INTO organisation_categories (organisation_id, name, slug, description, is_active, is_open, sort_order)
-             VALUES (?, ?, ?, ?, ?, ?, ?)'
-        )->execute([
+        $values = [
             (int) $fields['organisation_id'],
             $fields['name'],
             $fields['slug'],
@@ -116,7 +130,18 @@ class OrganisationCategory
             !empty($fields['is_active']) ? 1 : 0,
             !empty($fields['is_open']) ? 1 : 0,
             (int) ($fields['sort_order'] ?? 0),
-        ]);
+        ];
+        try {
+            $pdo->prepare(
+                'INSERT INTO organisation_categories (organisation_id, name, slug, description, is_active, is_open, sort_order, branch_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+            )->execute(array_merge($values, [!empty($fields['branch_id']) ? (int) $fields['branch_id'] : null]));
+        } catch (\Throwable $e) {
+            $pdo->prepare(
+                'INSERT INTO organisation_categories (organisation_id, name, slug, description, is_active, is_open, sort_order)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)'
+            )->execute($values);
+        }
         return (int) $pdo->lastInsertId();
     }
 

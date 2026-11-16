@@ -47,7 +47,7 @@ $attachmentApplications = $attachmentApplications ?? [];
         <div class="flex flex-wrap items-center justify-between gap-2">
           <h2 class="font-serif-heading text-xl font-bold">Attachment applications</h2>
           <?php if ($decidable): ?>
-            <form method="post" action="<?= url('/account/attachments/bulk-accept') ?>" id="bulk-accept-form" onsubmit="return confirm('Accept the selected students?');">
+            <form method="post" action="<?= url('/account/attachments/bulk-accept') ?>" id="bulk-accept-form" data-confirm="Accept the selected students?">
               <?= csrfField() ?>
               <button type="submit" class="btn-primary" id="bulk-accept-button" disabled>Accept selected (<span data-count="0">0</span>)</button>
             </form>
@@ -97,7 +97,7 @@ $attachmentApplications = $attachmentApplications ?? [];
                     <span class="text-xs font-bold" style="color:var(--ke-green)">Letter ready.</span>
                   <?php endif; ?>
                   <?php if (empty($application['branch_id']) && in_array($status, ['pending', 'paused', 'accepted'], true)): ?>
-                    <form method="post" action="<?= url('/account/attachments/' . (int) $application['id'] . '/complete') ?>" onsubmit="return confirm('Mark this attachment complete? This generates their recommendation letter right away.');"><?= csrfField() ?><button class="btn-primary" style="padding:0.25rem 0.5rem;font-size:0.7rem;">Mark complete</button></form>
+                    <form method="post" action="<?= url('/account/attachments/' . (int) $application['id'] . '/complete') ?>" data-confirm="Mark this attachment complete? This generates their recommendation letter right away."><?= csrfField() ?><button class="btn-primary" style="padding:0.25rem 0.5rem;font-size:0.7rem;">Mark complete</button></form>
                   <?php endif; ?>
                   <?php if (empty($application['branch_id']) && in_array($status, ['pending', 'paused', 'accepted'], true)): $rejectId = (int) $application['id']; require __DIR__ . '/../partials/reject-request.php'; endif; ?>
                 </td>

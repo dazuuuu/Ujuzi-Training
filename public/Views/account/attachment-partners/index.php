@@ -41,7 +41,7 @@ $card = static function (array $request, bool $open) use ($statusStyle, $statusL
         </div>
         <div class="flex flex-wrap gap-2">
           <button type="submit" class="btn-primary"><?= $open ? 'Approve ticked categories' : 'Save categories' ?></button>
-          <button type="submit" formaction="<?= url('/account/attachment-partners/' . $pid . '/reject') ?>" class="btn-danger" onclick="return confirm('Decline this organisation? Your students won\'t see it.');"><?= $open ? 'Decline' : 'Remove partner' ?></button>
+          <button type="submit" formaction="<?= url('/account/attachment-partners/' . $pid . '/reject') ?>" class="btn-danger" data-confirm="Decline this organisation? Your students won't see it."><?= $open ? 'Decline' : 'Remove partner' ?></button>
         </div>
       </form>
     </article>

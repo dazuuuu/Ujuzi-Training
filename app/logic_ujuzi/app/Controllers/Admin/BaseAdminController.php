@@ -23,7 +23,26 @@ abstract class BaseAdminController
             redirect('/admin');
         }
 
+        // Deleting data always needs the admin's own password.
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && $this->deletesData($path)) {
+            $row = \App\Models\Admin::find((int) ($this->admin['id'] ?? 0));
+            $given = (string) \App\Core\Request::post('confirm_password', '');
+            if (!$row || $given === '' || !password_verify($given, (string) ($row['password_hash'] ?? ''))) {
+                flashError('Wrong or missing password. Nothing was deleted.');
+                redirect('/' . implode('/', array_slice(explode('/', trim($path, '/')), 0, 2)));
+            }
+        }
+
         // Record what the owner (and any admin) does, for the developer console.
         \App\Models\ActivityLog::record($this->admin, $_SERVER['REQUEST_METHOD'] ?? 'GET', $path);
+    }
+
+    private function deletesData(string $path): bool
+    {
+        if (preg_match('#/(delete|data-cleanup|reset-everything|clear)(/|$)#', $path)) {
+            return true;
+        }
+        return preg_match('#^/admin/delete-requests/\d+$#', $path) === 1
+            && (string) \App\Core\Request::post('decision', '') === 'approved';
     }
 }

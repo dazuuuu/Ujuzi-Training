@@ -64,8 +64,8 @@ foreach ($modules as $i => $module) {
 $lessons['final'] = [
     'type' => 'final', 'title' => $hasFinal ? 'Final exam' : 'Complete course',
     'meta' => $hasFinal ? $paperCount . ' questions · ' . (int) $course['final_pass_percent'] . '% to pass' . (!empty($course['final_duration_minutes']) ? ' · ' . (int) $course['final_duration_minutes'] . ' min' : '') : 'Tick it off after the last module',
-    // The final exam opens as soon as the student is enrolled (paying is checked on the exam itself).
-    'state' => $finalPassed ? 'done' : ($isEnrolled && ($hasFinal || $modulesComplete) ? 'open' : 'locked'),
+    // The final exam opens once every module is done (paying is checked on the exam itself).
+    'state' => $finalPassed ? 'done' : ($isEnrolled && $modulesComplete ? 'open' : 'locked'),
 ];
 
 // Where the student should carry on.
@@ -80,7 +80,7 @@ $started = (bool) array_filter($modules, static fn(array $m): bool => !empty($m[
 
 // Which lesson to show: the one asked for, else About (before starting and once
 // finished), else where the student should carry on.
-$current = isset($lessons[$lesson]) ? $lesson : null;
+$current = isset($lessons[$lesson]) && ($lessons[$lesson]['state'] ?? '') !== 'locked' ? $lesson : null;
 if ($current === null) {
     $current = (!$isEnrolled || $finalPassed || !$started || $nextKey === null) ? 'about' : $nextKey;
 }
@@ -92,7 +92,7 @@ $here = $lessons[$current];
 
 $steps = count($modules) + ($hasFinal ? 1 : 0);
 $done = count(array_filter($modules, static fn(array $m): bool => !empty($m['is_done']))) + ($hasFinal && $finalPassed ? 1 : 0);
-$overall = $steps ? (int) round($done * 100 / $steps) : ($finalPassed ? 100 : 0);
+$overall = $finalPassed ? 100 : ($steps ? (int) round($done * 100 / $steps) : 0);
 $owed = max(0, $feeKsh - $paidKsh);
 $lessonUrl = static fn(string $key): string => $courseUrl . '?lesson=' . urlencode($key) . '#lesson';
 $tutorName = $tutor ? userDisplayName($tutor) : trim(($course['first_name'] ?? '') . ' ' . ($course['last_name'] ?? ''));
@@ -254,7 +254,7 @@ require __DIR__ . '/../layout-header.php';
                 <span class="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-black uppercase" style="background:#ecf7f0;color:var(--ke-green)"><?= icon('check', 'h-4 w-4') ?> Completed</span>
                 <?php if (!empty($course['certificate_enabled'])): ?><a href="<?= $certUrl ?>" class="btn-primary">View certificate</a><?php endif; ?>
                 <?php if ($modules && $runEndsAt && $runEndsAt > time()): ?>
-                  <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/retake') ?>" class="inline" onsubmit="return confirm('Start this course again? Your progress resets; your certificate stays.');">
+                  <form method="post" action="<?= url('/account/courses/' . (int) $course['id'] . '/retake') ?>" class="inline" data-confirm="Start this course again? Your progress resets; your certificate stays.">
                     <?= csrfField() ?>
                     <button type="submit" class="btn-secondary"><?= icon('refresh', 'inline h-4 w-4 align-[-2px]') ?> Retake course</button>
                   </form>
@@ -613,21 +613,18 @@ require __DIR__ . '/../layout-header.php';
             </form>
           <?php endif; ?>
 
-          <?php if ($followKey && $lessons[$followKey]['state'] !== 'locked' && !$preview): ?>
-            <a href="<?= e($lessonUrl($followKey)) ?>" class="btn-secondary inline-flex">Next: <?= e(mb_strimwidth($lessons[$followKey]['title'], 0, 34, '…')) ?> →</a>
-          <?php endif; ?>
         </div>
       <?php endif; ?>
 
       <!-- Previous / next -->
-      <nav class="flex items-center justify-between gap-3 border-t px-5 py-4" style="border-color:var(--ke-line)" aria-label="Lesson navigation">
+      <nav class="grid grid-cols-2 items-stretch gap-3 border-t px-5 py-4" style="border-color:var(--ke-line)" aria-label="Lesson navigation">
         <?php if ($prevKey): ?>
-          <a href="<?= e($lessonUrl($prevKey)) ?>" class="btn-secondary">← <?= e(mb_strimwidth($lessons[$prevKey]['title'], 0, 24, '…')) ?></a>
+          <a href="<?= e($lessonUrl($prevKey)) ?>" class="btn-secondary justify-center text-center">← Back<span class="hidden sm:inline">: <?= e(mb_strimwidth($lessons[$prevKey]['title'], 0, 22, '…')) ?></span></a>
         <?php else: ?><span></span><?php endif; ?>
         <?php if ($followKey && $lessons[$followKey]['state'] !== 'locked'): ?>
-          <a href="<?= e($lessonUrl($followKey)) ?>" class="btn-primary"><?= e(mb_strimwidth($lessons[$followKey]['title'], 0, 24, '…')) ?> →</a>
+          <a href="<?= e($lessonUrl($followKey)) ?>" class="btn-primary justify-center text-center">Next<span class="hidden sm:inline">: <?= e(mb_strimwidth($lessons[$followKey]['title'], 0, 22, '…')) ?></span> →</a>
         <?php elseif ($followKey): ?>
-          <span class="text-right text-xs font-bold text-neutral-400">Next: <?= e(mb_strimwidth($lessons[$followKey]['title'], 0, 22, '…')) ?> (locked)</span>
+          <span class="btn-secondary justify-center text-center" style="opacity:.55;cursor:not-allowed" title="Finish this step first">Next 🔒 — finish this step first</span>
         <?php endif; ?>
       </nav>
     </main>

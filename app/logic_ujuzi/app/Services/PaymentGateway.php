@@ -4,8 +4,6 @@ namespace App\Services;
 
 use App\Models\StoreSetting;
 
-class PaymentException extends \Exception {}
-
 /**
  * The single place money actually moves in from outside. Wallet deposits call
  * charge(); everything else in the wallet code is gateway-agnostic.

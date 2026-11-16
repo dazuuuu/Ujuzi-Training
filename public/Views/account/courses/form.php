@@ -78,6 +78,14 @@ require __DIR__ . '/../layout-header.php';
         <input type="number" name="enrollment_fee_ksh" min="0" step="1" value="<?= e((string) (float) ($course['enrollment_fee_ksh'] ?? 0)) ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2.5 text-sm" />
         <p class="field-hint">Students confirm this fee before enrollment. Use 0 for a free course.</p>
       </div>
+      <input type="hidden" name="exam_only" value="0" />
+      <label class="flex items-start gap-2 text-sm font-bold">
+        <input type="checkbox" name="exam_only" value="1" <?= !empty($course['exam_only']) ? 'checked' : '' ?> class="mt-1 h-4 w-4" />
+        <span>
+          Exam only
+          <span class="block text-xs font-semibold text-neutral-600">No lessons: the final exam is the whole course. It is listed on the public Exams page, marked automatically, and you get a pass/fail report under Exam results. Add the exam questions after saving.</span>
+        </span>
+      </label>
       <input type="hidden" name="requires_attachment" value="0" />
       <label class="flex items-start gap-2 text-sm font-bold">
         <input type="checkbox" name="requires_attachment" value="1" <?= !empty($course['requires_attachment']) ? 'checked' : '' ?> class="mt-1 h-4 w-4" />

@@ -96,7 +96,7 @@ $sectionBoxes = static function (array $checked, string $prefix) use ($sections)
             <button type="submit" class="btn-primary">Save</button>
           </form>
           <?php if (!$isMe): ?>
-            <form method="post" action="<?= url('/admin/admins/' . $a['id'] . '/delete') ?>" onsubmit="return confirm('Remove this admin? They will no longer be able to sign in.');">
+            <form method="post" action="<?= url('/admin/admins/' . $a['id'] . '/delete') ?>" data-confirm="Remove this admin? They will no longer be able to sign in.">
               <?= csrfField() ?>
               <button type="submit" class="btn-danger">Remove admin</button>
             </form>

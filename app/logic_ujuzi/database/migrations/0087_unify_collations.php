@@ -23,7 +23,19 @@ return [
         $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
         try {
             foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $table) {
-                $pdo->exec('ALTER TABLE `' . str_replace('`', '', $table) . "` CONVERT TO CHARACTER SET utf8mb4 COLLATE {$collation}");
+                $table = str_replace('`', '', $table);
+                try {
+                    $pdo->exec("ALTER TABLE `{$table}` CONVERT TO CHARACTER SET utf8mb4 COLLATE {$collation}");
+                } catch (\Throwable $e) {
+                    // e.g. 1832 "Cannot change column ... used in a foreign key constraint":
+                    // one table must never stop the whole update. Keep going; at least new
+                    // columns in that table get the right collation.
+                    error_log("Collation unify skipped {$table}: " . $e->getMessage());
+                    try {
+                        $pdo->exec("ALTER TABLE `{$table}` DEFAULT CHARACTER SET utf8mb4 COLLATE {$collation}");
+                    } catch (\Throwable $ignored) {
+                    }
+                }
             }
         } finally {
             $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');

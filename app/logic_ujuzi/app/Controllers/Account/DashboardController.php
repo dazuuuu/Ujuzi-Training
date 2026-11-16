@@ -128,7 +128,7 @@ class DashboardController extends BaseAccountController
                 $cards[] = ['briefcase', 'Attachment partners', $partnersWaiting > 0 ? $partnersWaiting . ' waiting' : 'Up to date', '/account/attachment-partners', $partnersWaiting > 0];
                 $cards[] = ['book', 'Courses', (string) count($courses), '/account/courses', false];
                 $cards[] = ['users', 'People', (string) count($managedUsers), '/account/people', false];
-                $cards[] = ['search', 'Student lookup', 'By reg. no.', '/account/student-lookup', false];
+                $cards[] = ['search', 'Verify Certificate', 'By reg. no.', '/account/student-lookup', false];
             } elseif ($slug === 'trainer') {
                 $approved = array_values(array_filter($memberships, static fn(array $m): bool => $m['status'] === 'approved'));
                 $cards[] = ['book', 'My courses', (string) count(Course::forTrainer($userId)), '/account/courses', false];
@@ -144,7 +144,7 @@ class DashboardController extends BaseAccountController
                 $cards[] = ['building', 'Organisation', $orgId > 0 ? (string) ($this->user['organisation_name'] ?? 'Registered') : 'Not registered', '/account/organisation', $orgId < 1];
                 $cards[] = ['map-pin', 'Branches', (string) count(OrganisationBranch::forAttachmentProvider($userId)), '/account/branches', false];
                 $cards[] = ['users', 'Attachees', (string) count($managedUsers), '/account/people', false];
-                $cards[] = ['search', 'Student lookup', 'By reg. no.', '/account/student-lookup', false];
+                $cards[] = ['search', 'Verify Certificate', 'By reg. no.', '/account/student-lookup', false];
             } elseif ($slug === 'course_branch_admin') {
                 $count = 0;
                 foreach (OrganisationBranch::forBranchAdmin($userId) as $branch) {
@@ -152,7 +152,7 @@ class DashboardController extends BaseAccountController
                 }
                 $cards[] = ['inbox', 'Branch requests', (string) $count, '/account/course-branch-admin', $count > 0];
                 $cards[] = ['folder', 'Categories', 'Manage', '/account/categories', false];
-                $cards[] = ['search', 'Student lookup', 'By reg. no.', '/account/student-lookup', false];
+                $cards[] = ['search', 'Verify Certificate', 'By reg. no.', '/account/student-lookup', false];
             } elseif ($slug === 'branch_admin') {
                 $counts = ['waiting' => 0, 'current' => 0, 'done' => 0];
                 foreach (OrganisationBranch::forBranchAdmin($userId) as $branch) {
@@ -170,7 +170,7 @@ class DashboardController extends BaseAccountController
                 $cards[] = ['inbox', 'Waiting for you', (string) $counts['waiting'], '/account/branch-admin', $counts['waiting'] > 0];
                 $cards[] = ['graduation', 'Current attachees', (string) $counts['current'], '/account/branch-admin', false];
                 $cards[] = ['award', 'Completed', (string) $counts['done'], '/account/branch-admin', false];
-                $cards[] = ['search', 'Student lookup', 'By reg. no.', '/account/student-lookup', false];
+                $cards[] = ['search', 'Verify Certificate', 'By reg. no.', '/account/student-lookup', false];
             }
         } catch (\Throwable $e) {
             // A card that can't load is left out rather than breaking the page.

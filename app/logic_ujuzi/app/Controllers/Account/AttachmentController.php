@@ -69,6 +69,13 @@ class AttachmentController extends BaseAccountController
 
         $course = $this->studentCourse((int) Request::query('course', 0));
         $provider = $this->providerForCourse($course, (int) $id);
+        try {
+            if ($note = WalletService::autoPayToMinimum((int) $this->user['id'], $course)) {
+                flashSuccess($note . ' Now choose a branch.');
+            }
+        } catch (\App\Services\WalletException $e) {
+            flashError($e->getMessage());
+        }
         $application = $this->applicationsByCourse(AttachmentApplication::allForStudent((int) $this->user['id']))[$course['id']] ?? null;
 
         $this->render('account.attachment-providers.show', [
@@ -96,6 +103,14 @@ class AttachmentController extends BaseAccountController
 
         $course = $this->studentCourse((int) Request::post('course_id', 0));
         // Only this course's own fee counts — never a total across courses.
+        try {
+            if ($note = WalletService::autoPayToMinimum((int) $this->user['id'], $course)) {
+                flashSuccess($note);
+            }
+        } catch (\App\Services\WalletException $e) {
+            flashError($e->getMessage());
+            redirect('/account/attachment-providers#course-' . $course['id']);
+        }
         $standing = WalletService::courseStanding((int) $this->user['id'], (int) $course['id']);
         if ($standing['below_minimum']) {
             flashError('You have paid ' . (int) floor($standing['paid_ratio'] * 100) . '% of the ' . $course['title'] . ' fee. Pay at least ' . WalletService::minPaymentPercent() . '% of it before sending its attachment request.');

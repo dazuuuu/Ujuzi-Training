@@ -7,7 +7,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <?php require __DIR__ . "/../partials/pwa-head.php"; ?>
-  <title>Courses | <?= e(appName()) ?></title>
+  <title><?= !empty($examsPage) ? "Exams" : "Courses" ?> | <?= e(appName()) ?></title>
   <meta name="description" content="Browse all public courses on <?= e(appName()) ?>. Learn from expert instructors and earn certificates."/>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -142,6 +142,18 @@
        BANNER
     ═══════════════════════════════════ */
     .courses-banner{background:linear-gradient(135deg,#0f172a 0%,#166534 100%);padding:56px 5%;text-align:center;}
+
+    /* Course search: a different colour from the banner so it stands out */
+    .pb-search{position:relative;max-width:640px;margin:0 auto;display:flex;gap:0;background:#fff;border:3px solid #f59e0b;border-radius:14px;box-shadow:0 10px 30px rgba(245,158,11,.35);overflow:visible}
+    .pb-search input{flex:1;border:0;outline:0;background:transparent;padding:15px 18px;font-size:1rem;color:#111827;min-width:0}
+    .pb-search button{background:#f59e0b;color:#1f1300;border:0;font-weight:800;padding:0 26px;border-radius:0 10px 10px 0;cursor:pointer}
+    .cs-panel{position:absolute;left:0;right:0;top:calc(100% + 8px);background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 20px 45px rgba(0,0,0,.25);z-index:500;text-align:left;overflow:hidden;display:none}
+    .cs-panel.open{display:block}
+    .cs-item{display:flex;gap:12px;align-items:center;padding:10px 14px;color:#111827;border-bottom:1px solid #f3f4f6}
+    .cs-item:hover,.cs-item.on{background:#fffbeb}
+    .cs-item img,.cs-item .ph{width:44px;height:44px;border-radius:8px;object-fit:cover;background:#fde68a;flex:none}
+    .cs-item b{display:block;font-size:.92rem}.cs-item span{font-size:.75rem;color:#6b7280}
+    .cs-empty{padding:16px;font-size:.85rem;color:#6b7280}
     .courses-banner h1{font-family:'Manrope',sans-serif;font-size:2.4rem;font-weight:900;color:#fff;margin-bottom:12px;}
     .courses-banner p{color:rgba(255,255,255,.7);font-size:1rem;max-width:500px;margin:0 auto 28px;}
     .courses-search-bar{display:flex;align-items:center;background:#fff;border-radius:99px;padding:8px 8px 8px 20px;max-width:540px;margin:0 auto;box-shadow:0 8px 30px rgba(0,0,0,.2);}
@@ -378,6 +390,33 @@ require __DIR__ . '/partials/pb-sections.php';
 <?php require __DIR__ . '/partials/public-footer.php'; ?>
 
 <script>
+
+/* ── Search dropdown: courses by name or course code, open to anyone ── */
+(function(){
+  var input = document.getElementById('courseSearch');
+  if(!input || !input.form) return;
+  var form = input.form, panel = document.createElement('div'), timer, seq = 0;
+  panel.className = 'cs-panel'; form.appendChild(panel);
+  function esc(t){ return String(t).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function run(){
+    var q = input.value.trim(); if(!q){ panel.classList.remove('open'); return; }
+    var mine = ++seq;
+    fetch(<?= json_encode(url('/search-courses')) ?> + '?q=' + encodeURIComponent(q), {headers:{Accept:'application/json'}})
+      .then(function(r){ return r.json(); }).then(function(d){
+        if(mine !== seq) return;
+        panel.innerHTML = d.courses.length ? d.courses.map(function(c){
+          return '<a class="cs-item" href="'+esc(c.url)+'">'+(c.image?'<img src="'+esc(c.image)+'" alt="">':'<div class="ph"></div>')
+            +'<div><b>'+esc(c.title)+'</b><span>'+esc(c.subtitle)+'</span></div></a>';
+        }).join('') : '<div class="cs-empty">No course matches “'+esc(q)+'”. Check the course code and try again.</div>';
+        panel.classList.add('open');
+      }).catch(function(){});
+  }
+  input.addEventListener('input', function(){ clearTimeout(timer); timer = setTimeout(run, 200); });
+  form.addEventListener('submit', function(e){ e.preventDefault(); var a = panel.querySelector('.cs-item'); if(a){ window.location = a.href; } else { run(); } });
+  document.addEventListener('click', function(e){ if(!form.contains(e.target)) panel.classList.remove('open'); });
+  input.addEventListener('keydown', function(e){ if(e.key==='Escape') panel.classList.remove('open'); });
+})();
+
 /* ── Search filter ── */
 function filterCourses(){
   var inputs = ['courseSearch','courseSearchNav','courseSearchMobile'];

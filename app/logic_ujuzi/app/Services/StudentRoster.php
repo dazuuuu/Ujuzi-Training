@@ -18,14 +18,14 @@ use App\Models\User;
 class StudentRoster
 {
     /** The upload template's columns, in order. */
-    public const COLUMNS = ['first_name', 'other_names', 'last_name', 'email', 'phone'];
+    public const COLUMNS = ['first_name', 'other_names', 'last_name', 'email', 'phone', 'national_id', 'date_of_birth', 'gender', 'country_of_origin'];
 
     public static function templateCsv(): string
     {
         $out = fopen('php://temp', 'r+');
         fputcsv($out, self::COLUMNS);
-        fputcsv($out, ['Grace', 'Wanjiku', 'Mwangi', 'grace.mwangi@example.com', '0712345678']);
-        fputcsv($out, ['Brian', '', 'Otieno', 'brian.otieno@example.com', '0722000111']);
+        fputcsv($out, ['Grace', 'Wanjiku', 'Mwangi', 'grace.mwangi@example.com', '0712345678', '12345678', '1998-04-23', 'Female', 'Kenya']);
+        fputcsv($out, ['Brian', '', 'Otieno', 'brian.otieno@example.com', '0722000111', '23456789', '2001-11-02', 'Male', 'Kenya']);
         rewind($out);
         $csv = stream_get_contents($out);
         fclose($out);
@@ -63,6 +63,13 @@ class StudentRoster
         if (User::nameTaken($first, $last, (string) ($fields['other_names'] ?? ''))) {
             return 'An account already exists in the system with the name ' . trim($first . ' ' . ($fields['other_names'] ?? '') . ' ' . $last) . '.';
         }
+        $nationalId = trim((string) ($fields['national_id'] ?? ''));
+        if ($nationalId !== '' && !preg_match('/^[A-Za-z0-9 \/-]{4,30}$/', $nationalId)) {
+            return 'Row has an invalid ID number (' . $nationalId . ').';
+        }
+        if ($nationalId !== '' && User::idNumberTaken($nationalId)) {
+            return 'ID number ' . $nationalId . ' already belongs to another account.';
+        }
         $roleSlug = isset(self::ROLES[$roleSlug]) ? $roleSlug : 'student';
         $role = Role::findBySlug($roleSlug);
         if (!$role) {
@@ -82,6 +89,7 @@ class StudentRoster
             'must_change_password' => 1,
         ]);
         User::assignRegistrationNumber($id);
+        self::fillProfile($id, (int) $role['id'], $fields);
         OrganisationMembership::ensureApproved($id, $organisationId, $addedBy);
         if ($branchId) {
             Database::connection()->prepare('UPDATE organisation_memberships SET branch_id = ? WHERE user_id = ? AND organisation_id = ?')
@@ -95,6 +103,49 @@ class StudentRoster
             }
         }
         return null;
+    }
+
+    /**
+     * Writes the uploaded ID number, date of birth, gender and country into the
+     * person's registration form so their profile is already filled in.
+     */
+    private static function fillProfile(int $userId, int $roleId, array $fields): void
+    {
+        $id = trim((string) ($fields['national_id'] ?? ''));
+        $dob = trim((string) ($fields['date_of_birth'] ?? ''));
+        $gender = trim((string) ($fields['gender'] ?? ''));
+        $country = trim((string) ($fields['country_of_origin'] ?? ''));
+        if ($id === '' && $dob === '' && $gender === '' && $country === '') {
+            return;
+        }
+        if ($dob !== '' && ($ts = strtotime(str_replace('/', '-', $dob))) !== false) {
+            $dob = date('Y-m-d', $ts);
+        }
+        try {
+            foreach (\App\Models\Form::forRole($roleId, true) as $form) {
+                $answers = [];
+                foreach (\App\Models\FormField::forForm((int) $form['id']) as $field) {
+                    $label = strtolower((string) ($field['label'] ?? ''));
+                    $type = (string) ($field['field_type'] ?? '');
+                    $key = (string) $field['field_key'];
+                    if ($type === 'id_document' && $id !== '') {
+                        $answers[$key] = ['type' => 'National ID', 'number' => $id];
+                    } elseif ($dob !== '' && preg_match('/birth|dob/', $label) && $type !== 'id_document') {
+                        $answers[$key] = $dob;
+                    } elseif ($gender !== '' && preg_match('/gender|sex/', $label)) {
+                        $answers[$key] = ucfirst(strtolower($gender));
+                    } elseif ($country !== '' && preg_match('/country/', $label)) {
+                        $answers[$key] = $country;
+                    }
+                }
+                if ($answers) {
+                    $existing = \App\Models\FormResponse::findForUserForm($userId, (int) $form['id']);
+                    \App\Models\FormResponse::save($userId, (int) $form['id'], $answers + (is_array($existing['answers'] ?? null) ? $existing['answers'] : []));
+                }
+            }
+        } catch (\Throwable $e) {
+            // The student is created anyway; they can fill the profile in themselves.
+        }
     }
 
     /**
@@ -130,6 +181,10 @@ class StudentRoster
                 'last_name' => $get('last_name'),
                 'email' => $get('email'),
                 'phone' => $get('phone'),
+                'national_id' => $get('national_id') ?: $get('id_number') ?: $get('id'),
+                'date_of_birth' => $get('date_of_birth') ?: $get('dob'),
+                'gender' => $get('gender'),
+                'country_of_origin' => $get('country_of_origin') ?: $get('country'),
             ];
             if ($fields['first_name'] === '' && $get('name') !== '') {
                 $parts = preg_split('/\s+/', $get('name'));

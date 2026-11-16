@@ -15,7 +15,7 @@ class CategoryController extends BaseAccountController
         $this->render('account.categories.index', [
             'pageTitle' => 'Categories',
             'activeNav' => 'categories',
-            'categories' => OrganisationCategory::forOrganisation($this->organisationId()),
+            'categories' => $this->visibleCategories(),
         ]);
     }
 
@@ -118,6 +118,7 @@ class CategoryController extends BaseAccountController
             'is_active' => $isActive,
             'is_open' => $isOpen,
             'sort_order' => $sortOrder,
+            'branch_id' => $this->ownBranchId(),
         ];
 
         if ($id) {
@@ -158,11 +159,36 @@ class CategoryController extends BaseAccountController
     private function ownedCategory(int $id): array
     {
         $category = OrganisationCategory::find($id);
-        if (!$category || (int) $category['organisation_id'] !== $this->organisationId()) {
+        $branchLocked = $category && !empty($category['branch_id']) && $this->isBranchAdmin() && !in_array((int) $category['branch_id'], $this->branchIds(), true);
+        $orgWide = $category && empty($category['branch_id']) && $this->isBranchAdmin();
+        if (!$category || (int) $category['organisation_id'] !== $this->organisationId() || $branchLocked || $orgWide) {
             flashError('That category could not be found.');
             redirect('/account/categories');
         }
         return $category;
+    }
+
+    private function isBranchAdmin(): bool
+    {
+        return ($this->user['role_slug'] ?? '') === 'course_branch_admin';
+    }
+
+    private function branchIds(): array
+    {
+        return array_map(static fn(array $b): int => (int) $b['id'], OrganisationBranch::forBranchAdmin((int) $this->user['id']));
+    }
+
+    /** A branch admin's new categories belong to their branch; an organisation admin's are organisation-wide. */
+    private function ownBranchId(): ?int
+    {
+        return $this->isBranchAdmin() ? ($this->branchIds()[0] ?? null) : null;
+    }
+
+    private function visibleCategories(): array
+    {
+        return $this->isBranchAdmin()
+            ? OrganisationCategory::forBranches($this->organisationId(), $this->branchIds())
+            : OrganisationCategory::forOrganisation($this->organisationId());
     }
 
     private function blankForm(): array

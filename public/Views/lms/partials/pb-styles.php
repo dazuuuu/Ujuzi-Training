@@ -207,7 +207,7 @@ $pbAccent = $pbSite['accent'] ?: '#006b3f';
   .pb-signup-form input{padding:.7rem .8rem;border:1px solid #d1d5db;border-radius:10px;font-size:.95rem;text-transform:none;letter-spacing:0;color:#111827;}
 
   /* ---- Landing sections (hero slider, feature strip, welcome, explore, picture cards, gallery, band) ---- */
-  .pb{--pbx-gold:#e3a72f;--pbx-deep:color-mix(in srgb,var(--pb-accent) 78%,#000);--pbx-serif:'Playfair Display',Georgia,'Times New Roman',serif;}
+  .pb{--pbx-gold:var(--site-gold,#e3a72f);--pbx-deep:color-mix(in srgb,var(--pb-accent) 78%,#000);--pbx-serif:'Playfair Display',Georgia,'Times New Roman',serif;}
   .pbx-label{margin:0 0 .35em;font-size:.72em;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--pbx-gold);}
   .pbx-title{margin:0 0 .9em;font-family:var(--pbx-serif);font-size:clamp(1.45em,3vw,2.05em);font-weight:700;line-height:1.2;color:var(--pbx-deep);}
   .pb-dark .pbx-title{color:#fff;}

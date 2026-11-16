@@ -4,6 +4,7 @@
     &copy; <?= date('Y') ?> <?= e(appName()) ?>. Learning management system.
   </footer>
   <?php if ($loggedInUser): ?></div></div><?php endif; ?>
+  <script src="<?= asset('assets/js/ui-confirm.js') ?>" defer></script>
   <script>
   (function () {
     var sidebar = document.getElementById('srmsSidebar');

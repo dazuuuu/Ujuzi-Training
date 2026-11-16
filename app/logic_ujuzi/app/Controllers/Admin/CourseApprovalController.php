@@ -84,6 +84,9 @@ class CourseApprovalController extends BaseAdminController
             'Open the course',
             '/account/courses/' . (int) $course['id']
         );
+        if ($approved) {
+            \App\Models\Announcement::courseApproved($course);
+        }
         flashSuccess($approved ? 'Course approved — students can see it now.' : 'Course sent back to the tutor with your note.');
         redirect('/admin/course-approvals');
     }

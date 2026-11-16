@@ -53,7 +53,7 @@ $latestNotes = $latestNotes ?? [];
               <?php if ($status === 'recommended'): ?>
                 <a href="<?= url('/account/recommendation-letter/' . $appId) ?>" class="att-btn is-primary">Recommendation letter</a>
               <?php elseif ($status === 'pending'): ?>
-                <form method="post" action="<?= url('/account/attachments/' . $appId . '/cancel') ?>" onsubmit="return confirm('Cancel this request? You can then send a new one for this course.');">
+                <form method="post" action="<?= url('/account/attachments/' . $appId . '/cancel') ?>" data-confirm="Cancel this request? You can then send a new one for this course.">
                   <?= csrfField() ?>
                   <button type="submit" class="att-btn">Cancel request</button>
                 </form>

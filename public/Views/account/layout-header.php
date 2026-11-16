@@ -100,10 +100,11 @@ $isStudent = $isStudent ?? (($loggedInUser['role_slug'] ?? '') === 'student');
             $pendingRequestCount = (int) ($pendingRequestCount ?? 0);
             $bellHref = $isOrgAdmin ? '/account/trainer-requests' : ($isBranchAdmin ? '/account/branch-admin' : ($isCourseBranchAdmin ? '/account/course-branch-admin' : ($isAttachmentProvider ? '/account/people' : '/account/dashboard')));
           ?>
-          <a href="<?= url($bellHref) ?>" class="relative cursor-pointer no-underline text-neutral-600" aria-label="Pending requests">
+          <?php $unreadAnnouncements = (int) ($unreadAnnouncements ?? 0); $bellTotal = $pendingRequestCount + $unreadAnnouncements; if ($unreadAnnouncements > 0) { $bellHref = '/account/announcements'; } ?>
+          <a href="<?= url($bellHref) ?>" class="relative cursor-pointer no-underline text-neutral-600" aria-label="<?= $unreadAnnouncements > 0 ? 'New announcements' : 'Pending requests' ?>" title="<?= $unreadAnnouncements > 0 ? e($unreadAnnouncements . ' new announcement' . ($unreadAnnouncements === 1 ? '' : 's')) : 'Notifications' ?>">
             <?= icon('bell', 'h-6 w-6') ?>
-            <?php if ($pendingRequestCount > 0): ?>
-              <span class="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full"><?= $pendingRequestCount > 9 ? '9+' : $pendingRequestCount ?></span>
+            <?php if ($bellTotal > 0): ?>
+              <span class="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full"><?= $bellTotal > 9 ? '9+' : $bellTotal ?></span>
             <?php endif; ?>
           </a>
           <details class="user-menu">

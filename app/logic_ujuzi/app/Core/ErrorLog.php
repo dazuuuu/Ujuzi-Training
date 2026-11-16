@@ -41,11 +41,14 @@ class ErrorLog
         if (!is_file($file)) {
             return '';
         }
-        $size = filesize($file);
-        $fh = fopen($file, 'rb');
+        $size = (int) filesize($file);
+        $fh = $size > 0 ? @fopen($file, 'rb') : false;
+        if (!$fh) {
+            return ''; // empty or unreadable log: nothing to show (fread() with length 0 throws in PHP 8)
+        }
         $chunk = min($size, 512 * 1024);
         fseek($fh, -$chunk, SEEK_END);
-        $text = (string) fread($fh, $chunk);
+        $text = $chunk > 0 ? (string) fread($fh, $chunk) : '';
         fclose($fh);
         return implode("\n", array_slice(explode("\n", rtrim($text)), -$lines));
     }

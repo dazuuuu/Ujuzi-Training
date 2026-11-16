@@ -35,7 +35,7 @@ $contactIcons = [
 $newsState = (string) ($_GET['subscribed'] ?? '');
 ?>
 <style>
-  .pub-footer{--ft-gold:#e3a72f;padding:44px max(16px,5%) calc(0px + env(safe-area-inset-bottom));background:<?= e(in_array($pbSite['footer_bg'], ['', '#0f172a'], true) ? '#0b3d24' : $pbSite['footer_bg']) ?>;color:rgba(255,255,255,.72);font-family:'Inter',system-ui,sans-serif;font-size:.82rem;}
+  .pub-footer{--ft-gold:var(--site-gold,#e3a72f);padding:44px max(16px,5%) calc(0px + env(safe-area-inset-bottom));background:<?= e(in_array($pbSite['footer_bg'], ['', '#0f172a'], true) ? '#0b3d24' : $pbSite['footer_bg']) ?>;color:rgba(255,255,255,.72);font-family:'Inter',system-ui,sans-serif;font-size:.82rem;}
   .pub-footer a{color:inherit;text-decoration:none;}
   .pub-footer-grid{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:1.3fr .8fr .9fr 1.2fr 1.2fr;gap:28px;}
   .pub-footer-grid > div + div{padding-left:22px;border-left:1px solid rgba(255,255,255,.1);}

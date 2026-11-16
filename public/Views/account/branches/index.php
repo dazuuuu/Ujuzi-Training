@@ -34,7 +34,7 @@ require __DIR__ . '/../layout-header.php';
                   <?php foreach ($branchTutors as $tutor): ?>
                     <li class="flex flex-wrap items-center justify-between gap-2 text-sm">
                       <span class="min-w-0"><span class="font-bold"><?= e(trim($tutor['first_name'] . ' ' . $tutor['last_name'])) ?></span> <span class="block truncate text-xs font-semibold text-neutral-500"><?= e($tutor['email']) ?></span></span>
-                      <form method="post" action="<?= url('/account/branches/' . (int) $branch['id'] . '/tutors/' . (int) $tutor['id'] . '/remove') ?>" onsubmit="return confirm('Remove this tutor from the branch? They stay a tutor of your organisation.');">
+                      <form method="post" action="<?= url('/account/branches/' . (int) $branch['id'] . '/tutors/' . (int) $tutor['id'] . '/remove') ?>" data-confirm="Remove this tutor from the branch? They stay a tutor of your organisation.">
                         <?= csrfField() ?>
                         <button type="submit" class="btn-secondary" style="padding:0.25rem 0.5rem;font-size:0.7rem;">Remove</button>
                       </form>

@@ -48,7 +48,7 @@ require __DIR__ . '/../layout-header.php';
             <td>
               <div class="excel-row-actions">
                 <a href="<?= url('/admin/forms/' . (int) $form['id'] . '/edit') ?>" class="btn-secondary" style="padding:0.35rem 0.5rem;font-size:0.7rem;">Edit</a>
-                <form method="post" action="<?= url('/admin/forms/' . (int) $form['id'] . '/delete') ?>" onsubmit="return confirm('Delete this form and its saved answers?');">
+                <form method="post" action="<?= url('/admin/forms/' . (int) $form['id'] . '/delete') ?>" data-confirm="Delete this form and its saved answers?">
                   <?= csrfField() ?>
                   <button type="submit" class="btn-danger" style="padding:0.35rem 0.5rem;font-size:0.7rem;">Delete</button>
                 </form>

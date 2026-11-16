@@ -18,6 +18,7 @@ class DeletionRequest
             'branch' => ['Branch', static fn(int $id) => OrganisationBranch::delete($id)],
             'course' => ['Course', static fn(int $id) => Course::delete($id)],
             'module' => ['Course module', static fn(int $id) => CourseModule::delete($id)],
+            'student' => ['Student', static fn(int $id) => User::delete($id)],
             'category' => ['Category', static fn(int $id) => OrganisationCategory::delete($id)],
         ];
     }

@@ -9,6 +9,9 @@ $template = $payload['template'] ?? null;
 $isPdf = !empty($payload['is_pdf']);
 $isImage = !empty($payload['is_image']);
 ?>
+<?php $qrNumber = (string) ($payload['certificate_no'] ?? ($payload['registration_number'] ?? '')); ?>
+<div class="cert-qr-wrap" style="position:relative">
+
 <?php if ($template): ?>
   <?php
     $docTemplate = $template;
@@ -56,4 +59,26 @@ $isImage = !empty($payload['is_image']);
   </div>
 </section>
 <?php endif; ?>
-
+<?php if ($qrNumber !== ''): ?>
+  <div class="cert-qr" data-qr="<?= e(\App\Core\Url::absolute('/student-lookup?reg=' . rawurlencode($qrNumber))) ?>"
+       style="position:absolute;top:5%;left:4.5%;width:11%;min-width:56px;aspect-ratio:1;background:#fff;padding:3px;border-radius:4px;z-index:5;line-height:0" title="Scan to verify this certificate"></div>
+<?php endif; ?>
+</div>
+<?php if ($qrNumber !== ''): ?>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>
+(function () {
+  function draw() {
+    if (typeof qrcode === 'undefined') return;
+    document.querySelectorAll('.cert-qr[data-qr]:not([data-done])').forEach(function (el) {
+      var q = qrcode(0, 'M'); q.addData(el.getAttribute('data-qr')); q.make();
+      el.innerHTML = q.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+      var svg = el.querySelector('svg'); if (svg) { svg.style.width = '100%'; svg.style.height = '100%'; }
+      el.setAttribute('data-done', '1');
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', draw); else draw();
+  window.addEventListener('load', draw);
+})();
+</script>
+<?php endif; ?>

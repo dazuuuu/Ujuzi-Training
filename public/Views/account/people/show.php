@@ -27,7 +27,7 @@ require __DIR__ . '/../layout-header.php';
         <form method="post" action="<?= url('/account/people/' . (int) $person['id'] . '/reset-password') ?>" class="space-y-2">
           <?= csrfField() ?>
           <input type="text" name="password" placeholder="Leave blank to reset to the default password" class="w-full rounded-lg border border-neutral-300 p-2 text-xs" autocomplete="off" />
-          <button type="submit" class="btn-secondary w-full" onclick="return confirm('Set a new password for this account? They will be asked to change it on next login.');">Reset password</button>
+          <button type="submit" class="btn-secondary w-full" data-confirm="Set a new password for this account? They will be asked to change it on next login.">Reset password</button>
         </form>
       </div>
 

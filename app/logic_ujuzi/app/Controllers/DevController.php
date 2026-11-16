@@ -23,6 +23,7 @@ class DevController
 
     public function authenticate(): void
     {
+        DevGate::start(); // the gate has its own session; the CSRF token lives in it
         if (!csrfVerify(Request::post('csrf_token'))) {
             $this->page('login', ['error' => 'Session expired. Try again.']);
             return;

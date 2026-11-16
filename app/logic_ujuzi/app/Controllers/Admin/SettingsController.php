@@ -141,6 +141,22 @@ class SettingsController extends BaseAdminController
             $exam = max(0, min(100, (int) Request::post('final_grade_exam_percent', 90)));
             StoreSetting::set('final_grade_exam_percent', (string) $exam);
             flashSuccess('Final grade split saved: ' . $exam . '% exam + ' . (100 - $exam) . '% attachment.');
+        } elseif (Request::post('save_notifications') === '1') {
+            StoreSetting::set('sms_username', trim((string) Request::post('sms_username', '')) ?: null);
+            StoreSetting::set('sms_sender', trim((string) Request::post('sms_sender', '')) ?: null);
+            if (trim((string) Request::post('sms_api_key', '')) !== '') {
+                StoreSetting::set('sms_api_key', trim((string) Request::post('sms_api_key')));
+            }
+            StoreSetting::set('notify_course_email', Request::post('notify_course_email') === '1' ? '1' : '0');
+            StoreSetting::set('notify_course_sms', Request::post('notify_course_sms') === '1' ? '1' : '0');
+            flashSuccess('SMS and notification settings saved.');
+        } elseif (Request::post('save_paypal') === '1') {
+            StoreSetting::set('paypal_environment', Request::post('paypal_environment') === 'live' ? 'live' : 'sandbox');
+            StoreSetting::set('paypal_client_id', trim((string) Request::post('paypal_client_id', '')) ?: null);
+            if (trim((string) Request::post('paypal_secret', '')) !== '') {
+                StoreSetting::set('paypal_secret', trim((string) Request::post('paypal_secret')));
+            }
+            flashSuccess('PayPal settings saved. Students can now buy coins with PayPal.');
         } elseif (Request::post('save_course_payments') === '1') {
             StoreSetting::set('course_payments_enabled', Request::post('course_payments_enabled') === '1' ? '1' : '0');
             $provider = Request::post('course_payment_provider', 'mpesa') === 'stripe' ? 'stripe' : 'mpesa';

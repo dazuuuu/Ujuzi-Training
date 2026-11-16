@@ -530,7 +530,14 @@ class CourseController extends BaseAccountController
                 . ($result['passed'] ? '' : 'Check the right answers below. ')
                 . ($allDone ? 'All modules are complete — the final exam is open.' : 'You can go on to the next module.'),
         ];
-        redirect('/account/courses/' . $course['id'] . '?lesson=m' . $module['id'] . '#quiz');
+        // Straight on to the next step: the score is shown there; "Review" on this module shows the right answers.
+        $ids = array_map(static fn(array $m): int => (int) $m['id'], $modules);
+        $at = array_search((int) $module['id'], $ids, true);
+        $next = isset($ids[$at + 1]) ? 'm' . $ids[$at + 1] : 'final';
+        unset($_SESSION['quiz_result']);
+        flashSuccess('Module ' . ($at + 1) . ' quiz: you scored ' . $result['score'] . '%. ' . ($result['passed'] ? 'Well done!' : 'The right answers stay under "Review" on that module.')
+            . ($allDone ? ' All modules are complete — the final exam is open.' : ' Here is the next module.'));
+        redirect('/account/courses/' . $course['id'] . '?lesson=' . $next . '#lesson');
     }
 
     /** Pays for the next module from the student's wallet (money already paid towards the course is used first). */
@@ -637,6 +644,12 @@ class CourseController extends BaseAccountController
         if ($error !== null) {
             flashError($error);
         }
+        try {
+            \App\Core\Database::connection()->prepare('UPDATE courses SET exam_only = ? WHERE id = ?')
+                ->execute([Request::post('exam_only') === '1' ? 1 : 0, $courseId]);
+        } catch (\Throwable $e) {
+            // Before the exams-only update.
+        }
     }
 
     /** The organisation a new course belongs to: the tutor's (approved) organisation. */
@@ -727,7 +740,11 @@ class CourseController extends BaseAccountController
             flashError('Enroll for this course before taking the final exam.');
             redirect('/account/courses/' . $course['id']);
         }
-        // The final exam needs only the course to be paid (checked below) — module quizzes are optional.
+        // Learning is strictly in order: every module (and its quiz) comes before the final exam.
+        if (!Course::modulesCompletedByUser((int) $course['id'], (int) $this->user['id'])) {
+            flashError('Finish every module and its quiz first, in order, before the final exam.');
+            redirect('/account/courses/' . $course['id'] . '?lesson=final#lesson');
+        }
         if (empty($course['final_exam_questions'])) {
             flashError('The tutor has not published a final exam for this course yet.');
             redirect('/account/courses/' . $course['id'] . '#final-exam');

@@ -28,7 +28,7 @@ require __DIR__ . '/../layout-header.php';
         <form method="post" action="<?= url('/admin/users/' . (int) $user['id'] . '/status') ?>"><?= csrfField() ?><input type="hidden" name="status" value="<?= e($status) ?>" /><button type="submit" class="btn-secondary"><?= e($label) ?></button></form>
       <?php endif; ?>
     <?php endforeach; ?>
-    <form method="post" action="<?= url('/admin/users/' . (int) $user['id'] . '/delete') ?>" onsubmit="return confirm('Delete this user permanently?');"><?= csrfField() ?><button type="submit" class="btn-danger">Delete user</button></form>
+    <form method="post" action="<?= url('/admin/users/' . (int) $user['id'] . '/delete') ?>" data-confirm="Delete this user permanently?"><?= csrfField() ?><button type="submit" class="btn-danger">Delete user</button></form>
   </section>
 
   <?php foreach ($forms as $form):

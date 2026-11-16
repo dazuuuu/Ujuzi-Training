@@ -83,6 +83,9 @@ class AuthController
                 : $this->authenticateUser($user, $resolved['slug'], $password);
         }
 
+        if ($error !== '') {
+            \App\Models\LoginAudit::record('user', !empty($user['id']) ? (int) $user['id'] : null, $login, !empty($user) ? trim(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? '')) : null, $resolved['slug'] ?? null, false, $error);
+        }
         $this->renderRoleLogin($role, $error, $method, [
             'login' => Request::post('login', ''),
         ]);
@@ -225,6 +228,7 @@ class AuthController
     {
         User::touchLastLogin((int) $user['id']);
         UserSession::login((int) $user['id']);
+        \App\Models\LoginAudit::record('user', (int) $user['id'], (string) ($user['email'] ?: ($user['phone'] ?? '')), trim(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? '')), (string) ($user['role_slug'] ?? ''), true);
         $fresh = UserSession::current() ?: $user;
         if (!empty($fresh['must_change_password'])) {
             flashSuccess('Set your own password to finish signing in.');

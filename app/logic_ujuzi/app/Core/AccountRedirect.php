@@ -30,7 +30,33 @@ class AccountRedirect
             if (!$response || empty($response['submitted_at'])) {
                 return true;
             }
+            // Saving one field (e.g. just the ID number) must not count as finishing the form:
+            // every required field needs an answer.
+            $answers = is_array($response['answers'] ?? null) ? $response['answers'] : (json_decode((string) ($response['answers'] ?? ''), true) ?: []);
+            try {
+                $fields = \App\Models\FormField::forForm((int) $form['id']);
+            } catch (\Throwable $e) {
+                $fields = [];
+            }
+            foreach ($fields as $field) {
+                if (!empty($field['is_required']) && self::blank($answers[$field['field_key']] ?? null)) {
+                    return true;
+                }
+            }
         }
         return false;
+    }
+
+    private static function blank($value): bool
+    {
+        if (is_array($value)) {
+            foreach ($value as $part) {
+                if (!self::blank($part)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return $value === null || trim((string) $value) === '';
     }
 }

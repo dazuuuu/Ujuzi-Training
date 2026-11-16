@@ -124,7 +124,7 @@ $featuredCount = count(array_filter($courses, static fn(array $c): bool => (int)
                   <button type="submit" class="btn-secondary" style="padding:0.2rem 0.5rem;" <?= $disabled ? 'disabled' : '' ?> aria-label="Move <?= $dir ?>"><?= $arrow ?></button>
                 </form>
               <?php endforeach; ?>
-              <form method="post" action="<?= url('/admin/homepage/logos/' . $i . '/delete') ?>" onsubmit="return confirm('Remove this logo?');">
+              <form method="post" action="<?= url('/admin/homepage/logos/' . $i . '/delete') ?>" data-confirm="Remove this logo?">
                 <?= csrfField() ?>
                 <button type="submit" class="btn-danger" style="padding:0.2rem 0.5rem;" aria-label="Remove">✕</button>
               </form>

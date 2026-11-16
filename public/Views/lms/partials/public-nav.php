@@ -55,7 +55,7 @@ $topIcons = [
   .pub-topbar-left,.pub-topbar-right{display:flex;flex-wrap:wrap;align-items:center;gap:4px 18px;min-height:34px;}
   .pub-topbar-link{color:#fff;text-decoration:none;opacity:.9;white-space:nowrap;}
   .pub-topbar-link:hover{opacity:1;text-decoration:underline;}
-  .pub-topbar-cta{display:flex;align-items:center;align-self:stretch;padding:0 16px;background:#e3a72f;color:#1f1300;font-weight:800;text-transform:uppercase;letter-spacing:.04em;font-size:.72rem;text-decoration:none;white-space:nowrap;}
+  .pub-topbar-cta{display:flex;align-items:center;align-self:stretch;padding:0 16px;background:var(--site-gold,#e3a72f);color:#1f1300;font-weight:800;text-transform:uppercase;letter-spacing:.04em;font-size:.72rem;text-decoration:none;white-space:nowrap;}
   .pub-topbar-cta:hover{filter:brightness(.93);}
   .pub-topbar-item{display:inline-flex;align-items:center;gap:6px;min-width:0;color:#fff;text-decoration:none;white-space:nowrap;opacity:.95;}
   .pub-topbar-item span{overflow:hidden;text-overflow:ellipsis;max-width:260px;}

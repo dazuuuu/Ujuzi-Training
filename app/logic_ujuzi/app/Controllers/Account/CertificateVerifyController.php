@@ -23,7 +23,7 @@ class CertificateVerifyController extends BaseAccountController
 
         $number = strtoupper(trim((string) Request::query('reg', '')));
         $this->render('account.certificate.verify', [
-            'pageTitle' => 'Student lookup',
+            'pageTitle' => 'Verify Certificate',
             'activeNav' => 'verify_certificate',
             'number' => $number,
             'record' => $number !== '' ? StudentLookup::find($number) : null,

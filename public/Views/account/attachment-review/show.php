@@ -90,7 +90,7 @@ $when = static fn(?string $at): string => $at ? date('j M Y', strtotime($at)) : 
       <?php endif; ?>
 
       <?php if ($status === 'recommended'): ?>
-        <form method="post" action="<?= url('/account/attachment-requests/' . (int) $application['id'] . '/resend-letter') ?>" class="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm space-y-3" onsubmit="return confirm('Send the recommendation letter to this student again?');">
+        <form method="post" action="<?= url('/account/attachment-requests/' . (int) $application['id'] . '/resend-letter') ?>" class="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm space-y-3" data-confirm="Send the recommendation letter to this student again?">
           <?= csrfField() ?>
           <h3 class="font-bold text-gray-800">Resend recommendation letter</h3>
           <p class="text-xs font-semibold text-neutral-500">The student gets the letter link in their portal and, when email is set up, by email.</p>

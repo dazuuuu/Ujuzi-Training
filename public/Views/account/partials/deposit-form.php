@@ -12,3 +12,12 @@ $depositReturn = $depositReturn ?? '/account/wallet';
   <input type="tel" name="phone" required placeholder="M-Pesa phone" value="<?= e($currentUser['phone'] ?? '') ?>" aria-label="M-Pesa phone">
   <button type="submit" class="btn-primary">Deposit</button>
 </form>
+<?php if (\App\Services\PayPalService::configured()): ?>
+<form method="post" action="<?= url('/account/wallet/paypal') ?>" class="deposit-row" style="margin-top:6px">
+  <?= csrfField() ?>
+  <input type="hidden" name="return_to" value="<?= e($depositReturn) ?>">
+  <span class="deposit-title"><?= icon('wallet', 'h-4 w-4') ?> Top up (PayPal)</span>
+  <input type="number" name="amount_ksh" min="10" step="1" required placeholder="Amount (Ksh)" aria-label="Amount in Ksh for PayPal">
+  <button type="submit" class="btn-primary">Pay with PayPal</button>
+</form>
+<?php endif; ?>

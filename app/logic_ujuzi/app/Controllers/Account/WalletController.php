@@ -131,4 +131,49 @@ class WalletController extends BaseAccountController
         $back = (string) Request::post('return_to', '');
         redirect(str_starts_with($back, '/account/courses/') || $back === '/account/dashboard' ? $back : '/account/wallet');
     }
+
+    /** Sends the student to PayPal to pay for coins. */
+    public function paypalStart(): void
+    {
+        if (($this->user['role_slug'] ?? '') !== 'student' || !csrfVerify(Request::post('csrf_token'))) {
+            flashError('Your session expired. Please try again.');
+            redirect('/account/wallet');
+        }
+        $amount = round((float) Request::post('amount_ksh', 0), 2);
+        $back = (string) Request::post('return_to', '');
+        $back = str_starts_with($back, '/account/courses/') || $back === '/account/dashboard' ? $back : '/account/wallet';
+        if ($amount < \App\Services\WalletService::MIN_DEPOSIT_KSH) {
+            flashError('The minimum deposit is Ksh ' . \App\Services\WalletService::MIN_DEPOSIT_KSH . '.');
+            redirect($back);
+        }
+        if (!\App\Services\PayPalService::configured()) {
+            flashError('PayPal is not set up yet.');
+            redirect($back);
+        }
+        try {
+            $approve = \App\Services\PayPalService::start((int) $this->user['id'], $amount, $back, \App\Core\Url::absolute('/account/wallet/paypal/return'), \App\Core\Url::absolute('/account/wallet'));
+        } catch (\App\Services\PaymentException $e) {
+            flashError($e->getMessage());
+            redirect($back);
+        }
+        header('Location: ' . $approve);
+        exit;
+    }
+
+    /** PayPal sends the student back here; capture the order and credit coins. */
+    public function paypalReturn(): void
+    {
+        $order = (string) Request::query('token', '');
+        try {
+            [$amount, $back, $already] = \App\Services\PayPalService::capture((int) $this->user['id'], $order);
+            if (!$already) {
+                $coins = \App\Services\WalletService::coins($amount);
+                flashSuccess('PayPal payment received. You earned ' . rtrim(rtrim(number_format($coins, 2), '0'), '.') . ' coins.');
+            }
+        } catch (\App\Services\PaymentException $e) {
+            flashError($e->getMessage());
+            $back = '/account/wallet';
+        }
+        redirect($back ?: '/account/wallet');
+    }
 }

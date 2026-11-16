@@ -46,6 +46,7 @@ abstract class BaseAccountController
             'canCreateCourses' => Authz::canCreateCourses($this->user),
             'canViewCourses' => Authz::canViewCourses($this->user),
             'pendingRequestCount' => $this->pendingRequestCount(),
+            'unreadAnnouncements' => \App\Models\Announcement::unreadCount((int) $this->user['id']),
         ], $data));
     }
 

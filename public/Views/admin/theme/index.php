@@ -70,6 +70,7 @@ $swatch = static fn(string $hex): string => '<span style="display:inline-block;w
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <label class="text-[11px] font-bold uppercase text-neutral-600">Main colour<input type="color" name="accent" value="<?= e($theme['accent']) ?>" class="mt-1 block h-10 w-full rounded-lg border border-neutral-300"></label>
         <label class="text-[11px] font-bold uppercase text-neutral-600">Second colour<input type="color" name="accent2" value="<?= e($theme['accent2']) ?>" class="mt-1 block h-10 w-full rounded-lg border border-neutral-300"></label>
+        <label class="text-[11px] font-bold uppercase text-neutral-600">Yellow / gold highlight<input type="color" name="gold" value="<?= e($theme['gold']) ?>" class="mt-1 block h-10 w-full rounded border"></label>
         <label class="text-[11px] font-bold uppercase text-neutral-600">Heading font<input name="heading_font" value="<?= e($theme['heading_font']) ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2 text-sm normal-case"></label>
         <label class="text-[11px] font-bold uppercase text-neutral-600">Body font<input name="body_font" value="<?= e($theme['body_font']) ?>" class="mt-1 w-full rounded-lg border border-neutral-300 p-2 text-sm normal-case"></label>
       </div>
@@ -85,7 +86,7 @@ $swatch = static fn(string $hex): string => '<span style="display:inline-block;w
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <button type="submit" class="btn-primary">Save theme</button>
-        <button type="submit" formaction="<?= url('/admin/theme/reset') ?>" class="btn-secondary" onclick="return confirm('Go back to the original design?');">Reset to original</button>
+        <button type="submit" formaction="<?= url('/admin/theme/reset') ?>" class="btn-secondary" data-confirm="Go back to the original design?">Reset to original</button>
         <a href="<?= url('/') ?>" target="_blank" rel="noopener" class="btn-secondary">View website</a>
       </div>
     </form>

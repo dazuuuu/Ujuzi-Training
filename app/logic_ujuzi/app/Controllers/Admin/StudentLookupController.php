@@ -13,7 +13,7 @@ class StudentLookupController extends BaseAdminController
     {
         $number = strtoupper(trim((string) Request::query('reg', '')));
         View::render('admin.student-lookup.index', [
-            'pageTitle' => 'Student lookup',
+            'pageTitle' => 'Verify Certificate',
             'activeNav' => 'student-lookup',
             'number' => $number,
             'record' => $number !== '' ? StudentLookup::find($number) : null,

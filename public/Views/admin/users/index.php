@@ -121,7 +121,7 @@ require __DIR__ . '/../layout-header.php';
                   <?php if (($person['account_status'] ?? '') !== 'suspended'): ?>
                     <form method="post" action="<?= url('/admin/users/' . (int) $person['id'] . '/status') ?>"><?= csrfField() ?><input type="hidden" name="status" value="suspended" /><button type="submit" class="btn-secondary" style="padding:0.25rem 0.5rem;font-size:0.7rem;color:#c2410c;">Suspend</button></form>
                   <?php endif; ?>
-                  <form method="post" action="<?= url('/admin/users/' . (int) $person['id'] . '/delete') ?>" onsubmit="return confirm('Delete this user permanently?');"><?= csrfField() ?><button type="submit" class="btn-secondary" style="padding:0.25rem 0.5rem;font-size:0.7rem;color:#be123c;">Delete</button></form>
+                  <form method="post" action="<?= url('/admin/users/' . (int) $person['id'] . '/delete') ?>" data-confirm="Delete this user permanently?"><?= csrfField() ?><button type="submit" class="btn-secondary" style="padding:0.25rem 0.5rem;font-size:0.7rem;color:#be123c;">Delete</button></form>
                 </div>
               </td>
               <td><?= e($person['role_name']) ?></td>

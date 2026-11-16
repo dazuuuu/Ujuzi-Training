@@ -65,6 +65,67 @@ class LmsController
         redirect($target);
     }
 
+    /** Opens a course by id from public search: login first if needed, then the course page. */
+    public function openCourse(string $id): void
+    {
+        $course = Course::find((int) $id);
+        $code = $course['course_code'] ?? '';
+        if ($course && $code !== '') {
+            $this->findByCode((string) $code);
+        }
+        \App\Core\UserSession::start();
+        $target = '/account/courses/' . (int) $id;
+        if (!\App\Core\UserSession::current()) {
+            $_SESSION['after_login'] = $target;
+            flashSuccess('Log in (or create an account) to open this course.');
+            redirect('/account/login');
+        }
+        redirect($target);
+    }
+
+    /** JSON for the public courses search box: public courses by title, code, category, organisation or description. */
+    public function searchCourses(): void
+    {
+        $q = mb_strtolower(trim((string) \App\Core\Request::query('q', '')));
+        $out = [];
+        if ($q !== '') {
+            try {
+                $courses = Course::publicListing();
+            } catch (\Throwable $e) {
+                $courses = [];
+            }
+            foreach ($courses as $c) {
+                $code = (string) ($c['course_code'] ?? '');
+                $title = mb_strtolower((string) $c['title']);
+                $hay = $title . ' ' . mb_strtolower($code . ' ' . ($c['category_name'] ?? '') . ' ' . ($c['organisation_name'] ?? '') . ' ' . ($c['description'] ?? ''));
+                if (!str_contains($hay, $q)) {
+                    continue;
+                }
+                $score = (mb_strtolower($code) === $q ? 1000 : 0) + (str_starts_with(mb_strtolower($code), $q) ? 200 : 0) + (str_starts_with($title, $q) ? 100 : 0) + (str_contains($title, $q) ? 50 : 0);
+                $fee = (float) ($c['enrollment_fee_ksh'] ?? 0);
+                $out[] = ['score' => $score, 'title' => (string) $c['title'], 'code' => $code, 'url' => url('/open-course/' . (int) $c['id']),
+                    'subtitle' => implode(' · ', array_filter([$code !== '' ? 'Code ' . $code : '', $c['category_name'] ?? '', $c['organisation_name'] ?? '', $fee > 0 ? 'Ksh ' . number_format($fee) : 'Free'])),
+                    'image' => !empty($c['cover_image']) && preg_match('/\.(jpe?g|png|webp|gif)$/i', (string) $c['cover_image']) ? imageUrl($c['cover_image']) : null];
+            }
+            usort($out, static fn(array $a, array $b): int => $b['score'] <=> $a['score']);
+            $out = array_slice($out, 0, 8);
+        }
+        header('Content-Type: application/json');
+        echo json_encode(['q' => $q, 'courses' => $out]);
+        exit;
+    }
+
+    /** The public Exams page: courses that are only an exam (NTSA, NITA…). Same page as Courses, different list. */
+    public function exams(): void
+    {
+        try {
+            $courses = Course::publicExams();
+        } catch (\Throwable $e) {
+            $courses = [];
+        }
+        View::render('lms.courses', ['courses' => $courses, 'examsPage' => true]);
+    }
+
     public function courses(): void
     {
         try {

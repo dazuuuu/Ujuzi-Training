@@ -33,6 +33,7 @@ class ThemeController extends BaseAdminController
         SiteTheme::save([
             'accent' => Request::post('accent', ''),
             'accent2' => Request::post('accent2', ''),
+            'gold' => Request::post('gold', ''),
             'heading_font' => Request::post('heading_font', ''),
             'body_font' => Request::post('body_font', ''),
             'font_url' => trim((string) Request::post('font_url', '')),

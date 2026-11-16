@@ -1,7 +1,7 @@
 <?php /** Requires $number, $record and $formAction. */ ?>
 <section>
   <p class="text-xs font-black uppercase tracking-widest" style="color:var(--ke-green)">Students</p>
-  <h1 class="mt-2 font-serif-heading text-3xl font-bold">Student lookup</h1>
+  <h1 class="mt-2 font-serif-heading text-3xl font-bold">Verify Certificate</h1>
   <p class="mt-1 text-sm font-medium text-neutral-600">Enter a registration number (e.g. UJ0012709/26), certificate number, or the student's National ID, passport or birth certificate number to see the student's details, courses and certificates — and check a certificate is genuine.</p>
 </section>
 <form method="get" action="<?= url($formAction) ?>" class="learn-card flex flex-col gap-2 p-4 sm:flex-row">

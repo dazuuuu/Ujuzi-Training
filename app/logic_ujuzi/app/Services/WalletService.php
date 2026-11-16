@@ -95,13 +95,13 @@ class WalletService
         return $payment;
     }
 
-    private static function creditDeposit(int $userId, float $amountKsh, string $provider, string $reference, string $phone): void
+    public static function creditDeposit(int $userId, float $amountKsh, string $provider, string $reference, string $phone): void
     {
         Database::connection()->prepare(
             "INSERT INTO wallet_transactions (user_id, type, amount_ksh, provider, reference, note)
              VALUES (?, 'deposit', ?, ?, ?, ?)"
         )->execute([$userId, $amountKsh, $provider, $reference, 'Deposit from ' . $phone]);
-        Receipts::issue($userId, 'deposit', $amountKsh, 'Wallet deposit (M-Pesa ' . $phone . ')', null, $reference);
+        Receipts::issue($userId, 'deposit', $amountKsh, ($provider === 'paypal' ? 'Wallet deposit (PayPal)' : 'Wallet deposit (M-Pesa ' . $phone . ')'), null, $reference);
     }
 
     /** Safaricom's STK callback body: credits the wallet once, on success only. */
@@ -234,6 +234,33 @@ class WalletService
         ]);
     }
 
+    /**
+     * Attachment needs the minimum share of the fee (50%) paid. Instead of
+     * sending the student back to pay ahead by hand, pay the shortfall from
+     * their wallet automatically. Returns a message to show the student, or
+     * null when nothing was needed. Throws WalletException when the wallet
+     * is too low (the message says how much to deposit).
+     */
+    public static function autoPayToMinimum(int $studentId, array $course): ?string
+    {
+        $fee = (float) $course['enrollment_fee_ksh'];
+        if ($fee <= 0) {
+            return null;
+        }
+        $paid = self::paidForCourse($studentId, (int) $course['id']);
+        $needed = round(min($fee, ceil($fee * self::minPaymentRatio())) - $paid, 2);
+        if ($needed <= 0) {
+            return null;
+        }
+        $balance = self::balanceKsh($studentId);
+        if ($balance + 0.001 < $needed) {
+            throw new WalletException('To apply for attachment, ' . self::minPaymentPercent() . '% of this course (Ksh ' . number_format($needed, 2)
+                . ' more) must be paid. Your wallet has Ksh ' . number_format($balance, 2) . ' — deposit at least Ksh ' . number_format($needed - $balance, 2) . ' and try again.');
+        }
+        self::payCourse($studentId, $course, $needed);
+        return 'We paid Ksh ' . number_format($needed, 2) . ' from your wallet towards ' . ($course['title'] ?? 'this course') . ' to reach the ' . self::minPaymentPercent() . '% needed for attachment.';
+    }
+
     /** The coins a student must hold to enrol on a paid course: the minimum share of its fee. */
     public static function enrolmentDeposit(array $course): float
     {
@@ -334,7 +361,7 @@ class WalletService
                     (SELECT COUNT(*) FROM course_modules m WHERE m.course_id = e.course_id) AS modules_total,
                     (SELECT COUNT(*) FROM course_module_progress p
                        INNER JOIN course_modules m ON m.id = p.module_id
-                       WHERE p.user_id = e.user_id AND p.course_id = e.course_id AND p.passed = 1) AS modules_passed,
+                       WHERE p.user_id = e.user_id AND p.course_id = e.course_id AND p.id IS NOT NULL) AS modules_passed,
                     COALESCE((SELECT f.passed FROM course_final_exam_progress f
                               WHERE f.user_id = e.user_id AND f.course_id = e.course_id LIMIT 1), 0) AS final_passed
              FROM course_enrollments e

@@ -15,6 +15,7 @@ class SiteTheme
     public const DEFAULTS = [
         'accent' => '#006b3f',
         'accent2' => '#bb0000',
+        'gold' => '#e3a72f',
         'heading_font' => 'Inter',
         'body_font' => 'Inter',
         'font_url' => '',
@@ -73,6 +74,7 @@ class SiteTheme
         return [
             'accent' => $color($t['accent'] ?? '', self::DEFAULTS['accent']),
             'accent2' => $color($t['accent2'] ?? '', self::DEFAULTS['accent2']),
+            'gold' => $color($t['gold'] ?? '', self::DEFAULTS['gold']),
             'heading_font' => $font($t['heading_font'] ?? '', self::DEFAULTS['heading_font']),
             'body_font' => $font($t['body_font'] ?? '', self::DEFAULTS['body_font']),
             'font_url' => preg_match('#^https://fonts\.googleapis\.com/css2?\?[A-Za-z0-9=:;,@&+%._\-]+$#', (string) ($t['font_url'] ?? '')) ? (string) $t['font_url'] : '',
@@ -99,12 +101,12 @@ class SiteTheme
         $body = "'" . $t['body_font'] . "', system-ui, sans-serif";
         $css = $t['keyframes'];
         if ($scope === 'portal') {
-            $css .= ":root{--ke-green:{$t['accent']};--ke-green-dark:color-mix(in srgb,{$t['accent']} 80%,#000);--ke-red:{$t['accent2']};}"
+            $css .= ":root{--site-gold:{$t['gold']};--ke-green:{$t['accent']};--ke-green-dark:color-mix(in srgb,{$t['accent']} 80%,#000);--ke-red:{$t['accent2']};}"
                 . "body.srms-theme,body.srms-theme input,body.srms-theme button,body.srms-theme select,body.srms-theme textarea{font-family:$body;}"
                 . "body.srms-theme h1,body.srms-theme h2,body.srms-theme h3,.font-serif-heading{font-family:$heading;}"
                 . ".btn-primary,.btn-secondary,.btn-danger{border-radius:{$t['radius']}px;}";
         } else {
-            $css .= ".pb{font-family:$body;}.pb h1,.pb h2,.pb h3,.pb-title{font-family:$heading;}"
+            $css .= ":root{--site-gold:{$t['gold']};}.pb{font-family:$body;}.pb h1,.pb h2,.pb h3,.pb-title{font-family:$heading;}"
                 . '.pb-btn{border-radius:' . $t['radius'] . 'px;}'
                 . '.pb-card,.pb-course,.pb-person,.pb-role,.pb-faq-item,.pb-stat{border-radius:' . max(4, $t['radius'] + 4) . 'px;box-shadow:' . $t['shadow'] . ';}'
                 . '.pub-signup,.pub-signin{border-radius:' . $t['radius'] . 'px;}';
