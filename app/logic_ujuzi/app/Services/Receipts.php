@@ -53,6 +53,20 @@ class Receipts
         }
     }
 
+    /** Everything paid so far for one course (all its receipts added up), for the running/final total shown on a receipt. */
+    public static function totalPaidForCourse(int $userId, int $courseId): float
+    {
+        try {
+            $stmt = Database::connection()->prepare(
+                'SELECT COALESCE(SUM(amount_ksh), 0) FROM payment_receipts WHERE user_id = ? AND course_id = ?'
+            );
+            $stmt->execute([$userId, $courseId]);
+            return (float) $stmt->fetchColumn();
+        } catch (\Throwable $e) {
+            return 0.0;
+        }
+    }
+
     public static function forUser(int $userId): array
     {
         try {

@@ -128,6 +128,13 @@ class CertificateRegistry
                 $number = 'UJC-' . date('y') . '-' . $code;
                 try {
                     $insert->execute([$number, $userId, $courseId, $branchId ?: null]);
+                    $courseTitle = (string) (Course::find($courseId)['title'] ?? 'your course');
+                    \App\Models\Announcement::systemNotify(
+                        $userId,
+                        'Your certificate is ready',
+                        "Congratulations! Your certificate for \"{$courseTitle}\" (No. {$number}) is ready. You can view and download it from your certificates.",
+                        '/account/certificate'
+                    );
                     return ['certificate_no' => $number, 'branch_id' => $branchId ?: null];
                 } catch (\PDOException $e) {
                     // Another request issued it first, or (rarely) the number is taken: look again.

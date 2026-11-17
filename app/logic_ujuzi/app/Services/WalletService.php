@@ -243,7 +243,7 @@ class WalletService
      */
     public static function autoPayToMinimum(int $studentId, array $course): ?string
     {
-        $fee = (float) $course['enrollment_fee_ksh'];
+        $fee = (float) ($course['enrollment_fee_ksh'] ?? 0);
         if ($fee <= 0) {
             return null;
         }

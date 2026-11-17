@@ -15,6 +15,15 @@ $contacts = array_filter([
     trim((string) ($site['contact_email'] ?? '')),
 ]);
 $website = preg_replace('#^https?://#', '', rtrim(\App\Core\Url::absolute('/'), '/'));
+$courseFee = null;
+$totalPaid = null;
+$isFinal = false;
+if (!empty($r['course_id']) && $r['kind'] !== 'deposit') {
+    $totalPaid = \App\Services\Receipts::totalPaidForCourse((int) $r['user_id'], (int) $r['course_id']);
+    $course = \App\Models\Course::find((int) $r['course_id']);
+    $courseFee = $course ? (float) ($course['enrollment_fee_ksh'] ?? 0) : null;
+    $isFinal = $courseFee !== null && $courseFee > 0 && $totalPaid >= $courseFee;
+}
 ?><!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Receipt <?= e($r['receipt_no']) ?></title>
@@ -34,6 +43,9 @@ $website = preg_replace('#^https?://#', '', rtrim(\App\Core\Url::absolute('/'), 
   @media (max-width:480px){.head{flex-direction:column;gap:10px}.head>div:last-child{text-align:left!important}.receipt{padding:18px}}
   table{width:100%;border-collapse:collapse;font-size:14px}td{padding:8px 0;border-bottom:1px solid #eee;vertical-align:top}td:first-child{color:#666;width:38%}
   .total{font-size:22px;font-weight:800;text-align:right;margin-top:16px}
+  .course-total{margin-top:10px;padding-top:10px;border-top:1px dashed #ccc;text-align:right;font-size:13px;color:#444}
+  .course-total strong{display:block;font-size:15px;color:#111}
+  .final-note{display:block;margin-top:4px;color:#006b3f;font-weight:700;font-size:12px}
   .actions{max-width:560px;margin:12px auto;display:flex;gap:8px;justify-content:flex-end}
   .actions a,.actions button{font:inherit;font-weight:700;padding:8px 14px;border-radius:8px;border:1px solid #006b3f;background:#006b3f;color:#fff;cursor:pointer;text-decoration:none}
   .actions a{background:#fff;color:#006b3f}
@@ -45,17 +57,18 @@ $website = preg_replace('#^https?://#', '', rtrim(\App\Core\Url::absolute('/'), 
   <div class="head">
     <div class="brand">
       <?php if ($logo): ?><img src="<?= e(imageUrl($logo)) ?>" alt="<?= e($platform) ?> logo"><?php else: ?><span class="mark"><?= e(mb_strtoupper(mb_substr($platform, 0, 1))) ?></span><?php endif; ?>
-      <div>
-        <h1><?= e($platform) ?></h1>
-        <div class="contacts">
-          <?php foreach ($contacts as $line): ?><?= e($line) ?><br><?php endforeach; ?>
-          <?= e($website) ?>
-        </div>
+      <h1><?= e($platform) ?></h1>
+    </div>
+    <div style="text-align:right">
+      <strong><?= e($r['receipt_no']) ?></strong>
+      <div class="muted"><?= e(date('j M Y, H:i', strtotime((string) $r['created_at']))) ?></div>
+      <div class="contacts" style="text-align:right">
+        <?php foreach ($contacts as $line): ?><?= e($line) ?><br><?php endforeach; ?>
+        <?= e($website) ?>
       </div>
     </div>
-    <div style="text-align:right"><strong><?= e($r['receipt_no']) ?></strong><div class="muted"><?= e(date('j M Y, H:i', strtotime((string) $r['created_at']))) ?></div></div>
   </div>
-  <div class="title"><h2>Official payment receipt</h2><span class="stamp">PAID</span></div>
+  <div class="title"><h2>Official payment receipt</h2><span class="stamp"><?= $isFinal ? 'FINAL RECEIPT' : 'PAID' ?></span></div>
   <table>
     <tr><td>Received from</td><td><?= e(userFullName($r)) ?></td></tr>
     <?php if (!empty($r['registration_number'])): ?><tr><td>Reg. number</td><td><?= e($r['registration_number']) ?></td></tr><?php endif; ?>
@@ -66,6 +79,13 @@ $website = preg_replace('#^https?://#', '', rtrim(\App\Core\Url::absolute('/'), 
     <?php if (!empty($r['reference'])): ?><tr><td>Reference</td><td><?= e($r['reference']) ?></td></tr><?php endif; ?>
   </table>
   <div class="total">Ksh <?= number_format((float) $r['amount_ksh'], 2) ?></div>
+  <?php if ($totalPaid !== null): ?>
+    <div class="course-total">
+      <span>Total paid for this course so far</span>
+      <strong>Ksh <?= number_format($totalPaid, 2) ?><?= $courseFee ? ' / Ksh ' . number_format($courseFee, 2) : '' ?></strong>
+      <?php if ($isFinal): ?><span class="final-note">Course fee fully paid — this is the final receipt for this course.</span><?php endif; ?>
+    </div>
+  <?php endif; ?>
   <p class="muted" style="margin-top:20px">Thank you for your payment.</p>
   <div class="foot">
     <span>Issued by <?= e($platform) ?> · <?= e($website) ?></span>

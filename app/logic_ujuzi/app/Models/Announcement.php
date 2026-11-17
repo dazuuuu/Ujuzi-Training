@@ -194,6 +194,29 @@ class Announcement
         }
     }
 
+    /** A one-off system notice to a single user (e.g. "your certificate is ready") — bell + inbox, no sender. */
+    public static function systemNotify(int $userId, string $title, string $body, string $path = '/account/announcements'): void
+    {
+        if ($userId < 1) {
+            return;
+        }
+        $pdo = Database::connection();
+        try {
+            $pdo->beginTransaction();
+            $pdo->prepare(
+                "INSERT INTO announcements (author_user_id, organisation_id, kind, title, body, notify_email, notify_sms, recipient_count)
+                 VALUES (0, NULL, 'system', ?, ?, 0, 0, 1)"
+            )->execute([$title, $body]);
+            $id = (int) $pdo->lastInsertId();
+            $pdo->prepare('INSERT IGNORE INTO announcement_recipients (announcement_id, user_id) VALUES (?, ?)')->execute([$id, $userId]);
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+        }
+    }
+
     /** "You have a new course published" to approved learners of the course's categories (ticks in Settings). */
     public static function courseApproved(array $course): void
     {

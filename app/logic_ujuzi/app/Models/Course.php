@@ -94,7 +94,7 @@ class Course
             return null;
         }
         try {
-            $stmt = Database::connection()->prepare('SELECT c.id FROM courses c WHERE UPPER(c.course_code) = ?' . self::approvedSql('c') . ' LIMIT 1');
+            $stmt = Database::connection()->prepare('SELECT c.id FROM courses c WHERE UPPER(c.course_code) = ?' . self::approvedSql('c') . self::notExamSql('c') . " AND c.is_published = 1 AND c.visibility = 'global' LIMIT 1");
             $stmt->execute([$code]);
             $id = $stmt->fetchColumn();
         } catch (\Throwable $e) {

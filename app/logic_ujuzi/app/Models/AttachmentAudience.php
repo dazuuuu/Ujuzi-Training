@@ -203,7 +203,7 @@ class AttachmentAudience
     public static function studentCourses(int $studentUserId): array
     {
         $stmt = Database::connection()->prepare(
-            'SELECT c.id, c.title, c.organisation_id, c.requires_attachment, o.name AS organisation_name,
+            'SELECT c.id, c.title, c.organisation_id, c.requires_attachment, c.enrollment_fee_ksh, c.trainer_user_id, o.name AS organisation_name,
                     cat.id AS category_id, cat.name AS category_name
              FROM course_enrollments e
              INNER JOIN courses c ON c.id = e.course_id
@@ -223,6 +223,8 @@ class AttachmentAudience
                 'organisation_id' => (int) $row['organisation_id'],
                 'organisation_name' => $row['organisation_name'],
                 'requires_attachment' => !empty($row['requires_attachment']),
+                'enrollment_fee_ksh' => (float) ($row['enrollment_fee_ksh'] ?? 0),
+                'trainer_user_id' => (int) ($row['trainer_user_id'] ?? 0),
                 'categories' => [],
             ];
             $out[$id]['categories'][(int) $row['category_id']] = $row['category_name'];

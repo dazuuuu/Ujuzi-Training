@@ -25,6 +25,7 @@ class DocumentLayout
             'registration_number' => ['Registration number', 'UJ0012709/26'],
             'certificate_number' => ['Certificate number (to verify)', 'UJC-26-7K3QX9M2'],
             'date' => ['Date issued', '27 September 2026'],
+            'qr_code' => ['QR code (scan to verify)', 'https://example.com/student-lookup?reg=SAMPLE'],
         ],
         'recommendation_letter' => [
             'name' => ['Student name', 'Grace Wanjiku Mwangi'],
@@ -45,6 +46,7 @@ class DocumentLayout
             'registration_number' => ['x' => 50, 'y' => 68, 'size' => 1.4, 'bold' => false, 'show' => true],
             'certificate_number' => ['x' => 50, 'y' => 92, 'size' => 1.1, 'bold' => false, 'show' => true],
             'date' => ['x' => 50, 'y' => 80, 'size' => 1.4, 'bold' => false, 'show' => true],
+            'qr_code' => ['x' => 92, 'y' => 90, 'size' => 10, 'bold' => false, 'show' => true],
         ],
         'recommendation_letter' => [
             'name' => ['x' => 50, 'y' => 30, 'size' => 3.2, 'bold' => true, 'show' => true],

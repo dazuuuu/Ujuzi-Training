@@ -90,7 +90,11 @@ $isPdf = $edIsPdf;
       var el = stage.querySelector('[data-field="' + field + '"]');
       var p = layout[field];
       el.style.left = p.x + '%'; el.style.top = p.y + '%';
-      el.style.fontSize = p.size + 'cqw'; el.style.fontWeight = p.bold ? 800 : 500; el.style.color = p.color;
+      if (field === 'qr_code') {
+        el.style.width = p.size + '%';
+      } else {
+        el.style.fontSize = p.size + 'cqw'; el.style.fontWeight = p.bold ? 800 : 500; el.style.color = p.color;
+      }
       el.classList.toggle('is-hidden', !p.show);
     }
     form.querySelectorAll('[data-field-row]').forEach(function (row) {
