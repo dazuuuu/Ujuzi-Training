@@ -90,16 +90,25 @@ class LmsController
         $out = [];
         if ($q !== '') {
             try {
-                $courses = Course::publicListing();
+                $courses = Course::searchPool();
             } catch (\Throwable $e) {
                 $courses = [];
             }
             foreach ($courses as $c) {
                 $code = (string) ($c['course_code'] ?? '');
                 $title = mb_strtolower((string) $c['title']);
-                $hay = $title . ' ' . mb_strtolower($code . ' ' . ($c['category_name'] ?? '') . ' ' . ($c['organisation_name'] ?? '') . ' ' . ($c['description'] ?? ''));
-                if (!str_contains($hay, $q)) {
-                    continue;
+                $isGlobal = ($c['visibility'] ?? 'global') === 'global';
+                if ($isGlobal) {
+                    // Freely browsable: match on title, code, category, organisation or description.
+                    $hay = $title . ' ' . mb_strtolower($code . ' ' . ($c['category_name'] ?? '') . ' ' . ($c['organisation_name'] ?? '') . ' ' . ($c['description'] ?? ''));
+                    if (!str_contains($hay, $q)) {
+                        continue;
+                    }
+                } else {
+                    // Restricted to an organisation/branch: only its own code finds it, so it never shows up by a generic keyword search.
+                    if ($code === '' || !str_starts_with(mb_strtolower($code), $q)) {
+                        continue;
+                    }
                 }
                 $score = (mb_strtolower($code) === $q ? 1000 : 0) + (str_starts_with(mb_strtolower($code), $q) ? 200 : 0) + (str_starts_with($title, $q) ? 100 : 0) + (str_contains($title, $q) ? 50 : 0);
                 $fee = (float) ($c['enrollment_fee_ksh'] ?? 0);

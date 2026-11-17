@@ -87,10 +87,19 @@ class Url
         return $scheme . '://' . $host . self::to($path);
     }
 
-    /** Absolute app URL for a static file under public/, e.g. Url::asset('assets/css/app.css') */
+    /**
+     * Absolute app URL for a static file under public/, e.g. Url::asset('assets/css/app.css').
+     * Appends the file's own last-modified time as a cache-busting ?v=, so a
+     * browser (or CDN) that already cached an older copy fetches the new one
+     * the moment the file changes, without anyone having to remember to bump
+     * a version number by hand.
+     */
     public static function asset(string $path): string
     {
-        return self::to($path);
+        $url = self::to($path);
+        $file = dirname(__DIR__, 4) . '/public/' . ltrim($path, '/');
+        $mtime = @filemtime($file);
+        return $mtime ? $url . (str_contains($url, '?') ? '&' : '?') . 'v=' . $mtime : $url;
     }
 
     /**

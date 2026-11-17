@@ -3,48 +3,37 @@
 require __DIR__ . '/layout-header.php';
 ?>
 
-<div class="max-w-md mx-auto">
-  <div class="text-center mb-8">
-    <?php
-      $mode = $mode ?? '';
-      $badge = match ($mode) {
-        'student' => 'Student registration',
-        'trainer' => 'Tutor registration',
-        'attachment_trainer' => 'Organisation providing Attachment registration',
-        default => 'Organisations providing courses',
-      };
-    ?>
-    <span class="text-xs font-bold uppercase tracking-widest block mb-1" style="color:var(--ke-green)"><?= e($badge) ?></span>
-    <h1 class="font-serif-heading text-3xl font-bold"><?= e($heading) ?></h1>
-    <p class="text-sm mt-2 font-medium" style="color:var(--ke-muted)"><?= e($blurb) ?></p>
-  </div>
+<div class="auth-shell">
+  <div class="auth-card">
+    <?php require __DIR__ . '/partials/auth-mark.php'; ?>
+    <div class="auth-head">
+      <h1><?= e($heading) ?></h1>
+      <p>Already registered? <a href="<?= url($loginUrl ?? '/account/login') ?>">Sign in</a></p>
+    </div>
 
-  <div class="bg-white border rounded-xl shadow-sm p-6" style="border-color:var(--ke-line)">
     <?php if ($error): ?>
       <div class="flash-error"><?= e($error) ?></div>
     <?php endif; ?>
 
-    <form method="post" action="<?= e($action) ?>" class="space-y-4">
+    <form method="post" action="<?= e($action) ?>">
       <?= csrfField() ?>
-      <div>
-        <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Email</label>
-        <input type="email" name="email" required value="<?= e($email ?? '') ?>" autocomplete="email" class="w-full mt-1 bg-white border border-neutral-300 rounded-lg p-2.5 text-sm" />
+      <div class="auth-field">
+        <label for="reg-email">Email</label>
+        <input id="reg-email" type="email" name="email" required value="<?= e($email ?? '') ?>" autocomplete="email" />
       </div>
-      <div>
-        <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Password</label>
-        <input type="password" name="password" required minlength="8" autocomplete="new-password" class="w-full mt-1 bg-white border border-neutral-300 rounded-lg p-2.5 text-sm" />
+      <div class="auth-field">
+        <label for="reg-password">Password</label>
+        <input id="reg-password" type="password" name="password" required minlength="8" autocomplete="new-password" />
       </div>
-      <div>
-        <label class="text-[11px] font-bold uppercase" style="color:var(--ke-muted)">Confirm password</label>
-        <input type="password" name="password_confirmation" required minlength="8" autocomplete="new-password" class="w-full mt-1 bg-white border border-neutral-300 rounded-lg p-2.5 text-sm" />
+      <div class="auth-field">
+        <label for="reg-password-confirm">Confirm password</label>
+        <input id="reg-password-confirm" type="password" name="password_confirmation" required minlength="8" autocomplete="new-password" />
       </div>
-      <button type="submit" class="btn-primary btn-block">Create account</button>
+      <button type="submit" class="auth-btn-primary">Create account</button>
     </form>
-  </div>
 
-  <p class="mt-6 text-center text-sm font-semibold" style="color:var(--ke-muted)">
-    Already registered? <a href="<?= url($loginUrl ?? '/account/login') ?>" class="font-bold" style="color:var(--ke-green)">Sign in</a>
-  </p>
+    <p class="auth-fine-print"><?= e($blurb) ?></p>
+  </div>
 </div>
 
 <?php require __DIR__ . '/layout-footer.php'; ?>

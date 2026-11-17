@@ -3,38 +3,40 @@
 require __DIR__ . '/layout-header.php';
 ?>
 
-<div class="max-w-md mx-auto text-center">
-  <span class="text-xs font-bold text-black uppercase tracking-widest block mb-1">Reset password</span>
-  <h1 class="font-serif-heading text-3xl font-bold text-[#0a0a0a]">Enter the email code</h1>
-  <p class="text-sm text-neutral-500 mt-2 mb-8">
-    We sent a 6-digit OTP to <strong class="text-neutral-800"><?= e($email ?? 'your email') ?></strong>. It expires in 10 minutes.
-  </p>
+<div class="auth-shell">
+  <div class="auth-card">
+    <?php require __DIR__ . '/partials/auth-mark.php'; ?>
+    <div class="auth-head">
+      <h1>Enter the email code</h1>
+      <p>We sent a 6-digit code to <strong><?= e($email ?? 'your email') ?></strong>. It expires in 10 minutes.</p>
+    </div>
 
-  <div class="bg-white border border-neutral-200 rounded-xl shadow-sm p-6 text-left">
     <?php if (!empty($error)): ?>
       <div class="flash-error"><?= e($error) ?></div>
     <?php endif; ?>
     <?php if (!empty($notice)): ?>
-      <div class="bg-neutral-50 border border-neutral-300 text-black text-sm rounded-lg p-3 mb-4"><?= e($notice) ?></div>
+      <div class="flash-success"><?= e($notice) ?></div>
     <?php endif; ?>
 
-    <form method="post" action="<?= url('/account/forgot-password/verify') ?>" class="space-y-4">
+    <form method="post" action="<?= url('/account/forgot-password/verify') ?>">
       <?= csrfField() ?>
-      <div>
-        <label class="text-[11px] font-bold text-neutral-600 uppercase">6-digit code</label>
-        <input type="text" name="code" required autofocus maxlength="6" inputmode="numeric" pattern="[0-9]{6}" placeholder="000000" class="w-full mt-1 bg-white border border-neutral-300 rounded-lg p-3 text-center text-2xl font-mono tracking-[0.5em] focus:outline-none focus:border-black" />
+      <div class="auth-field">
+        <label for="reset-code">6-digit code</label>
+        <input id="reset-code" type="text" name="code" required autofocus maxlength="6" inputmode="numeric" pattern="[0-9]{6}" placeholder="000000" style="text-align:center;font-size:1.4rem;letter-spacing:0.5em;font-family:monospace" />
       </div>
-      <button type="submit" class="btn-primary btn-block">Verify code</button>
+      <button type="submit" class="auth-btn-primary">Verify code</button>
     </form>
 
-    <form method="post" action="<?= url('/account/forgot-password/verify') ?>" class="mt-3">
+    <form method="post" action="<?= url('/account/forgot-password/verify') ?>" style="margin-top:0.6rem">
       <?= csrfField() ?>
       <input type="hidden" name="action" value="resend" />
-      <button type="submit" class="btn-secondary btn-block">Resend code</button>
+      <button type="submit" class="auth-btn-secondary">Resend code</button>
     </form>
-  </div>
 
-  <p class="text-[11px] text-neutral-400 mt-4"><a href="<?= url($loginPath ?? '/account/login') ?>" class="hover:text-neutral-700">&larr; Back to sign in</a></p>
+    <div class="auth-link-row">
+      <a href="<?= url($loginPath ?? '/account/login') ?>">&larr; Back to sign in</a>
+    </div>
+  </div>
 </div>
 
 <?php require __DIR__ . '/layout-footer.php'; ?>

@@ -94,7 +94,7 @@ class Course
             return null;
         }
         try {
-            $stmt = Database::connection()->prepare('SELECT c.id FROM courses c WHERE UPPER(c.course_code) = ?' . self::approvedSql('c') . self::notExamSql('c') . " AND c.is_published = 1 AND c.visibility = 'global' LIMIT 1");
+            $stmt = Database::connection()->prepare('SELECT c.id FROM courses c WHERE UPPER(c.course_code) = ?' . self::approvedSql('c') . self::notExamSql('c') . ' AND c.is_published = 1 LIMIT 1');
             $stmt->execute([$code]);
             $id = $stmt->fetchColumn();
         } catch (\Throwable $e) {
@@ -292,6 +292,28 @@ class Course
              INNER JOIN organisations o ON o.id = c.organisation_id
              INNER JOIN users u ON u.id = c.trainer_user_id
              WHERE c.is_published = 1' . self::approvedSql() . self::notExamSql() . ' AND c.visibility = \'global\'
+             ORDER BY c.created_at DESC'
+        );
+        $stmt->execute();
+        return array_map([self::class, 'hydrate'], $stmt->fetchAll());
+    }
+
+    /**
+     * Every published, approved course a code or title search may surface —
+     * unlike publicListing() this is not limited to visibility = 'global',
+     * so a course restricted to a branch/organisation can still be found by
+     * someone who was given its code, without appearing in the open browse list.
+     */
+    public static function searchPool(): array
+    {
+        $stmt = Database::connection()->prepare(
+            'SELECT c.*, cat.name AS category_name, o.name AS organisation_name,
+                    u.first_name, u.last_name, u.email, u.photo_path AS tutor_photo, u.headline AS tutor_headline
+             FROM courses c
+             INNER JOIN organisation_categories cat ON cat.id = c.category_id
+             INNER JOIN organisations o ON o.id = c.organisation_id
+             INNER JOIN users u ON u.id = c.trainer_user_id
+             WHERE c.is_published = 1' . self::approvedSql() . self::notExamSql() . '
              ORDER BY c.created_at DESC'
         );
         $stmt->execute();
