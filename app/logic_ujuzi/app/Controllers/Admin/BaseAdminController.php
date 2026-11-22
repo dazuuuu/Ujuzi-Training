@@ -23,8 +23,11 @@ abstract class BaseAdminController
             redirect('/admin');
         }
 
-        // Deleting data always needs the admin's own password.
-        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && $this->deletesData($path)) {
+        // Deleting data always needs the admin's own password — except the
+        // System Account, which has no row/password to confirm against; it
+        // already proved itself at its own (hardcoded) sign-in.
+        $isSystemAccount = \App\Core\SystemAccount::isId((int) ($this->admin['id'] ?? -1));
+        if (!$isSystemAccount && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && $this->deletesData($path)) {
             $row = \App\Models\Admin::find((int) ($this->admin['id'] ?? 0));
             $given = (string) \App\Core\Request::post('confirm_password', '');
             if (!$row || $given === '' || !password_verify($given, (string) ($row['password_hash'] ?? ''))) {

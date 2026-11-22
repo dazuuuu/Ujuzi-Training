@@ -102,7 +102,7 @@ class DeletionRequest
             (self::types()[$request['entity_type']][1] ?? static fn() => null)((int) $request['entity_id']);
         }
         Database::connection()->prepare('UPDATE deletion_requests SET status = ?, decided_by_admin_id = ?, decided_at = NOW() WHERE id = ?')
-            ->execute([$approve ? 'approved' : 'rejected', $adminId, $id]);
+            ->execute([$approve ? 'approved' : 'rejected', $adminId ?: null, $id]);
         return $request;
     }
 }

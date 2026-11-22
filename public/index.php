@@ -5,12 +5,15 @@
  * Application code lives outside the web root, in /app/logic_ujuzi.
  */
 
+// Checks vendor/ exists before anything below tries to autoload from it; see
+// app/logic_ujuzi/app/vendor-install.php for why (and what it does if not).
+require dirname(__DIR__) . '/app/logic_ujuzi/app/vendor-install.php';
+vendorGateCheck(dirname(__DIR__) . '/app/logic_ujuzi/vendor');
+
 require dirname(__DIR__) . '/app/logic_ujuzi/app/bootstrap.php';
 
 use App\Core\Router;
 use App\Controllers\SetupController;
-use App\Controllers\DevController;
-use App\Core\DevGate;
 use App\Controllers\LmsController;
 use App\Controllers\Admin\AuthController as AdminAuthController;
 use App\Controllers\Admin\DashboardController;
@@ -60,19 +63,6 @@ use App\Controllers\Admin\ReportController;
 use App\Controllers\Api\FormLookupController;
 
 $router = new Router();
-
-// --- Private maintenance gate (reached only at /devs; see App\Core\DevGate) ---
-// Must run before any route: when engaged, every path except /devs is replaced
-// by the notice. Fails open (does nothing) if the database isn't ready.
-DevGate::enforce(\App\Core\Url::currentPath());
-$router->get('/devs', [DevController::class, 'login']);
-$router->post('/devs', [DevController::class, 'authenticate']);
-$router->get('/devs/dashboard', [DevController::class, 'dashboard']);
-$router->post('/devs/update', [DevController::class, 'update']);
-$router->get('/devs/activity', [DevController::class, 'activity']);
-$router->get('/devs/export', [DevController::class, 'export']);
-$router->post('/devs/import', [DevController::class, 'import']);
-$router->get('/devs/logout', [DevController::class, 'logout']);
 
 // --- First-run setup ---
 $router->get('/setup', [SetupController::class, 'index']);
@@ -151,6 +141,7 @@ $router->post('/admin/forms/{id}/delete', [FormController::class, 'destroy']);
 $router->get('/admin/settings', [SettingsController::class, 'index']);
 $router->post('/admin/settings', [SettingsController::class, 'update']);
 $router->post('/admin/settings/test-email', [SettingsController::class, 'testEmail']);
+$router->post('/admin/settings/lock', [SettingsController::class, 'lock']);
 $router->get('/admin/admins', [AdminAccountsController::class, 'index']);
 $router->post('/admin/admins', [AdminAccountsController::class, 'store']);
 $router->post('/admin/admins/{id}', [AdminAccountsController::class, 'update']);
@@ -212,6 +203,9 @@ $router->post('/admin/documents/{type}', [DocumentController::class, 'update']);
 $router->get('/admin/data-cleanup', [DataCleanupController::class, 'index']);
 $router->post('/admin/data-cleanup', [DataCleanupController::class, 'destroy']);
 $router->post('/admin/data-cleanup/reset-everything', [DataCleanupController::class, 'resetEverything']);
+$router->get('/admin/data-import', [\App\Controllers\Admin\DataImportController::class, 'index']);
+$router->get('/admin/data-import/export', [\App\Controllers\Admin\DataImportController::class, 'export']);
+$router->post('/admin/data-import/import', [\App\Controllers\Admin\DataImportController::class, 'import']);
 
 // --- Super admin: error logs (main Super Admins only) ---
 $router->get('/admin/audit-trail', [\App\Controllers\Admin\AuditTrailController::class, 'index']);

@@ -34,6 +34,22 @@ class ErrorLog
         error_log("Uncaught on {$method} {$uri}{$who}\n" . $e);
     }
 
+    /**
+     * Logs a page nobody's route matched — a dead link, a stray /public/ in
+     * a URL, a typo — so it shows here too, not just as a silent 404 to the
+     * visitor. Never throws; a logging failure must not break the 404 page.
+     */
+    public static function notFound(string $method, string $uri): void
+    {
+        try {
+            $ref = (string) ($_SERVER['HTTP_REFERER'] ?? '');
+            $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+            error_log("404 on {$method} {$uri}" . ($ref !== '' ? " (from {$ref})" : '') . ($ip !== '' ? " [{$ip}]" : ''));
+        } catch (\Throwable $e) {
+            // never block the 404 page over a logging failure
+        }
+    }
+
     /** The last $lines lines, newest entry last. */
     public static function tail(int $lines = 400): string
     {

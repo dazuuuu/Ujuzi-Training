@@ -3,6 +3,8 @@
 namespace App\Controllers\Admin;
 
 use App\Core\Request;
+use App\Core\SiteLock;
+use App\Core\SystemAccount;
 use App\Core\View;
 use App\Models\StoreSetting;
 use App\Services\MailerService;
@@ -25,7 +27,37 @@ class SettingsController extends BaseAdminController
             'site' => \App\Services\PageBuilder::site(),
             'smtp' => $smtp,
             'smtpHasPassword' => $smtpHasPassword,
+            // Only the hardcoded System Account ever sees this panel — not
+            // even another owner Super Admin. See App\Core\SiteLock.
+            'canToggleSiteLock' => SystemAccount::isId((int) ($this->admin['id'] ?? -1)),
+            'siteLocked' => SiteLock::isLocked(),
+            'siteLockNote' => SiteLock::note(),
         ]);
+    }
+
+    /**
+     * Switches sign-ins off (or back on) for every account except the
+     * System Account itself. Reachable only by that account — BaseAdminController
+     * already requires a signed-in Super Admin, and this method rechecks it
+     * directly since even an owner Super Admin must not be able to use this.
+     */
+    public function lock(): void
+    {
+        if (!SystemAccount::isId((int) ($this->admin['id'] ?? -1))) {
+            flashError('Not available on this account.');
+            redirect('/admin/settings');
+        }
+        if (!csrfVerify(Request::post('csrf_token'))) {
+            flashError('Your session expired. Please try again.');
+            redirect('/admin/settings');
+        }
+        $lock = Request::post('action') === 'lock';
+        $note = trim((string) Request::post('note', ''));
+        SiteLock::setLocked($lock, $note);
+        flashSuccess($lock
+            ? 'Sign-ins are now suspended for every account. Super Admins were emailed.'
+            : 'Sign-ins are open again.');
+        redirect('/admin/settings#site-lock');
     }
 
     /** Sends a test email to this admin, to check the SMTP settings work. */

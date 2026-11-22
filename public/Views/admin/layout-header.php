@@ -26,6 +26,11 @@ $admin = AdminSession::current();
 if ($admin) {
     $navItems = array_values(array_filter($navItems, static fn(array $item): bool => \App\Core\AdminAccess::allowsNav($admin, $item['id'])));
 }
+// "Lock" (suspend every sign-in) is for the hardcoded System Account only —
+// not even another owner Super Admin sees this menu item.
+if (!$admin || !\App\Core\SystemAccount::isId((int) $admin['id'])) {
+    $navItems = array_values(array_filter($navItems, static fn(array $item): bool => $item['id'] !== 'lock'));
+}
 $pendingMigrations = [];
 try {
     $pendingMigrations = MigrationService::pending();

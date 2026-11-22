@@ -122,6 +122,8 @@ class AccountNav
                 'documents' => ['file', 'Documents', '/admin/documents'],
                 'certificates' => ['award', 'Certificates', '/admin/certificates'],
                 'data-cleanup' => ['x', 'Data Cleanup', '/admin/data-cleanup'],
+                'data-import' => ['refresh', 'Data Import/Export', '/admin/data-import'],
+                'lock' => ['lock', 'Lock', '/admin/settings#site-lock'],
                 'navigation' => ['menu', 'Navigation', '/admin/navigation'],
                 'pages' => ['globe', 'Public pages', '/admin/pages'],
                 'homepage' => ['dashboard', 'Logos & featured courses', '/admin/homepage'],

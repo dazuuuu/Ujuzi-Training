@@ -11,15 +11,14 @@ use PDO;
 class Database
 {
     public const SETTINGS = [
-        'DB_HOST' => '127.0.0.1',
+        'DB_HOST' => 'localhost',
         'DB_PORT' => '3306',
         'DB_NAME' => 'u388216137_demo',
         'DB_USER' => 'u388216137_Super',
         'DB_PASS' => 'Ujuzi@2027',
-
         // Exact URL the public folder is served at, no trailing slash, e.g.
         // https://example.com or https://dazuaihub.com/Ujuzi/public. Blank = work it out from the request.
-        'APP_URL' => '',
+        'APP_URL' => 'https://demo.ujuzitraining.com',
         'APP_NAME' => 'Ujuzi Training',
         'APP_DEBUG' => '1',
         'APP_TIMEZONE' => 'Africa/Nairobi',
@@ -27,6 +26,7 @@ class Database
         // Only used the first time the database is seeded from the command line.
         'ADMIN_SEED_EMAIL' => 'admin@example.com',
         'ADMIN_SEED_PASSWORD' => 'change-this-password',
+        'INSTALLED' => '1',
     ];
 
     private static ?PDO $connection = null;

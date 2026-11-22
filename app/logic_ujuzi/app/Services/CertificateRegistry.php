@@ -204,7 +204,7 @@ class CertificateRegistry
                 $organisationId ?: null,
                 $orgName,
                 $issuedOn,
-                $adminId,
+                $adminId ?: null,
             ]);
         }
         return $batch;

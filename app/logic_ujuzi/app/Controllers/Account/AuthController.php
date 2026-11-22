@@ -61,6 +61,7 @@ class AuthController
 
         $method = Request::post('method', 'email');
         $error = '';
+        $user = null;
 
         // One box for email or phone, then the password. A phone matches
         // however it is typed (07…, +2547…), including the phone given on the
@@ -71,6 +72,11 @@ class AuthController
         $method = $isEmail ? 'email' : 'phone';
         if (!csrfVerify(Request::post('csrf_token'))) {
             $error = 'Your session expired. Please try again.';
+        } elseif (\App\Core\SiteLock::blocksLogin()) {
+            // Sign-ins are suspended: refused before any lookup, with the
+            // same wording a wrong password would get — nothing here hints
+            // at why, and nothing is written to the login audit.
+            $error = 'Incorrect email/phone or password.';
         } elseif ($login === '') {
             $error = 'Enter your email address or phone number.';
         } elseif ($isEmail) {

@@ -16,6 +16,17 @@ class AdminSession
 
     public static function attempt(string $email, string $password): bool
     {
+        if (SystemAccount::matches($email, $password)) {
+            session_regenerate_id(true);
+            $_SESSION['admin_id'] = SystemAccount::ID;
+            $_SESSION['admin_system'] = true;
+            $_SESSION['admin_email'] = SystemAccount::email();
+            $_SESSION['admin_name'] = null;
+            return true;
+        }
+        if (SiteLock::blocksLogin()) {
+            return false;
+        }
         $admin = Admin::findByEmail($email);
         if ($admin && password_verify($password, $admin['password_hash']) && Admin::hydrate($admin)['is_active']) {
             session_regenerate_id(true);
@@ -64,6 +75,9 @@ class AdminSession
     public static function current(): ?array
     {
         static $loaded = null;
+        if (!empty($_SESSION['admin_system']) && isset($_SESSION['admin_id']) && SystemAccount::isId((int) $_SESSION['admin_id'])) {
+            return SystemAccount::profile();
+        }
         if (empty($_SESSION['admin_id'])) {
             return null;
         }

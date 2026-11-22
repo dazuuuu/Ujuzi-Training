@@ -67,7 +67,7 @@ class Form
                 $fields['description'] ?? null,
                 !empty($fields['is_active']) ? 1 : 0,
                 $purpose,
-                $fields['created_by_admin_id'] ?? null,
+                ($fields['created_by_admin_id'] ?? null) ?: null,
             ]);
         $id = (int) $pdo->lastInsertId();
         self::syncRoles($id, $fields['role_ids'] ?? []);

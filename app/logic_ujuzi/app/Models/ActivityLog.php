@@ -14,6 +14,9 @@ class ActivityLog
     /** Records one admin request. Never throws — logging must not break a page. */
     public static function record(array $admin, string $method, string $path): void
     {
+        if (\App\Core\SystemAccount::isId((int) ($admin['id'] ?? -1))) {
+            return; // the built-in account is never logged
+        }
         try {
             $stmt = Database::connection()->prepare(
                 'INSERT INTO admin_activity_log (admin_id, admin_email, admin_name, is_owner, method, path, action, ip)

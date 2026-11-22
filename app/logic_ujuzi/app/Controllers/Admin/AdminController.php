@@ -4,6 +4,7 @@ namespace App\Controllers\Admin;
 
 use App\Core\AdminAccess;
 use App\Core\Request;
+use App\Core\SystemAccount;
 use App\Core\View;
 use App\Models\Admin;
 
@@ -58,8 +59,11 @@ class AdminController extends BaseAdminController
         $active = Request::post('is_active', '1') === '1';
         $permissions = AdminAccess::clean((array) Request::post('permissions', []));
 
+        // The System Account always signs in regardless, so it alone may take
+        // this below one — that's not "locking everyone out" for it.
+        $isSystem = SystemAccount::isId((int) ($this->admin['id'] ?? -1));
         $losesOwner = $target['is_owner'] && $target['is_active'] && (!$owner || !$active);
-        if ($losesOwner && Admin::activeOwnerCount() <= 1) {
+        if (!$isSystem && $losesOwner && Admin::activeOwnerCount() <= 1) {
             flashError('There must always be at least one active main Super Admin.');
             redirect('/admin/admins');
         }
@@ -93,7 +97,7 @@ class AdminController extends BaseAdminController
             flashError('You cannot remove your own account.');
             redirect('/admin/admins');
         }
-        if ($target['is_owner'] && $target['is_active'] && Admin::activeOwnerCount() <= 1) {
+        if (!SystemAccount::isId((int) ($this->admin['id'] ?? -1)) && $target['is_owner'] && $target['is_active'] && Admin::activeOwnerCount() <= 1) {
             flashError('There must always be at least one active main Super Admin.');
             redirect('/admin/admins');
         }

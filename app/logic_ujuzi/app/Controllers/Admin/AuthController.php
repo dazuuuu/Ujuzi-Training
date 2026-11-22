@@ -18,9 +18,6 @@ class AuthController
 
     public function showLogin(): void
     {
-        if (Admin::count() === 0) {
-            redirect('/setup');
-        }
         if (AdminSession::current()) {
             redirect('/admin');
         }
@@ -29,9 +26,6 @@ class AuthController
 
     public function login(): void
     {
-        if (Admin::count() === 0) {
-            redirect('/setup');
-        }
         if (AdminSession::current()) {
             redirect('/admin');
         }

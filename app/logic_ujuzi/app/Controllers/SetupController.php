@@ -26,12 +26,15 @@ class SetupController
     public const STEPS = [
         'requirements' => 'Server check',
         'database' => 'Database',
+        'restore' => 'Restore a backup',
         'migrations' => 'Database updates',
         'platform' => 'Platform',
         'mail' => 'Email',
-        'devs' => 'Developer account',
         'admin' => 'Super Admin',
     ];
+
+    /** Set by sqlFromZip() when it returns false, so saveRestore() can report why. */
+    private string $zipError = '';
 
     public function __construct()
     {
@@ -58,10 +61,10 @@ class SetupController
         $errors = match ($step) {
             'requirements' => $this->saveRequirements(),
             'database' => $this->saveDatabase(),
+            'restore' => $this->saveRestore(),
             'migrations' => $this->saveMigrations(),
             'platform' => $this->savePlatform(),
             'mail' => $this->saveMail(),
-            'devs' => $this->saveDevs(),
             'admin' => $this->saveAdmin(),
         };
         $this->show($step, $errors);
@@ -148,7 +151,57 @@ class SetupController
             flashSuccess('Connected to an existing installation. Sign in as Super Admin.');
             redirect('/admin/login');
         }
-        $this->next('migrations');
+        $this->next('restore');
+    }
+
+    /**
+     * Restores a backup (produced by Admin → Updates → export, or by this
+     * step itself earlier) straight onto the database just connected, before
+     * any migration runs — so a backup made on an older or newer version
+     * still applies cleanly, since its own CREATE TABLE statements replace
+     * whatever is there. Skips straight to Super Admin sign-in on success,
+     * since the backup already has its own admins, platform settings and
+     * mail configuration. "Skip" carries on to the normal fresh-install path.
+     */
+    private function saveRestore(): array
+    {
+        if (!self::databaseReachable()) {
+            return ['The database is not reachable. Go back to the Database step.'];
+        }
+        if (Request::post('skip') === '1') {
+            $this->next('migrations');
+        }
+        $file = Request::file('backup');
+        if (!is_array($file) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name'] ?? '')) {
+            return ['Choose a .sql or .zip backup file to restore, or choose "Skip for now".'];
+        }
+        $name = (string) ($file['name'] ?? '');
+        if (preg_match('/\.zip$/i', $name)) {
+            $sql = $this->sqlFromZip($file['tmp_name']);
+            if (is_string($sql) === false) {
+                return [$this->zipError];
+            }
+        } elseif (preg_match('/\.sql$/i', $name)) {
+            $sql = (string) file_get_contents($file['tmp_name']);
+        } else {
+            return ['That file is not a .sql backup or a .zip containing one.'];
+        }
+        if (trim((string) $sql) === '') {
+            return ['That file was empty, or the zip had no .sql file in it.'];
+        }
+        try {
+            $ran = \App\Services\BackupService::import($sql);
+        } catch (\Throwable $e) {
+            return ['Restore failed: ' . $e->getMessage() . ' — nothing beyond that statement was applied; fix the file (or the database user\'s privileges) and try again.'];
+        }
+        Database::reset();
+        if (!$this->adminExists()) {
+            return ['Restore ran (' . $ran . ' statement(s)), but the backup has no Super Admin account. Pick a different backup, or choose "Skip for now" to set one up fresh.'];
+        }
+        Env::save(['INSTALLED' => '1']);
+        unset($_SESSION['env_override']);
+        flashSuccess('Restore complete — ' . $ran . ' statement(s) run. Everything is back the way the backup had it. Sign in with that backup\'s Super Admin.');
+        redirect('/admin/login');
     }
 
     private function saveMigrations(): array
@@ -256,46 +309,6 @@ class SetupController
             }
             flashSuccess('Test email sent to ' . $testTo . '.');
         }
-        $this->next('devs');
-    }
-
-    /**
-     * The private developer account that can lock the whole site (see
-     * App\Core\DevGate). Set up before the Super Admin and kept entirely
-     * separate from it. Leaving the password blank keeps the existing one.
-     */
-    private function saveDevs(): array
-    {
-        if (!self::databaseReachable() || MigrationService::pending()) {
-            return ['Run the database updates first.'];
-        }
-        $email = strtolower(trim((string) Request::post('email', '')));
-        $password = (string) Request::post('password', '');
-        $confirm = (string) Request::post('password_confirm', '');
-        $alreadySet = \App\Core\DevGate::configured();
-        $errors = [];
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $errors[] = 'Enter a valid developer email address.';
-        }
-        if ($password === '' && !$alreadySet) {
-            $errors[] = 'Set a developer password (at least 8 characters).';
-        }
-        if ($password !== '' && strlen($password) < 8) {
-            $errors[] = 'The developer password must be at least 8 characters.';
-        }
-        if ($password !== '' && $password !== $confirm) {
-            $errors[] = 'The developer passwords do not match.';
-        }
-        if ($errors) {
-            $_SESSION['setup_devs_old'] = ['email' => $email];
-            return $errors;
-        }
-        if ($password !== '') {
-            \App\Core\DevGate::setCredentials($email, $password);
-        } else {
-            \App\Core\DevGate::setEmail($email);
-        }
-        unset($_SESSION['setup_devs_old']);
         $this->next('admin');
     }
 
@@ -369,6 +382,48 @@ class SetupController
         }
     }
 
+    /**
+     * Pulls the one .sql file out of an uploaded .zip (e.g. a backup zipped
+     * up for a single-file upload, or a hosting export bundle that has the
+     * dump alongside other files). Picks the largest .sql entry if there's
+     * more than one, since a real dump dwarfs anything else in the archive.
+     * Returns false (with $this->zipError set) if that's not possible.
+     */
+    private function sqlFromZip(string $path): string|false
+    {
+        if (!class_exists('ZipArchive')) {
+            $this->zipError = 'This PHP has no "zip" extension, so it cannot open the archive. Upload the .sql file directly instead.';
+            return false;
+        }
+        $zip = new \ZipArchive();
+        if ($zip->open($path) !== true) {
+            $this->zipError = 'That file is not a valid zip archive.';
+            return false;
+        }
+        $best = null;
+        $bestSize = -1;
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entryName = $zip->getNameIndex($i);
+            if ($entryName === false || !preg_match('/\.sql$/i', $entryName)) {
+                continue;
+            }
+            $stat = $zip->statIndex($i);
+            $size = (int) ($stat['size'] ?? 0);
+            if ($size > $bestSize) {
+                $best = $entryName;
+                $bestSize = $size;
+            }
+        }
+        if ($best === null) {
+            $zip->close();
+            $this->zipError = 'That zip has no .sql file in it.';
+            return false;
+        }
+        $sql = $zip->getFromName($best);
+        $zip->close();
+        return $sql === false ? '' : $sql;
+    }
+
     private function adminExists(): bool
     {
         try {
@@ -434,10 +489,6 @@ class SetupController
             'timezones' => $timezones,
             'mail' => $dbOk && !$pending ? MailerService::config() : [],
             'old' => $_SESSION['setup_old'] ?? ['email' => '', 'name' => ''],
-            'devsAccount' => [
-                'email' => ($dbOk && !$pending) ? (($_SESSION['setup_devs_old']['email'] ?? '') ?: \App\Core\DevGate::email()) : '',
-                'configured' => ($dbOk && !$pending) && \App\Core\DevGate::configured(),
-            ],
         ]);
     }
 }

@@ -1,8 +1,21 @@
 <?php
 /**
- * The installer (SetupController). Requires $step, $steps, $errors,
- * $requirements, $dbOk, $db, $manualConfig, $pending, $platform, $timezones,
- * $mail and $old.
+ * The installer (SetupController). Extracted into scope by View::render()
+ * from the array SetupController::show() passes — the @var hints below are
+ * only so the editor knows these exist; nothing here changes what runs.
+ *
+ * @var string $step
+ * @var array<string,string> $steps
+ * @var string[] $errors
+ * @var array<int,array{label:string,ok:bool,detail:string,required:bool}> $requirements
+ * @var bool $dbOk
+ * @var array{host:string,port:string,name:string,user:string,has_pass:bool} $db
+ * @var array<string,string>|null $manualConfig
+ * @var string[] $pending
+ * @var array{name:string,url:string,timezone:string,debug:bool,contact:string} $platform
+ * @var string[] $timezones
+ * @var array<string,string> $mail
+ * @var array{email:string,name:string} $old
  */
 $stepKeys = array_keys($steps);
 $current = array_search($step, $stepKeys, true);
@@ -102,8 +115,30 @@ $back = static fn(string $to): string => '<a href="' . e(url('/setup?step=' . $t
           <div class="flex flex-wrap gap-2">
             <?= $back('requirements') ?>
             <button type="submit" class="btn-primary">Test &amp; save connection</button>
-            <?php if ($dbOk): ?><a href="<?= e(url('/setup?step=migrations')) ?>" class="btn-secondary">Keep current settings</a><?php endif; ?>
+            <?php if ($dbOk): ?><a href="<?= e(url('/setup?step=restore')) ?>" class="btn-secondary">Keep current settings</a><?php endif; ?>
           </div>
+
+        <?php elseif ($step === 'restore'): ?>
+          <?php if (!$dbOk): ?>
+            <p class="text-sm font-bold" style="color:#b91c1c">The database is not reachable. Go back and check the connection.</p>
+            <?= $back('database') ?>
+          <?php else: ?>
+            <p class="text-sm font-medium text-neutral-700">
+              Have a backup from this system (Admin → Updates → export, or a <code>.sql</code> file from an earlier setup restore)?
+              Upload it here and everything — admins, courses, organisations, users, settings — comes back exactly as it was,
+              straight onto the database just connected. Its own tables replace whatever this database already has, so there's
+              nothing else to set up: you'll land on the Super Admin sign-in with that backup's accounts and password.
+            </p>
+            <div>
+              <label class="<?= $label ?>">Backup file (.sql, or a .zip containing one)</label>
+              <input type="file" name="backup" accept=".sql,.zip" class="<?= $input ?>" />
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <?= $back('database') ?>
+              <button type="submit" class="btn-primary">Restore &amp; finish setup</button>
+              <button type="submit" name="skip" value="1" formnovalidate class="btn-secondary">Skip — set up fresh instead</button>
+            </div>
+          <?php endif; ?>
 
         <?php elseif ($step === 'migrations'): ?>
           <?php if (!$dbOk): ?>
@@ -171,15 +206,6 @@ $back = static fn(string $to): string => '<a href="' . e(url('/setup?step=' . $t
             <button type="submit" name="skip" value="1" formnovalidate class="btn-secondary">Skip for now</button>
           </div>
 
-        <?php elseif ($step === 'devs'): ?>
-          <p class="text-sm font-medium text-neutral-700">A private developer account, separate from the Super Admin. It can lock the whole site from a hidden page if ever needed. It appears in no menu or list, and the Super Admin never sees it.</p>
-          <div><label class="<?= $label ?>">Developer email</label><input type="email" name="email" required value="<?= e($devsAccount['email'] ?? '') ?>" autocomplete="off" class="<?= $input ?>" /></div>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <div><label class="<?= $label ?>">Password</label><input type="password" name="password" <?= !empty($devsAccount['configured']) ? '' : 'required' ?> minlength="8" autocomplete="new-password" placeholder="<?= !empty($devsAccount['configured']) ? 'Leave blank to keep the current one' : '' ?>" class="<?= $input ?>" /></div>
-            <div><label class="<?= $label ?>">Confirm password</label><input type="password" name="password_confirm" minlength="8" autocomplete="new-password" class="<?= $input ?>" /></div>
-          </div>
-          <div class="flex flex-wrap gap-2"><?= $back('mail') ?><button type="submit" class="btn-primary">Save &amp; continue</button></div>
-
         <?php elseif ($step === 'admin'): ?>
           <p class="text-sm font-medium text-neutral-700">The Super Admin owns the platform: roles, forms, organisations, payments and settings. You'll be signed in straight after.</p>
           <div><label class="<?= $label ?>">Your name <?= $optional ?></label><input type="text" name="name" value="<?= e($old['name'] ?? '') ?>" class="<?= $input ?>" /></div>
@@ -188,7 +214,7 @@ $back = static fn(string $to): string => '<a href="' . e(url('/setup?step=' . $t
             <div><label class="<?= $label ?>">Password</label><input type="password" name="password" required minlength="8" autocomplete="new-password" class="<?= $input ?>" /></div>
             <div><label class="<?= $label ?>">Confirm password</label><input type="password" name="password_confirm" required minlength="8" autocomplete="new-password" class="<?= $input ?>" /></div>
           </div>
-          <div class="flex flex-wrap gap-2"><?= $back('devs') ?><button type="submit" class="btn-primary">Finish setup &amp; sign in</button></div>
+          <div class="flex flex-wrap gap-2"><?= $back('mail') ?><button type="submit" class="btn-primary">Finish setup &amp; sign in</button></div>
         <?php endif; ?>
       </form>
     </section>

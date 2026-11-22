@@ -65,6 +65,7 @@ class Router
             }
         }
 
+        ErrorLog::notFound($method, (string) ($_SERVER['REQUEST_URI'] ?? $path));
         http_response_code(404);
         View::render('lms.404');
     }

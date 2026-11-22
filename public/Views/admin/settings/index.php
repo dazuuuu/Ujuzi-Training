@@ -16,6 +16,38 @@ $hasStripeWebhookSecret = !empty($settings['stripe_webhook_secret']);
 ?>
 
 <div class="max-w-3xl space-y-6">
+  <?php if (!empty($canToggleSiteLock)): ?>
+  <section id="site-lock" class="rounded-xl border p-6 shadow-sm space-y-4" style="border:2px solid #bb0000;scroll-margin-top:90px">
+    <div>
+      <h2 class="text-sm font-bold uppercase tracking-wide" style="color:#bb0000">Site lock</h2>
+      <p class="text-sm text-neutral-600 mt-1">
+        Switches sign-ins off for every account — the Super Admin created at setup, every other admin, every tutor, student,
+        organisation and branch. No maintenance page is shown anywhere: each login page behaves exactly as if the password were
+        wrong, so nobody is told why. This account can still always sign in here to switch it back on. Turning it on emails every
+        Super Admin (and this account) once.
+      </p>
+      <?php if (!empty($siteLocked)): ?>
+        <p class="text-sm font-semibold mt-2" style="color:#bb0000">Sign-ins are currently suspended.</p>
+      <?php endif; ?>
+    </div>
+    <form method="post" action="<?= url('/admin/settings/lock') ?>" class="space-y-3">
+      <?= csrfField() ?>
+      <div>
+        <label class="block text-xs font-semibold text-neutral-600 mb-1">Message sent to Super Admins (optional)</label>
+        <textarea name="note" rows="2" class="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm" placeholder="Please settle the outstanding balance to avoid further inconvenience."><?= e($siteLockNote ?? '') ?></textarea>
+      </div>
+      <div class="flex gap-2">
+        <?php if (!empty($siteLocked)): ?>
+          <input type="hidden" name="action" value="unlock" />
+          <button type="submit" class="btn-primary">Restore sign-ins</button>
+        <?php else: ?>
+          <input type="hidden" name="action" value="lock" />
+          <button type="submit" class="btn-primary" style="background:#bb0000">Suspend sign-ins</button>
+        <?php endif; ?>
+      </div>
+    </form>
+  </section>
+  <?php endif; ?>
   <form method="post" action="<?= url('/admin/settings') ?>" enctype="multipart/form-data" class="rounded-xl border border-neutral-300 bg-white p-6 shadow-sm space-y-6">
     <?= csrfField() ?>
 

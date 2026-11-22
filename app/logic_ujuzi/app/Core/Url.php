@@ -37,16 +37,26 @@ class Url
 
     /**
      * The root .htaccess maps every request into public/ without the visitor
-     * typing it: when this request's address doesn't contain "/public", keep
-     * it out of the links too.
+     * typing it, so a trailing "/public" is always hidden from generated
+     * links — unconditionally, not guessed per request from REQUEST_URI.
+     *
+     * An earlier version decided this per request by checking whether the
+     * current REQUEST_URI already contained "/public/", to keep old
+     * /public/... links internally consistent on the one page that still
+     * showed them. That depended on REQUEST_URI reflecting exactly what the
+     * visitor typed — true on stock Apache, but some hosts (LiteSpeed,
+     * notably common on shared hosting) can report the *rewritten* internal
+     * path there instead. That made an ordinary clean-URL homepage visit
+     * look, to this check, like it came in through "/public/", so every
+     * link on that page baked "/public" back in — breaking the address for
+     * every visitor who clicked one, even though they never typed /public
+     * anywhere. The root .htaccess already 301-redirects anyone who does
+     * land on an old /public/... link to the clean one, so that visitor is
+     * covered without this guess; dropping it fixes the other 99% of hits.
      */
     private static function withoutHiddenPublic(string $base): string
     {
-        $requestPath = (string) (parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?? '/');
-        if (PHP_SAPI !== 'cli' && str_ends_with($base, '/public') && $requestPath !== $base && !str_starts_with($requestPath, $base . '/')) {
-            return substr($base, 0, -strlen('/public'));
-        }
-        return $base;
+        return str_ends_with($base, '/public') ? substr($base, 0, -strlen('/public')) : $base;
     }
 
     public static function basePath(): string

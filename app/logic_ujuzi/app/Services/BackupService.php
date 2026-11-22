@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Core\Database;
-use App\Core\DevGate;
+use App\Core\SiteLock;
 use PDO;
 
 /**
@@ -37,7 +37,7 @@ class BackupService
     public static function export(): string
     {
         $pdo = Database::connection();
-        $reserved = array_flip(DevGate::reservedKeys());
+        $reserved = array_flip(SiteLock::reservedKeys());
         $out = "-- " . appName() . " full backup\n-- generated " . date('c') . "\n";
         $out .= "SET NAMES utf8mb4" . self::SEP;
         $out .= "SET FOREIGN_KEY_CHECKS=0" . self::SEP;
@@ -79,9 +79,9 @@ class BackupService
         // Remember this site's developer-gate rows so the restore can't disturb them.
         $keptGate = [];
         try {
-            $in = implode(',', array_fill(0, count(DevGate::reservedKeys()), '?'));
+            $in = implode(',', array_fill(0, count(SiteLock::reservedKeys()), '?'));
             $stmt = $pdo->prepare('SELECT setting_key, setting_value FROM store_settings WHERE setting_key IN (' . $in . ')');
-            $stmt->execute(DevGate::reservedKeys());
+            $stmt->execute(SiteLock::reservedKeys());
             $keptGate = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
         } catch (\Throwable $e) {
             $keptGate = [];
@@ -125,6 +125,113 @@ class BackupService
         }
 
         return $ran;
+    }
+
+    /**
+     * Adds back rows from an older backup without disturbing the live
+     * database: never drops or recreates a table, never touches
+     * store_settings (so live mail/payment credentials and the site lock
+     * are untouched), and for every other table only inserts a row if its
+     * primary/unique key doesn't already exist — an existing row (old or
+     * brand new) is never overwritten or removed. One bad statement (a
+     * table or column the live schema no longer has, say) is skipped and
+     * counted, not fatal to the rest of the file.
+     *
+     * Returns ['tables' => int, 'inserted' => int, 'skipped' => int, 'failed' => int, 'errors' => string[]].
+     */
+    public static function mergeImport(string $sql): array
+    {
+        $pdo = Database::connection();
+        $statements = self::split($sql);
+        if (!$statements) {
+            throw new \RuntimeException('The file had no SQL statements to run. Make sure it is a backup produced by this system.');
+        }
+
+        $tables = [];
+        $inserted = 0;
+        $skipped = 0;
+        $failed = 0;
+        $errors = [];
+
+        $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
+        try {
+            foreach ($statements as $statement) {
+                if (!preg_match('/^INSERT\s+INTO\s+`?([A-Za-z0-9_]+)`?/i', $statement, $m)) {
+                    continue; // CREATE/DROP TABLE, SET, etc. — the live schema is left exactly as it is
+                }
+                $table = $m[1];
+                if ($table === 'store_settings') {
+                    continue; // live settings (mail, payments, the site lock) are never touched by a merge
+                }
+                $tables[$table] = true;
+
+                // INSERT -> INSERT IGNORE: a row whose primary/unique key already
+                // exists is silently left alone instead of erroring or overwriting.
+                $merged = preg_replace('/^INSERT\s+INTO/i', 'INSERT IGNORE INTO', $statement, 1);
+                try {
+                    $rows = $pdo->exec($merged);
+                    $attempted = max(1, substr_count($statement, '),(') + 1); // multi-row INSERT support
+                    $inserted += (int) $rows;
+                    $skipped += max(0, $attempted - (int) $rows);
+                } catch (\PDOException $e) {
+                    $failed++;
+                    if (count($errors) < 20) {
+                        $errors[] = $table . ': ' . $e->getMessage();
+                    }
+                }
+            }
+        } finally {
+            try {
+                $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
+            } catch (\Throwable $e) {
+                // ignore
+            }
+        }
+
+        return [
+            'tables' => count($tables),
+            'inserted' => $inserted,
+            'skipped' => $skipped,
+            'failed' => $failed,
+            'errors' => $errors,
+        ];
+    }
+
+    /**
+     * Pulls the one .sql file out of an uploaded .zip — the largest .sql
+     * entry if there's more than one, since a real dump dwarfs anything
+     * else in the archive. Returns null (not false) when there isn't one,
+     * so callers can tell "no sql in zip" apart from "sql file was empty".
+     */
+    public static function sqlFromZip(string $path): ?string
+    {
+        if (!class_exists('ZipArchive')) {
+            throw new \RuntimeException('This PHP has no "zip" extension, so it cannot open the archive. Upload the .sql file directly instead.');
+        }
+        $zip = new \ZipArchive();
+        if ($zip->open($path) !== true) {
+            throw new \RuntimeException('That file is not a valid zip archive.');
+        }
+        $best = null;
+        $bestSize = -1;
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entryName = $zip->getNameIndex($i);
+            if ($entryName === false || !preg_match('/\.sql$/i', $entryName)) {
+                continue;
+            }
+            $size = (int) ($zip->statIndex($i)['size'] ?? 0);
+            if ($size > $bestSize) {
+                $best = $entryName;
+                $bestSize = $size;
+            }
+        }
+        if ($best === null) {
+            $zip->close();
+            return null;
+        }
+        $sql = $zip->getFromName($best);
+        $zip->close();
+        return $sql === false ? '' : $sql;
     }
 
     /**

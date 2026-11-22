@@ -14,3 +14,4 @@ public/assets/uploads/*
 !public/assets/uploads/forms/
 !public/assets/uploads/forms/.gitkeep
 app/logic_ujuzi/config.local.php
+/backup/

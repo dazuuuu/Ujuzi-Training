@@ -52,7 +52,7 @@ class OrganisationAdminInvite
             $pdo->prepare(
                 'INSERT INTO organisation_admin_invites (organisation_id, token_hash, expires_at, created_by_admin_id)
                  VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 5 MINUTE), ?)'
-            )->execute([$organisationId, hash('sha256', $plain), $adminId]);
+            )->execute([$organisationId, hash('sha256', $plain), $adminId ?: null]);
 
             $id = (int) $pdo->lastInsertId();
             $stmt = $pdo->prepare('SELECT expires_at FROM organisation_admin_invites WHERE id = ?');
